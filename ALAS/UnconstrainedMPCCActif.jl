@@ -38,20 +38,22 @@ function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax
  good_grad=false
  nbW=0
  nbk=0
- step=min(stepmax,1.0)
+ scale=norm(d)>=1000?norm(d):1.0
+ scale=1.0
+ dd=d/scale
+ step=min(stepmax,1.0)*scale
  #slope = scale*dot(ActifMPCCmod.grad(ma,xj),d)
 
  hgoal=ActifMPCCmod.obj(ma,xj)
- ht=ActifMPCCmod.obj(ma,xj+step*d)
+ ht=ActifMPCCmod.obj(ma,xj+step*dd)
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
  while nbk<ma.ite_max && ht-hgoal>ma.tau_armijo*step*slope
-  #step=step_0*(1/2)^m
-  step*=0.8
-  ht=ActifMPCCmod.obj(ma,xj+step*d)
+  step*=0.9 #step=step_0*(1/2)^m
+  ht=ActifMPCCmod.obj(ma,xj+step*dd)
   nbk+=1
  end
-
+step=step/scale
  return step,good_grad,ht,nbk,nbW
 end
 
@@ -105,7 +107,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
  end
 
  #Calcul du pas maximum (peut être infinie!)
- stepmax,wmax = ActifMPCCmod.PasMax(ma,xj,d)
+ stepmax,wmax,wnew = ActifMPCCmod.PasMax(ma,xj,d)
 
  #Recherche linéaire
  old_grad=NaN #à définir quelque part...
@@ -121,7 +123,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
  y=gradft-gradf
 
  #MAJ de Beta
- #beta=0.0
+ #beta=0.0 #steepest descent
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
 #Intégrer dans une nouvelle fonction ?
   #Formula FR
@@ -152,13 +154,13 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
  if stepmax == step
   ActifMPCCmod.setw(ma,wmax)
  else
-  wmax = []
+  wnew = [] #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
  if nbk >= ma.ite_max 
   output=1
  end
 
- return sol,ma.w,dsol,step,wmax,output,beta #on devrait aussi renvoyer le gradient
+ return sol,ma.w,dsol,step,wnew,output,beta #on devrait aussi renvoyer le gradient
 end
 
 #end of module

@@ -360,23 +360,35 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
  #les indices où la première composante est libre
  for i in ma.w13c
-  if !(i in ma.w24c) && d[i+ma.n]<0
-   #on prend le plus petit entre x+alpha*dx>=-r et s-tTheta(x+alpha*dx-s)>=-r
+  bloque=(i in ma.w2) && (i in ma.w4)
+  if !(i in ma.w24c) && !bloque && d[i+ma.n]<0
+   #on prend le plus petit entre x+alpha*dx>=-r et s+tTheta(x+alpha*dx-s)>=-r
    alpha11=(ma.mpcc.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n]
    alpha12=(Relaxationmod.invpsi(ma.mpcc.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
 
-   if min(alpha11,alpha12)<=alpha
+   #on accepte le pas si il est plus petit et si il est non-nul
+   if min(alpha11,alpha12)<=alpha && min(alpha11,alpha12)>=eps(Float64)
     if min(alpha11,alpha12)<alpha
      w_save=copy(ma.w)
     end
     alpha=min(alpha11,alpha12)
-    if alpha11==alpha
-     w_save[i,1]=1
+   elseif min(alpha11,alpha12)<=alpha && min(alpha11,alpha12)<eps(Float64)
+    if max(alpha11,alpha12)<alpha
+     w_save=copy(ma.w)
     end
-    if alpha12==alpha
-     w_save[i+ma.nb_comp,2]=1
-    end
+    alpha=max(alpha11,alpha12)
    end
+
+   #update of the active set
+   if alpha11==alpha
+    w_save[i,1]=1
+   end
+   if alpha12==alpha
+    w_save[i+ma.nb_comp,2]=1
+    w_save[i,2]=1
+   end
+  elseif bloque
+   alpha=0.0
   end
  end
 
@@ -388,18 +400,28 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
    alpha21=(ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
    alpha22=(Relaxationmod.invpsi(ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
 
-   if min(alpha21,alpha22)<=alpha
+   #on accepte le pas si il est plus petit et si il est non-nul
+   if min(alpha21,alpha22)<=alpha && min(alpha21,alpha22)>=eps(Float64)
     if min(alpha21,alpha22)<alpha
      w_save=copy(ma.w)
     end
     alpha=min(alpha21,alpha22)
-    if alpha21==alpha
-     w_save[i,2]=1
+   elseif min(alpha21,alpha22)<=alpha && min(alpha21,alpha22)<eps(Float64)
+    if max(alpha21,alpha22)<alpha
+     w_save=copy(ma.w)
     end
-    if alpha22==alpha
-     w_save[i+ma.nb_comp,1]=1
-    end
+    alpha=max(alpha21,alpha22)
    end
+
+   #on met à jour les contraintes
+   if alpha21==alpha
+    w_save[i,2]=1
+   end
+   if alpha22==alpha
+    w_save[i+ma.nb_comp,1]=1
+    w_save[i,1]=1
+   end
+
   end
  end
 
@@ -410,7 +432,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   alphac11=d[i+ma.n]<0 ? (ma.mpcc.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
   alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
 
-  if min(minimum(alphac),alphac11,alphac21)<=alpha
+  if min(minimum(alphac),alphac11,alphac21)<=alpha # A vérifier
    if min(minimum(alphac),alphac11,alphac21)<alpha
     w_save=copy(ma.w)
    end
@@ -430,7 +452,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   end
  end
 
- return alpha,w_save
+ return alpha,w_save,w_save-ma.w
 end
 
 """
@@ -444,14 +466,14 @@ w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
 """
 function PasMax(ma::MPCC_actif,x::Vector,d::Vector)
  #on récupère les infos sur la contrainte de complémentarité
- alpha,w_save=PasMaxComp(ma,x,d)
+ alpha,w_save,w_new=PasMaxComp(ma,x,d)
  
  if alpha<0.0
   println("PasMax error: pas maximum négatif.")
   return
  end
 
- return alpha,w_save
+ return alpha,w_save,w_new
 end
 
 #end of module

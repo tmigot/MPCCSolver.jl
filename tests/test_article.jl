@@ -24,7 +24,8 @@ prec=1e-4
 
 r0=0.1
 s0=0.1
-t0=sqrt(0.1)
+#t0=sqrt(0.1) #t=o(r) normalement
+t0=0.01
 sig_r=0.1
 sig_s=0.1
 sig_t=0.01
@@ -33,10 +34,10 @@ sig_t=0.01
 ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,Inf*ones(1),prec)
 
 println("ALAS Exemple 1 :")
-
+println("KDB method:")
 #résolution avec ALAS KDB
-#xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
-
+xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
+println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
 
@@ -71,12 +72,12 @@ println("ALAS Exemple 2 :")
 
 #déclare le mpcc :
 ex2= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,ucon,prec)
-
+println("KDB method:")
 #résolution avec ALAS KDB
-#xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
-
+xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
+println("Butterfly method:")
 #résolution avec ALAS Butterfly
-#xb,fb,statb, s_xtab = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,t0,sig_t)
+xb,fb,statb, s_xtab = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,t0,sig_t)
 
 if false
  nb_ite=Int(length(s_xtab)/2)
@@ -104,7 +105,7 @@ end
 
 r0=0.1
 s0=0.1
-t0=sqrt(r0)
+t0=0.01
 sig_r=0.1
 sig_s=0.1
 sig_t=0.01
@@ -113,10 +114,10 @@ println("ALAS Exemple 3 :")
 
 #déclare le mpcc :
 ex3= MPCCmod.MPCC(f,ones(3),G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
-
+println("KDB method:")
 #résolution avec ALAS KDB
-#xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
-
+xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
+println("Butterfly method:")
 #résolution avec ALAS Butterfly
 #xb,fb,statb, s_xtab = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,t0,sig_t)
 
