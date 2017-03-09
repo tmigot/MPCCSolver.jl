@@ -26,18 +26,18 @@ using Thetamod
 psi(x) : colle au notation de l'article pour la méthode des papillons
 """
 function psi(x::Any,r::Float64,s::Float64,t::Float64)
- return s-t*Thetamod.theta(x-s,r)
+ return s+t*Thetamod.theta(x-s,r)
 end
 
 function invpsi(x::Any,r::Float64,s::Float64,t::Float64)
  if t==0
 #  println("Error invpsi: inverse not defined")
  end
- return t!=0?s+Thetamod.invtheta((s-x)/t,r):-Inf
+ return t!=0?s+Thetamod.invtheta((x-s)/t,r):-Inf
 end
 
 function dpsi(x::Any,r::Float64,s::Float64,t::Float64)
- return -t*Thetamod.dtheta(x-s,r)
+ return t*Thetamod.dtheta(x-s,r)
 end
 
 """
