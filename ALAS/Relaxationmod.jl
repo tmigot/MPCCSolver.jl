@@ -18,10 +18,6 @@ module Relaxationmod
 
 using Thetamod
 
-# TO DO List:
-#Minor :
-# - changer le nom du fichier
-
 """
 psi(x) : colle au notation de l'article pour la méthode des papillons
 """
