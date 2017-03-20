@@ -1,6 +1,6 @@
 module MPCC2DPlot
 
-using Relaxationmod
+using Relaxation
 using PyPlot
 
 """
@@ -10,7 +10,7 @@ z : tableau de dimension 2
 function RelaxationPlot(z::Any,r::Float64,s::Float64,t::Float64,a::Float64,b::Float64)
 
  #Step 1 : plot des contraintes de relaxations
- x = linspace(-r,b,1000); y = Relaxationmod.psi(x,r,s,t)
+ x = linspace(-r,b,1000); y = Relaxation.psi(x,r,s,t)
  PyPlot.plot(x, y, color="red", linewidth=2.0, linestyle="-")
  PyPlot.plot(y, x, color="blue", linewidth=2.0, linestyle="-")
 
