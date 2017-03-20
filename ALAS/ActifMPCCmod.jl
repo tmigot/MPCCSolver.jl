@@ -2,15 +2,13 @@ module ActifMPCCmod
 
 import NLPModels
 import Relaxationmod
-import MathProgBase
-import Ipopt #utilisé pour résoudre le problème de moindre carré
 
 """
 Type MPCC_actif : problème MPCC pénalisé avec slack et ensemble des contraintes actives
 
 liste des constructeurs :
-MPCC_actif(mpcc::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
-MPCC_actif(mpcc::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
+MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
+MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
 
 liste des méthodes :
 updatew(ma::MPCC_actif)
@@ -25,10 +23,11 @@ obj(ma::MPCC_actif,x::Vector)
 grad(ma::MPCC_actif,x::Vector)
 
 liste des fonctions :
-ComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
 LSQComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
 RelaxationRule(ma::ActifMPCCmod.MPCC_actif,xj::Vector,lg::Vector,lh::Vector,lphi::Vector,wmax::Any)
 PasMax(ma::MPCC_actif,x::Vector,d::Vector)
+AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64)
+AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float64,alpha4::Float64)
 PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 """
 
@@ -38,13 +37,10 @@ PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 #- intégrer les contraintes de bornes sur x dans PasMax
 #Minor :
 #- copie de code dans PasMax
-#- erreur de maths dans ComputationMultiplier (fonction pas utilisée)
 #- Plutôt que de passer le point courant -> stocker en point initial de mpcc ?
-#- nommage : mpcc, mauvais nom pour le nlp
-# - sortie smooth si LSQComputationMultiplier a échoué
 
 type MPCC_actif
- mpcc::NLPModels.AbstractNLPModel # en fait on demande juste une fonction objectif, point initial, contraintes de bornes
+ nlp::NLPModels.AbstractNLPModel # en fait on demande juste une fonction objectif, point initial, contraintes de bornes
  r::Float64
  s::Float64
  t::Float64
@@ -67,41 +63,42 @@ type MPCC_actif
  #paramètres pour la minimisation sans contrainte
  ite_max::Int64 #nombre maximum d'itération pour la recherche linéaire >= 0
  tau_armijo::Float64 #paramètre pour critère d'Armijo doit être entre (0,0.5)
+ armijo_update::Float64 ##step=step_0*(1/2)^m
  # idée : on devrait peut-être garder une copie du paramètre rho ici !?
 end
 
 """
 Constructeur recommandé pour MPCC_actif
 """
-function MPCC_actif(mpcc::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
+function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
 
-  n=length(mpcc.meta.x0)-2*nb_comp
-  xk=mpcc.meta.x0[1:n]
-  ygk=mpcc.meta.x0[n+1:n+nb_comp]
-  yhk=mpcc.meta.x0[n+nb_comp+1:n+2*nb_comp]
+  n=length(nlp.meta.x0)-2*nb_comp
+  xk=nlp.meta.x0[1:n]
+  ygk=nlp.meta.x0[n+1:n+nb_comp]
+  yhk=nlp.meta.x0[n+nb_comp+1:n+2*nb_comp]
   w=sparse(zeros(2*nb_comp,2))
 
   for l=1:nb_comp
-   if ygk[l]==mpcc.meta.lvar[n+l]
+   if ygk[l]==nlp.meta.lvar[n+l]
     w[l,1]=1;
    elseif ygk[l]==Relaxationmod.psi(yhk[l],r,s,t)
     w[l+nb_comp,1]=1;
    end
-   if yhk[l]==mpcc.meta.lvar[n+l+nb_comp]
+   if yhk[l]==nlp.meta.lvar[n+l+nb_comp]
     w[l,2]=1;
    elseif yhk[l]==Relaxationmod.psi(ygk[l],r,s,t)
     w[l+nb_comp,2]=1;
    end
   end
 
- return MPCC_actif(mpcc,r,s,t,w)
+ return MPCC_actif(nlp,r,s,t,w)
 end
 
-function MPCC_actif(mpcc::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
+function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
 
  bar_w=find(x->x==0,w[:,1]+w[:,2])
  nb_comp=Int(size(w,1)/2)
- n=length(mpcc.meta.x0)-2*nb_comp
+ n=length(nlp.meta.x0)-2*nb_comp
  w1=find(x->x>0,w[1:nb_comp,1])
  w2=find(x->x>0,w[1:nb_comp,2])
  w3=find(x->x>0,w[nb_comp+1:2*nb_comp,1])
@@ -114,8 +111,9 @@ function MPCC_actif(mpcc::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Fl
  wnew=[]
  ite_max=4000
  tau_armijo=0.4
+ armijo_update=0.9
 
- return MPCC_actif(mpcc,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo)
+ return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update)
 end
 
 """
@@ -139,8 +137,8 @@ end
 
 # Fonction qui met à jouer le MPCC_Actif au changement de fonction objectif
 function setf(ma::MPCC_actif, f::Function, xj::Any)
-  pen_mpcc = NLPModels.ADNLPModel(x->f(x), xj, lvar=ma.mpcc.meta.lvar, uvar=ma.mpcc.meta.uvar)
-  ma.mpcc=pen_mpcc
+  pen_mpcc = NLPModels.ADNLPModel(x->f(x), xj, lvar=ma.nlp.meta.lvar, uvar=ma.nlp.meta.uvar)
+  ma.nlp=pen_mpcc
 end
 
 #Mise à jour de w
@@ -161,10 +159,10 @@ function evalx(ma::MPCC_actif,x::Vector)
  xf[ma.w24c+ma.n+ma.nb_comp]=x[ma.n+length(ma.w13c)+1:ma.n+length(ma.w13c)+length(ma.w24c)]
 
  #on regarde les variables yG fixées :
- xf[ma.w1+ma.n]=ma.mpcc.meta.lvar[ma.w1+ma.n]
+ xf[ma.w1+ma.n]=ma.nlp.meta.lvar[ma.w1+ma.n]
  xf[ma.w3+ma.n]=Relaxationmod.psi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t)
  #on regarde les variables yH fixées :
- xf[ma.w2+ma.n+ma.nb_comp]=ma.mpcc.meta.lvar[ma.w2+ma.n+ma.nb_comp]
+ xf[ma.w2+ma.n+ma.nb_comp]=ma.nlp.meta.lvar[ma.w2+ma.n+ma.nb_comp]
  xf[ma.w4+ma.n+ma.nb_comp]=Relaxationmod.psi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
 
  return xf
@@ -198,9 +196,9 @@ Evalue la fonction objectif d'un MPCC actif : x
 function obj(ma::MPCC_actif,x::Vector)
  sol=0.0
  if length(x)==ma.n+2*ma.nb_comp
-  sol=NLPModels.obj(ma.mpcc,x)
+  sol=NLPModels.obj(ma.nlp,x)
  else
-  sol=NLPModels.obj(ma.mpcc,evalx(ma,x))
+  sol=NLPModels.obj(ma.nlp,evalx(ma,x))
  end
  return sol
 end
@@ -214,7 +212,7 @@ function grad(ma::MPCC_actif,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
- gradf=NLPModels.grad(ma.mpcc,xf)
+ gradf=NLPModels.grad(ma.nlp,xf)
 
  # Conditionnelles pour gérer le cas où w1 et w3 est vide
  if isempty(ma.w1) && isempty(ma.w3)
@@ -236,31 +234,7 @@ function grad(ma::MPCC_actif,x::Vector)
  return vcat(gradf[1:ma.n],gradf[ma.w13c+ma.n]+gradg,gradf[ma.w24c+ma.nb_comp+ma.n]+gradh)
 end
 
-"""
-ComputationMultiplier(ma::MPCC_actif,x::Vector) :
-ma MPCC_Actif
-xj in n+2nb_comp
-gradpen in n+2nb_comp
 
-calcul la valeur des multiplicateurs de Lagrange pour la contrainte de complémentarité :
-"""
-function ComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
-
- gx,gy=Relaxationmod.dphi(xj[ma.n+1:ma.n+ma.nb_comp],xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
-
- lg=zeros(ma.nb_comp)
- lg[ma.w1]=gradpen[ma.w1+ma.n]
- lh=zeros(ma.nb_comp)
- lh[ma.w2]=gradpen[ma.w2+ma.n+ma.nb_comp]
- lphi=zeros(ma.nb_comp)
- #La formule pour les lphi est fausse : il faut aussi regarder les indices sur sg où yg est actif !?
- lphi[ma.w3]=isempty(ma.w3) ? [] : -gradpen[ma.w3+ma.n]./collect(gx)[ma.w3]
- lphi[ma.w4]=isempty(ma.w4) ? [] : -gradpen[ma.w4+ma.n+ma.nb_comp]./collect(gy)[ma.w4]
- #dans le coin le gradient de phi vaut 0 donc les multiplicateurs aussi
- lphi[ma.wcc]=zeros(length(ma.wcc))
-
- return lg,lh,lphi
-end
 
 """
 LSQComputationMultiplier(ma::MPCC_actif,x::Vector) :
@@ -363,20 +337,13 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   bloque=(i in ma.w2) && (i in ma.w4)
   if !(i in ma.w24c) && !bloque && d[i+ma.n]<0
    #on prend le plus petit entre x+alpha*dx>=-r et s+tTheta(x+alpha*dx-s)>=-r
-   alpha11=(ma.mpcc.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n]
-   alpha12=(Relaxationmod.invpsi(ma.mpcc.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
+   alpha11=(ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n]
+   alpha12=(Relaxationmod.invpsi(ma.nlp.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
 
-   #on accepte le pas si il est plus petit et si il est non-nul
-   if min(alpha11,alpha12)<=alpha && min(alpha11,alpha12)>=eps(Float64)
-    if min(alpha11,alpha12)<alpha
-     w_save=copy(ma.w)
-    end
-    alpha=min(alpha11,alpha12)
-   elseif min(alpha11,alpha12)<=alpha && min(alpha11,alpha12)<eps(Float64)
-    if max(alpha11,alpha12)<alpha
-     w_save=copy(ma.w)
-    end
-    alpha=max(alpha11,alpha12)
+   alphag=AlphaChoix(alpha,alpha11,alpha12)
+   if alphag<=alpha
+    alpha=alphag
+    w_save=copy(ma.w)
    end
 
    #update of the active set
@@ -387,6 +354,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
     w_save[i+ma.nb_comp,2]=1
     w_save[i,2]=1
    end
+
   elseif bloque
    alpha=0.0
   end
@@ -395,22 +363,16 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
  #c'est un copie coller d'au dessus => exporter dans une fonction
  #les indices où la deuxième composante est libre
  for i in ma.w24c
-  if !(i in ma.w13c) && d[i+length(ma.w13c)+ma.n]<0
+  bloque=(i in ma.w1) && (i in ma.w3)
+  if !(i in ma.w13c) && !bloque && d[i+length(ma.w13c)+ma.n]<0
    #on prend le plus petit entre y+alpha*dy>=-r et s+tTheta(y+alpha*dy-s)>=-r
-   alpha21=(ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
-   alpha22=(Relaxationmod.invpsi(ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
+   alpha21=(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
+   alpha22=(Relaxationmod.invpsi(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
 
-   #on accepte le pas si il est plus petit et si il est non-nul
-   if min(alpha21,alpha22)<=alpha && min(alpha21,alpha22)>=eps(Float64)
-    if min(alpha21,alpha22)<alpha
-     w_save=copy(ma.w)
-    end
-    alpha=min(alpha21,alpha22)
-   elseif min(alpha21,alpha22)<=alpha && min(alpha21,alpha22)<eps(Float64)
-    if max(alpha21,alpha22)<alpha
-     w_save=copy(ma.w)
-    end
-    alpha=max(alpha21,alpha22)
+   alphah=AlphaChoix(alpha,alpha21,alpha22)
+   if alphah<=alpha
+    alpha=alphah
+    w_save=copy(ma.w)
    end
 
    #on met à jour les contraintes
@@ -421,22 +383,27 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
     w_save[i+ma.nb_comp,1]=1
     w_save[i,1]=1
    end
-
+  elseif bloque
+   alpha=0.0
   end
  end
 
  #enfin les indices où les deux sont libres
  for i in ma.wc
-
+  #yG-psi(yH)=0 ou yH-psi(yG)=0
   alphac=Relaxationmod.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
-  alphac11=d[i+ma.n]<0 ? (ma.mpcc.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
-  alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.mpcc.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
+  #yG-tb=0
+  alphac11=d[i+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
+  #yH-tb=0
+  alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
 
-  if min(minimum(alphac),alphac11,alphac21)<=alpha # A vérifier
-   if min(minimum(alphac),alphac11,alphac21)<alpha
-    w_save=copy(ma.w)
-   end
-   alpha=min(minimum(alphac),alphac11,alphac21)
+  alphagh=AlphaChoix(alpha,alphac[1],alphac[2],alphac11,alphac21)
+
+  if alphagh<=alpha
+   alpha=alphagh
+   w_save=copy(ma.w)
+  end
+
    if alphac[1]==alpha
     w_save[i+ma.nb_comp,1]=1
    end
@@ -449,10 +416,31 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
    if alphac21==alpha
     w_save[i,2]=1
    end
-  end
- end
+
+ end #fin boucle for ma.wc
 
  return alpha,w_save,w_save-ma.w
+end
+
+"""
+Met à jour alpha si :
+1) il est plus petit
+2) il est non-nul
+"""
+function AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64)
+ return AlphaChoix(alpha,alpha1,alpha2,0.0,0.0)
+end
+
+function AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float64,alpha4::Float64)
+ prec=eps(Float64)
+ a=alpha1,alpha2,alpha3,alpha4
+ a=a[find(x->x>=prec,collect(a))]
+ if isempty(a)
+  println(alpha1,alpha2,alpha3,alpha4)
+  a=max(alpha1,alpha2,alpha3,alpha4)
+ end
+
+ return min(minimum(a),alpha)
 end
 
 """

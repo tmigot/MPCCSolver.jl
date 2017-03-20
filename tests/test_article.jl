@@ -5,7 +5,7 @@ include("../ALAS/Relaxationmod.jl")
 include("../ALAS/ActifMPCCmod.jl")
 include("../ALAS/UnconstrainedMPCCActif.jl")
 include("../ALAS/MPCCmod.jl")
-include("../ALAS/PASMPCC.jl")
+include("../ALAS/ALASMPCCmod.jl")
 include("../ALAS/MPCCsolve.jl")
 include("../MPCC2DPlot.jl")
 
@@ -13,7 +13,7 @@ using MPCCmod
 #package pour plot
 using PyPlot
 
-prec=1e-4
+prec=1e-6
 
 # Exemple 1 :
  f(x)=x[1]-x[2]
@@ -39,7 +39,7 @@ println("KDB method:")
 xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
-xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
+#xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
 
 if false
  nb_ite=Int(length(s_xtab)/2)
@@ -74,7 +74,7 @@ println("ALAS Exemple 2 :")
 ex2= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,ucon,prec)
 println("KDB method:")
 #résolution avec ALAS KDB
-xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
+#xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,statb, s_xtab = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,t0,sig_t)
@@ -113,7 +113,7 @@ sig_t=0.01
 println("ALAS Exemple 3 :")
 
 #déclare le mpcc :
-ex3= MPCCmod.MPCC(f,ones(3),G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
+ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
 println("KDB method:")
 #résolution avec ALAS KDB
 xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)

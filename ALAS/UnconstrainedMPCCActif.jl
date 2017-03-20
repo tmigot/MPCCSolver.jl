@@ -30,6 +30,7 @@ end
 
 """
 Armijo : appel de fonction compatible avec le 'Newarmijo_wolfe' de JPD
+         1D Minimization
 """
 function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax::Float64,slope::Float64;
                 tau_0::Float64=1.0e-4,tau_1::Float64=0.9999,
@@ -38,7 +39,7 @@ function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax
  good_grad=false
  nbW=0
  nbk=0
- scale=norm(d)>=1000?norm(d):1.0
+ #scale=norm(d)>=1000?norm(d):1.0
  scale=1.0
  dd=d/scale
  step=min(stepmax,1.0)*scale
@@ -49,7 +50,7 @@ function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
  while nbk<ma.ite_max && ht-hgoal>ma.tau_armijo*step*slope
-  step*=0.9 #step=step_0*(1/2)^m
+  step*=ma.armijo_update #step=step_0*(1/2)^m
   ht=ActifMPCCmod.obj(ma,xj+step*dd)
   nbk+=1
  end
@@ -76,7 +77,6 @@ function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,st
 end
 
 """
-La meme mais avec CG
 Input :
 ma : MPCC_actif
 xj : vecteur initial
@@ -123,24 +123,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
  y=gradft-gradf
 
  #MAJ de Beta
- #beta=0.0 #steepest descent
- if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
-#Intégrer dans une nouvelle fonction ?
-  #Formula FR
-  #β = (∇ft⋅∇ft)/(∇f⋅∇f) FR
-  #beta=dot(gradft,gradft)/dot(gradf,gradf)
-  #Formula PR
-  #β = (∇ft⋅y)/(∇f⋅∇f)
-  #beta=dot(gradft,y)/dot(gradf,gradf)
-  #Formula HS
-  #β = (∇ft⋅y)/(d⋅y)
-  beta=dot(gradft,y)/dot(d,y)
-  #Formula HZ
-  n2y = dot(y,y)
-  b1 = dot(y,d)
-  #β = ((y-2*d*n2y/β1)⋅∇ft)/β1
-  #beta = dot(y-2*d*n2y/b1,gradft)/b1
- end
+ beta=ChoiceDirection(beta,gradft,gradf,y,d)
 
  #MAJ du scaling
  if scaling
@@ -161,6 +144,33 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
  end
 
  return sol,ma.w,dsol,step,wnew,output,beta #on devrait aussi renvoyer le gradient
+end
+
+"""
+Choisi la formule pour la direction
+"""
+function ChoiceDirection(beta,gradft,gradf,y,d) #Améliorer le choix des formules
+
+ #beta=0.0 #steepest descent
+
+ if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
+  #Formula FR
+  #β = (∇ft⋅∇ft)/(∇f⋅∇f) FR
+  #beta=dot(gradft,gradft)/dot(gradf,gradf)
+  #Formula PR
+  #β = (∇ft⋅y)/(∇f⋅∇f)
+  #beta=dot(gradft,y)/dot(gradf,gradf)
+  #Formula HS
+  #β = (∇ft⋅y)/(d⋅y)
+  beta=dot(gradft,y)/dot(d,y)
+  #Formula HZ
+  n2y = dot(y,y)
+  b1 = dot(y,d)
+  #β = ((y-2*d*n2y/β1)⋅∇ft)/β1
+  #beta = dot(y-2*d*n2y/b1,gradft)/b1
+ end
+
+ return beta
 end
 
 #end of module

@@ -17,7 +17,9 @@ MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,z0::Vector,nb_comp::
 
 liste des fonctions :
 viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
+viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector)
 viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
+viol_contrainte(mod::MPCCmod.MPCC,x::Vector)
 viol_comp(mod::MPCCmod.MPCC,x::Vector)
 viol_cons(mod::MPCCmod.MPCC,x::Vector)
 
@@ -34,7 +36,6 @@ MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractStr
 
 type MPCC
  mp::NLPModels.AbstractNLPModel
-#AMELIORATION : ON A PAS ACCES AUX GRADIENTS de G ET H (G et H devraient être donné via un autre NLPModels.AbstractNLPModel
  G::Function #the left-side of the complementarity constraint
  H::Function #the right-side of the complementarity constraint
  nb_comp::Int64
@@ -43,8 +44,6 @@ type MPCC
 end
 
 #Constructeurs supplémentaires :
-#Ce constructeur devrait disparaitre (surtout avec la disparition du using NLPModels
-#Ca serait bien d'avoir ce constructeur avec tous les paramètres optionnels à partir de lvar.
 function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
  return MPCC(mp,G,H,nb_comp,1e-3)
@@ -136,7 +135,6 @@ function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::Ab
  y0=[mod.mp.meta.y0;zeros(3*mod.nb_comp)]
 
  #appel au constructeur NLP que l'on souhaite utiliser.
- #AMELIORATION: on aurait pas à faire ça avec NLPModels dans le mpcc (il faudrait faire un peu de maths)
  nlp = ADNLPModel(mod.mp.f, mod.mp.meta.x0, lvar=mod.mp.meta.lvar, uvar=mod.mp.meta.uvar, y0=y0, c=nl_constraint, lcon=lcon, ucon=ucon)
 
  return nlp
