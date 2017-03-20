@@ -1,7 +1,7 @@
 module ActifMPCCmod
 
 import NLPModels
-import Relaxationmod
+import Relaxation
 
 """
 Type MPCC_actif : problème MPCC pénalisé avec slack et ensemble des contraintes actives
@@ -81,12 +81,12 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
   for l=1:nb_comp
    if ygk[l]==nlp.meta.lvar[n+l]
     w[l,1]=1;
-   elseif ygk[l]==Relaxationmod.psi(yhk[l],r,s,t)
+   elseif ygk[l]==Relaxation.psi(yhk[l],r,s,t)
     w[l+nb_comp,1]=1;
    end
    if yhk[l]==nlp.meta.lvar[n+l+nb_comp]
     w[l,2]=1;
-   elseif yhk[l]==Relaxationmod.psi(ygk[l],r,s,t)
+   elseif yhk[l]==Relaxation.psi(ygk[l],r,s,t)
     w[l+nb_comp,2]=1;
    end
   end
@@ -160,10 +160,10 @@ function evalx(ma::MPCC_actif,x::Vector)
 
  #on regarde les variables yG fixées :
  xf[ma.w1+ma.n]=ma.nlp.meta.lvar[ma.w1+ma.n]
- xf[ma.w3+ma.n]=Relaxationmod.psi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t)
+ xf[ma.w3+ma.n]=Relaxation.psi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t)
  #on regarde les variables yH fixées :
  xf[ma.w2+ma.n+ma.nb_comp]=ma.nlp.meta.lvar[ma.w2+ma.n+ma.nb_comp]
- xf[ma.w4+ma.n+ma.nb_comp]=Relaxationmod.psi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
+ xf[ma.w4+ma.n+ma.nb_comp]=Relaxation.psi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
 
  return xf
 end
@@ -218,7 +218,7 @@ function grad(ma::MPCC_actif,x::Vector)
  if isempty(ma.w1) && isempty(ma.w3)
   gradg=zeros(length(ma.w13c))
  elseif !isempty(ma.w13c)
-  gradg=vcat(zeros(length(ma.w1)),Relaxationmod.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
+  gradg=vcat(zeros(length(ma.w1)),Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
  else #ma.w13c est vide
   gradg=[]
  end
@@ -226,7 +226,7 @@ function grad(ma::MPCC_actif,x::Vector)
  if isempty(ma.w2) && isempty(ma.w4)
   gradh=zeros(length(ma.w24c))
  elseif !isempty(ma.w24c)
-  gradh=vcat(zeros(length(ma.w2)),Relaxationmod.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
+  gradh=vcat(zeros(length(ma.w2)),Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
  else
   gradh=[]
  end
@@ -246,7 +246,7 @@ calcul la valeur des multiplicateurs de Lagrange pour la contrainte de compléme
 """
 function LSQComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
 
- gx,gy=Relaxationmod.dphi(xj[ma.n+1:ma.n+ma.nb_comp],xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
+ gx,gy=Relaxation.dphi(xj[ma.n+1:ma.n+ma.nb_comp],xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
 
 #point initial
 # l_init=ones(3*ma.nb_comp)
@@ -338,7 +338,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   if !(i in ma.w24c) && !bloque && d[i+ma.n]<0
    #on prend le plus petit entre x+alpha*dx>=-r et s+tTheta(x+alpha*dx-s)>=-r
    alpha11=(ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n]
-   alpha12=(Relaxationmod.invpsi(ma.nlp.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
+   alpha12=(Relaxation.invpsi(ma.nlp.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
 
    alphag=AlphaChoix(alpha,alpha11,alpha12)
    if alphag<=alpha
@@ -367,7 +367,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   if !(i in ma.w13c) && !bloque && d[i+length(ma.w13c)+ma.n]<0
    #on prend le plus petit entre y+alpha*dy>=-r et s+tTheta(y+alpha*dy-s)>=-r
    alpha21=(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
-   alpha22=(Relaxationmod.invpsi(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
+   alpha22=(Relaxation.invpsi(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
 
    alphah=AlphaChoix(alpha,alpha21,alpha22)
    if alphah<=alpha
@@ -391,7 +391,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
  #enfin les indices où les deux sont libres
  for i in ma.wc
   #yG-psi(yH)=0 ou yH-psi(yG)=0
-  alphac=Relaxationmod.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
+  alphac=Relaxation.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
   #yG-tb=0
   alphac11=d[i+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
   #yH-tb=0

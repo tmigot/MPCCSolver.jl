@@ -39,6 +39,7 @@ println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk)," rho :","-"," k :","-")
  # resolution du sous-problème
  if name_relax=="ALAS"
   xk,solved,s_xtab,rho = solve_subproblem(mod,solve_subproblem_alas,r,s,t,name_relax)
+  println(" rho:", norm(rho,Inf))
  else
   xk,solved = solve_subproblem(mod,solve_subproblem_ipopt,r,s,t,name_relax)
  end
@@ -116,7 +117,7 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
  else
  end
 
- return xk,solved,s_xtab,rho
+ return xk,solved,s_xtab,norm(rho,Inf)
 end
 
 #end of module

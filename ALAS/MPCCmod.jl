@@ -2,7 +2,7 @@ module MPCCmod
 
 using NLPModels #devrait disparaitre
 
-import Relaxationmod
+import Relaxation
 
 """
 Definit le type MPCC :
@@ -118,7 +118,7 @@ function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::Ab
   KS(x)= mod.G(x)-s+mod.H(x)-s>=0 ? (mod.G(x)-s).*(mod.H(x)-s) : -0.5*((mod.G(x)-s).^2+(mod.H(x)-s).^2)
   nl_constraint(x)=[mod.mp.c(x);KS(x);mod.G(x);mod.H(x)]
  elseif relax=="Butterfly"
-# On devrait appeler Relaxationmod et pas Thetamod
+# On devrait appeler Relaxation et pas Thetamod
 #  FG(x)=mod.G(x)-s-t*Thetamod.theta(mod.H(x)-s,r) Bug à corriger
 #  FH(x)=mod.H(x)-s-t*Thetamod.theta(mod.G(x)-s,r) Bug à corriger
   FG(x)=mod.G(x)-s-t*(mod.H(x)-s)
