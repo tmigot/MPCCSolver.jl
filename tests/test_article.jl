@@ -1,13 +1,13 @@
 gc()
 #Tests des packages
-include("../ALAS/Thetamod.jl")
-include("../ALAS/Relaxationmod.jl")
+include("../ALAS/Thetafunc.jl")
+include("../ALAS/Relaxation.jl")
 include("../ALAS/ActifMPCCmod.jl")
 include("../ALAS/UnconstrainedMPCCActif.jl")
 include("../ALAS/MPCCmod.jl")
 include("../ALAS/ALASMPCCmod.jl")
 include("../ALAS/MPCCsolve.jl")
-include("../MPCC2DPlot.jl")
+include("../ALAS/MPCC2DPlot.jl")
 
 using MPCCmod
 #package pour plot
@@ -36,10 +36,12 @@ ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,Inf*on
 println("ALAS Exemple 1 :")
 println("KDB method:")
 #résolution avec ALAS KDB
-xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
+#xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
-#xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
+xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
+
+#ATTENTION La résolution modifie le point initial du ex1...
 
 if false
  nb_ite=Int(length(s_xtab)/2)
