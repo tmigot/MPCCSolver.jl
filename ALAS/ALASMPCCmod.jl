@@ -67,13 +67,18 @@ function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64)
 end
 
 function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64)
- ite_max=5000
- ite_max_viol=20
 nb_contraintes_penalise=length(mod.mp.meta.lvar)+length(mod.mp.meta.uvar)+length(mod.mp.meta.lcon)+length(mod.mp.meta.ucon)+2*mod.nb_comp
  rho_init=ones(nb_contraintes_penalise)
+ return ALASMPCC(mod,r,s,t,prec,rho_init)
+end
+
+function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64, rho::Vector)
+ ite_max=10000
+ ite_max_viol=20
+ rho_init=rho
  rho_update=2.0
  goal_viol=0.5
- tau_armijo=0.25
+ tau_armijo=0.25 #est-ce que c'est utilisé ?
  tau_wolfe=0.9
  return ALASMPCC(mod,r,s,t,-r,prec,ite_max,ite_max_viol,rho_init,rho_update,goal_viol,tau_armijo,tau_wolfe)
 end
@@ -91,8 +96,6 @@ function solvePAS(alas::ALASMPCC)
  l_max=alas.ite_max_viol
  rho_update=alas.rho_update
  obj_viol=alas.goal_viol
-
- beta=0.0 #specifique CG
 
  n=length(alas.mod.mp.meta.x0)
 
@@ -149,14 +152,14 @@ println("start k=0,l=0 :", xjk)
   while l<l_max && (l==0 || (k!=0 && MPCCmod.viol_contrainte_norm(alas.mod,xjkl)>obj_viol*MPCCmod.viol_contrainte_norm(alas.mod,xjk) && !feasible )) && Armijosuccess && !small_step
 
    #On ne met pas à jour rho si tout se passe bien.
-   rho=l!=0?RhoUpdate(rho,alas) : rho
+   rho=l!=0?RhoUpdate(rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)),alas) : rho
 
    #mise à jour de la fonction objectif quand on met rho à jour
    penf(x,yg,yh)=PenaltyFunc(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
    ActifMPCCmod.setf(ma,x->penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]),xjk)
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
- xjkl,ma.w,dj,step,wnew,outputArmijo,beta=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,beta,dj) #specifique CG 
+ xjkl,ma.w,dj,step,wnew,outputArmijo=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
 
    Armijosuccess=(outputArmijo==0)
    #small_step=step<=eps(Float64)?true:false #on fait un pas trop petit
@@ -225,7 +228,7 @@ println("start k=0,l=0 :", xjk)
    stat=0
   end
  end
-
+println("+ de details: #iter=",k," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
  return xj,stat,s_xtab,rho;
 end
 
@@ -266,8 +269,7 @@ function PenaltyFunc(alas::ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,
  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
 
  Lagrangian=dot(alas.mod.G(x)-yg,usg)+dot(alas.mod.H(x)-yh,ush)
- Lagrangian=0.0 #pénalité quadratique
-#rhof=norm(rho,Inf)
+ #Lagrangian=0.0 #pénalité quadratique
 
 # Pen_eq2=rhof*norm((alas.mod.G(x)-yg))^2+rhof*norm((alas.mod.H(x)-yh))^2
  err_eq_g=(alas.mod.G(x)-yg)
@@ -351,8 +353,10 @@ length(mod.mp.meta.uvar)
 length(mod.mp.meta.lcon)
 length(mod.mp.meta.ucon)
 """
-function RhoUpdate(rho::Vector,alas::ALASMPCC)
- return rho*alas.rho_update
+function RhoUpdate(rho::Vector,err::Vector,alas::ALASMPCC)
+ #rho[find(x->x>0,err)]*=alas.rho_update
+ rho*=alas.rho_update
+ return rho
 # return min(rho*alas.rho_update,ones(length(rho))/eps(Float64)) #parce qu'à un moment c'est bizarre
 end
 

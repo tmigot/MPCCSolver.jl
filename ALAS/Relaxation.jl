@@ -36,6 +36,10 @@ function dpsi(x::Any,r::Float64,s::Float64,t::Float64)
  return t*Thetafunc.dtheta(x-s,r)
 end
 
+function ddpsi(x::Any,r::Float64,s::Float64,t::Float64)
+ return t*Thetafunc.ddtheta(x-s,r)
+end
+
 """
 phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (nb_comp,nb_comp)
 """

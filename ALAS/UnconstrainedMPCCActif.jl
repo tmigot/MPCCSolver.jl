@@ -3,22 +3,20 @@ Package de fonction pour la minimisation ActifMPCC
 
 liste des fonctions :
 SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector)
-Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,stepmax::Float64;
-                tau_0::Float64=1.0e-4,tau_1::Float64=0.9999,
-                bk_max::Int=50,nbWM :: Int=50, verbose :: Bool=false, kwargs...)
-ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax::Float64,slope::Float64;
-                tau_0::Float64=1.0e-4,tau_1::Float64=0.9999,
-                bk_max::Int=50,nbWM :: Int=50, verbose :: Bool=false, kwargs...)
+Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad::Any,stepmax::Float64,slope::Float64;
+                verbose :: Bool=false, kwargs...)
+ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad::Any,stepmax::Float64,
+                slope::Float64;verbose :: Bool=false, kwargs...)
 LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,d::Any)
 """
 
 module UnconstrainedMPCCActif
 
 using ActifMPCCmod
+using LineSearch
 
 #TO DO List :
 #Major:
-# - recherche linéaire + sophistiquée (fonction ArmijoWolfe)
 # - choix de la direction de descente (ajouter de nouvelles)
 
 """
@@ -29,64 +27,18 @@ function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector)
 end
 
 """
-Armijo : appel de fonction compatible avec le 'Newarmijo_wolfe' de JPD
-         1D Minimization
-"""
-function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax::Float64,slope::Float64;
-                tau_0::Float64=1.0e-4,tau_1::Float64=0.9999,
-                bk_max::Int=50,nbWM :: Int=50, verbose :: Bool=false, kwargs...)
-
- good_grad=false
- nbW=0
- nbk=0
- #scale=norm(d)>=1000?norm(d):1.0
- scale=1.0
- dd=d/scale
- step=min(stepmax,1.0)*scale
- #slope = scale*dot(ActifMPCCmod.grad(ma,xj),d)
-
- hgoal=ActifMPCCmod.obj(ma,xj)
- ht=ActifMPCCmod.obj(ma,xj+step*dd)
-
- #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- while nbk<ma.ite_max && ht-hgoal>ma.tau_armijo*step*slope
-  step*=ma.armijo_update #step=step_0*(1/2)^m
-  ht=ActifMPCCmod.obj(ma,xj+step*dd)
-  nbk+=1
- end
-step=step/scale
- return step,good_grad,ht,nbk,nbW
-end
-
-"""
-EN TRAVAUX
-Armijo : appel de fonction compatible avec le 'Newarmijo_wolfe' de JPD
-"""
-function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,old_grad::Any,stepmax::Float64,slope::Float64;
-                tau_0::Float64=1.0e-4,tau_1::Float64=0.9999,
-                bk_max::Int=50,nbWM :: Int=50, verbose :: Bool=false, kwargs...)
-
- # Perform improved Armijo linesearch.
- nbk = 0
- nbW = 0
- step = min(stepmax,1.0)
- good_grad=false
- ht=0.0
-
- return step,good_grad,ht,nbk,nbW
-end
-
-"""
 Input :
 ma : MPCC_actif
 xj : vecteur initial
-d : direction précédente (version étendue)
+hd : direction précédente en version étendue
+beta : paramètre gradient conjugué (à mettre dans les paramètres du ActifMPCCmod ?) 
 """
-function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd::Any;scaling :: Bool = false)
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,Newton::Bool=false)
 
  output=0
  hd=ActifMPCCmod.redd(ma,hd)
  scale=1.0
+ beta=ma.beta
 
  #xj est un vecteur de taille (n x length(bar_w))
  if length(xj) == (ma.n+2*ma.nb_comp)
@@ -96,9 +48,18 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
   return
  end
 
+ #Choix de la direction :
  gradf=ActifMPCCmod.grad(ma,xj)
+ #Hessienne
+ H=ActifMPCCmod.hess(ma,xj)
+ H=H/norm(H)+0.01*eye(length(xj))
+
  #Calcul d'une direction de descente de taille (n + length(bar_w))
+ #Gradient Conjugué
  d = - gradf + beta*hd
+ #d=d/norm(d)
+ #Newton
+ #d=-inv(H)*gradf
 
  slope = dot(gradf,d)
  if slope > 0.0  # restart with negative gradient
@@ -111,19 +72,22 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
 
  #Recherche linéaire
  old_grad=NaN #à définir quelque part...
- step,good_grad,ht,nbk,nbW=Armijo(ma,xj,d,old_grad,stepmax,scale*slope)
+ hg=ActifMPCCmod.obj(ma,xj)
+ step,good_grad,ht,nbk,nbW=LineSearch.Armijo(ma,xj,d,hg,old_grad,stepmax,scale*slope)
+# step,good_grad,ht,nbk,nbW=LineSearch.ArmijoWolfe(ma,xj,d,hg,old_grad,stepmax,scale*slope)
  step*=scale
 
  xjp=xj+step*d
  good_grad || (gradft=ActifMPCCmod.grad(ma,xjp))
- #gradft=ActifMPCCmod.grad(ma,xjp)
+
  sol = ActifMPCCmod.evalx(ma,xjp)
  dsol = ActifMPCCmod.evald(ma,d)
  s=xjp-xj
  y=gradft-gradf
 
- #MAJ de Beta
+ #MAJ de Beta : gradient conjugué
  beta=ChoiceDirection(beta,gradft,gradf,y,d)
+ ma=ActifMPCCmod.setbeta(ma,beta)
 
  #MAJ du scaling
  if scaling
@@ -143,7 +107,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,hd
   output=1
  end
 
- return sol,ma.w,dsol,step,wnew,output,beta #on devrait aussi renvoyer le gradient
+ return sol,ma.w,dsol,step,wnew,output #on devrait aussi renvoyer le gradient
 end
 
 """
@@ -162,12 +126,12 @@ function ChoiceDirection(beta,gradft,gradf,y,d) #Améliorer le choix des formule
   #beta=dot(gradft,y)/dot(gradf,gradf)
   #Formula HS
   #β = (∇ft⋅y)/(d⋅y)
-  beta=dot(gradft,y)/dot(d,y)
+  #beta=dot(gradft,y)/dot(d,y)
   #Formula HZ
   n2y = dot(y,y)
   b1 = dot(y,d)
   #β = ((y-2*d*n2y/β1)⋅∇ft)/β1
-  #beta = dot(y-2*d*n2y/b1,gradft)/b1
+  beta = dot(y-2*d*n2y/b1,gradft)/b1
  end
 
  return beta

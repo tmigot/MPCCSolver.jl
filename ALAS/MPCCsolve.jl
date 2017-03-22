@@ -23,6 +23,10 @@ Methode de relaxation pour resoudre :
 function solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64,name_relax::AbstractString)
 #initialization
  t=t0;r=r0;s=s0;
+#à garder ici ?
+ nb_contraintes=length(mod.mp.meta.lvar)+length(mod.mp.meta.uvar)+length(mod.mp.meta.lcon)+length(mod.mp.meta.ucon)+2*mod.nb_comp
+ rho=ones(nb_contraintes)
+#
  n=length(mod.mp.meta.x0)
  xk=mod.mp.meta.x0 #-- peut-être pas besoin de la variable xk ?
  pmin=mod.prec
@@ -38,10 +42,10 @@ println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk)," rho :","-"," k :","-")
 
  # resolution du sous-problème
  if name_relax=="ALAS"
-  xk,solved,s_xtab,rho = solve_subproblem(mod,solve_subproblem_alas,r,s,t,name_relax)
-  println(" rho:", norm(rho,Inf))
+  xk,solved,s_xtab,rho = solve_subproblem(mod,solve_subproblem_alas,r,s,t,rho,name_relax)
+  println(" rho:", norm(rho,Inf)," k:",size(s_xtab))
  else
-  xk,solved = solve_subproblem(mod,solve_subproblem_ipopt,r,s,t,name_relax)
+  xk,solved = solve_subproblem(mod,solve_subproblem_ipopt,r,s,t,rho,name_relax)
  end
 
  mod=MPCCmod.addInitialPoint(mod,xk[1:n]) #met à jour le MPCC avec le nouveau point
@@ -76,14 +80,14 @@ end
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function solve_subproblem(mod::MPCCmod.MPCC, func::Function,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
- return func(mod,r,s,t,name_relax) #renvoie xk,stat
+function solve_subproblem(mod::MPCCmod.MPCC, func::Function,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
+ return func(mod,r,s,t,rho,name_relax) #renvoie xk,stat
 end
 
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function solve_subproblem_ipopt(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
+function solve_subproblem_ipopt(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
  solved=true
  nlp_relax = MPCCmod.MPCCtoRelaxNLP(mod,r,s,t,name_relax)
  output=[]
@@ -104,11 +108,12 @@ end
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
+function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
  solved=true
 
  prec=max(s,t,r)
- alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec)
+ #alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec) #recommence rho à chaque itération
+ alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
  xk,stat,s_xtab,rho = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
 
  if stat != 0
@@ -117,7 +122,7 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
  else
  end
 
- return xk,solved,s_xtab,norm(rho,Inf)
+ return xk,solved,s_xtab,rho
 end
 
 #end of module
