@@ -14,27 +14,16 @@ module UnconstrainedMPCCActif
 
 using ActifMPCCmod
 using LineSearch
-
-#TO DO List :
-#Major:
-# - choix de la direction de descente (ajouter de nouvelles)
-
-"""
-SteepestDescent(ma::MPCC_actif,xj::Vector) : Calcul une direction de descente
-"""
-function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector)
- return -ActifMPCCmod.grad(ma,xj)
-end
+using DDirection
 
 """
 Input :
 ma : MPCC_actif
 xj : vecteur initial
 hd : direction précédente en version étendue
-beta : paramètre gradient conjugué (à mettre dans les paramètres du ActifMPCCmod ?) 
 """
-function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,Newton::Bool=false)
-
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,direction::Function=DDirection.CGHZ)
+#function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,direction::Function=DDirection.NwtdirectionLDLt)
  output=0
  hd=ActifMPCCmod.redd(ma,hd)
  scale=1.0
@@ -50,16 +39,12 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
 
  #Choix de la direction :
  gradf=ActifMPCCmod.grad(ma,xj)
- #Hessienne
- H=ActifMPCCmod.hess(ma,xj)
- H=H/norm(H)+0.01*eye(length(xj))
 
- #Calcul d'une direction de descente de taille (n + length(bar_w))
- #Gradient Conjugué
- d = - gradf + beta*hd
- #d=d/norm(d)
  #Newton
  #d=-inv(H)*gradf
+ #H=H/norm(H)+0.01*eye(length(xj))
+ #Calcul d'une direction de descente de taille (n + length(bar_w))
+ d=direction(ma,gradf,xj,hd,beta)
 
  slope = dot(gradf,d)
  if slope > 0.0  # restart with negative gradient
@@ -74,7 +59,6 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  old_grad=NaN #à définir quelque part...
  hg=ActifMPCCmod.obj(ma,xj)
  step,good_grad,ht,nbk,nbW=LineSearch.Armijo(ma,xj,d,hg,old_grad,stepmax,scale*slope)
-# step,good_grad,ht,nbk,nbW=LineSearch.ArmijoWolfe(ma,xj,d,hg,old_grad,stepmax,scale*slope)
  step*=scale
 
  xjp=xj+step*d
@@ -86,8 +70,9 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  y=gradft-gradf
 
  #MAJ de Beta : gradient conjugué
- beta=ChoiceDirection(beta,gradft,gradf,y,d)
- ma=ActifMPCCmod.setbeta(ma,beta)
+ #beta=direction(beta,gradft,gradf,y,d)
+ #ma=ActifMPCCmod.setbeta(ma,beta) #à intégrer dans la fonction direction ?
+ ma=direction(ma,beta,gradft,gradf,y,d,step)
 
  #MAJ du scaling
  if scaling
@@ -108,33 +93,6 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  end
 
  return sol,ma.w,dsol,step,wnew,output #on devrait aussi renvoyer le gradient
-end
-
-"""
-Choisi la formule pour la direction
-"""
-function ChoiceDirection(beta,gradft,gradf,y,d) #Améliorer le choix des formules
-
- #beta=0.0 #steepest descent
-
- if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
-  #Formula FR
-  #β = (∇ft⋅∇ft)/(∇f⋅∇f) FR
-  #beta=dot(gradft,gradft)/dot(gradf,gradf)
-  #Formula PR
-  #β = (∇ft⋅y)/(∇f⋅∇f)
-  #beta=dot(gradft,y)/dot(gradf,gradf)
-  #Formula HS
-  #β = (∇ft⋅y)/(d⋅y)
-  #beta=dot(gradft,y)/dot(d,y)
-  #Formula HZ
-  n2y = dot(y,y)
-  b1 = dot(y,d)
-  #β = ((y-2*d*n2y/β1)⋅∇ft)/β1
-  beta = dot(y-2*d*n2y/b1,gradft)/b1
- end
-
- return beta
 end
 
 #end of module

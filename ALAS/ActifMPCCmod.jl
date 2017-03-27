@@ -1,7 +1,9 @@
 module ActifMPCCmod
 
-import NLPModels
 import Relaxation
+
+import NLPModels #virer le NLPModels...
+using ForwardDiff
 
 """
 Type MPCC_actif : problème MPCC pénalisé avec slack et ensemble des contraintes actives
@@ -22,6 +24,7 @@ evald(ma::MPCC_actif,d::Vector)
 redd(ma::MPCC_actif,d::Vector)
 obj(ma::MPCC_actif,x::Vector)
 grad(ma::MPCC_actif,x::Vector)
+hess(ma::MPCC_actif,x::Vector)
 
 liste des fonctions :
 LSQComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
@@ -30,6 +33,7 @@ PasMax(ma::MPCC_actif,x::Vector,d::Vector)
 AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64)
 AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float64,alpha4::Float64)
 PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
+PasMaxBound(ma::MPCC_actif,x::Vector,d::Vector) # TO DO
 """
 
 #TO DO List :
@@ -67,10 +71,10 @@ type MPCC_actif
  armijo_update::Float64 ##step=step_0*(1/2)^m
  tau_wolfe::Float64
  wolfe_update::Float64
- #H::Array{Float64,2} - matrice hessienne... faire un constructeur différent pour Quasi-Newton et pour CG
- # idée : on devrait peut-être garder une copie du paramètre rho ici !?
 
+ #paramètres pour le calcul de la direction de descente
  beta::Float64 #paramètre pour gradient conjugué
+ Hess::Array{Float64,2} #matrice hessienne approximée
 end
 
 """
@@ -121,8 +125,9 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
  tau_wolfe=0.9
  wolfe_update=2.0
  beta=0.0
+ Hess=eye(n+2*nb_comp)
 
- return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update,tau_wolfe,wolfe_update,beta)
+ return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update,tau_wolfe,wolfe_update,beta,Hess)
 end
 
 """
@@ -159,6 +164,11 @@ end
 
 function setbeta(ma::MPCC_actif,b::Float64)
  ma.beta=b
+ return ma
+end
+
+function sethess(ma::MPCC_actif,Hess::Array{Float64,2})
+ ma.Hess=Hess
  return ma
 end
 
@@ -210,9 +220,11 @@ Evalue la fonction objectif d'un MPCC actif : x
 function obj(ma::MPCC_actif,x::Vector)
  sol=0.0
  if length(x)==ma.n+2*ma.nb_comp
-  sol=NLPModels.obj(ma.nlp,x)
+  #sol=NLPModels.obj(ma.nlp,x)
+  sol=ma.nlp.f(x)
  else
-  sol=NLPModels.obj(ma.nlp,evalx(ma,x))
+  #sol=NLPModels.obj(ma.nlp,evalx(ma,x))
+  sol=ma.nlp.f(evalx(ma,x))
  end
  return sol
 end
@@ -226,29 +238,28 @@ function grad(ma::MPCC_actif,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
- gradf=NLPModels.grad(ma.nlp,xf)
+ #gradf=NLPModels.grad(ma.nlp,xf)
+ gradf=ForwardDiff.gradient(ma.nlp.f,xf)
 
+ gradg=Array{Float64}
  # Conditionnelles pour gérer le cas où w1 et w3 est vide
  if isempty(ma.w1) && isempty(ma.w3)
   gradg=zeros(length(ma.w13c))
  elseif !isempty(ma.w13c)
-  #ERREUR : ici on a trié les indices
-  #gradg=vcat(zeros(length(ma.w1)),Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
   gradg=zeros(length(ma.w13c))
   gradg[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
  else #ma.w13c est vide
-  gradg=[]
+  gradg=Float64[]
  end
 
+ gradh=Array{Float64,1}
  if isempty(ma.w2) && isempty(ma.w4)
   gradh=zeros(length(ma.w24c))
  elseif !isempty(ma.w24c)
-  #ERREUR : ici on a trié les indices
-  #gradh=vcat(zeros(length(ma.w2)),Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
   gradh=zeros(length(ma.w24c))
   gradh[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
  else
-  gradh=[]
+  gradh=Float64[]
  end
 
  return vcat(gradf[1:ma.n],gradf[ma.w13c+ma.n]+gradg,gradf[ma.w24c+ma.nb_comp+ma.n]+gradh)
@@ -262,13 +273,30 @@ function hess(ma::MPCC_actif,x::Vector)
 
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
+
+ #construction de la hessienne de taille (n+2nb_comp)^2
+ #H=NLPModels.hess(ma.nlp,xf) #ERREUR : ne rends pas de matrice symétrique !?
+ H=ForwardDiff.hessian(ma.nlp.f,xf)
+
+ Hred=hess(ma,x,H)
+
+ return Hred
+end
+
+"""
+A partir de la hessienne complète (ou une approximation) : calcul la hessienne dans le sous-espace actif
+"""
+function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
+
+ #on calcul xf le vecteur complet
+ xf=evalx(ma,x)
  nred=length(x)
  nnb=ma.n+ma.nb_comp
  #construction du vecteur gradient de taille n+2nb_comp
- gradf=NLPModels.grad(ma.nlp,xf)
- #construction de la hessienne de taille (n+2nb_comp)^2
- H=NLPModels.hess(ma.nlp,xf)
- #la hessienne des variables du sous-espace (nredxnred)
+ #gradf=NLPModels.grad(ma.nlp,xf)
+ gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+
+#la hessienne des variables du sous-espace (nredxnred)
  Hred=vcat(hcat(H[1:ma.n,1:ma.n],H[1:ma.n,ma.n+ma.w13c],H[1:ma.n,nnb+ma.w24c]),
              hcat(H[ma.n+ma.w13c,1:ma.n],H[ma.n+ma.w13c,ma.n+ma.w13c],H[ma.n+ma.w13c,nnb+ma.w24c]),
              hcat(H[nnb+ma.w24c,1:ma.n],H[nnb+ma.w24c,ma.n+ma.w13c],H[nnb+ma.w24c,ma.n+ma.nb_comp+ma.w24c]))
@@ -304,6 +332,10 @@ function hess(ma::MPCC_actif,x::Vector)
   Hred[nnb+ma.w24c,1:nred]=Hred[nnb+ma.w24c,1:nred]+hessh
  else #ma.w24c est vide
   hessh=[]
+ end
+
+ if !isequal(Hred,Hred')
+  println("Error : non-symmetric hessian")
  end
 
  return Hred
@@ -517,6 +549,19 @@ function AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float
 end
 
 """
+Calcul le pas maximum que l'on peut prendre dans une direction d par rapport aux contraintes de bornes sur x.
+d : direction réduit
+xj : itéré réduit
+
+output :
+alpha : le pas maximum
+w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
+"""
+function PasMaxBound(ma::MPCC_actif,x::Vector,d::Vector)
+ return #TO DO : nécessite d'ajouter les x dans l'ensemble des contraintes actives
+end
+
+"""
 Calcul le pas maximum que l'on peut prendre dans une direction d
 d : direction réduit
 xj : itéré réduit
@@ -528,6 +573,7 @@ w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
 function PasMax(ma::MPCC_actif,x::Vector,d::Vector)
  #on récupère les infos sur la contrainte de complémentarité
  alpha,w_save,w_new=PasMaxComp(ma,x,d)
+ #alpha,w_save,w_new=PasMaxBound(ma,x,d)
  
  if alpha<0.0
   println("PasMax error: pas maximum négatif.")
