@@ -57,6 +57,20 @@ end
 dtheta(x::Float64,r::Float64)= x>=0 ? r/(x+r)^2 : 1/r-2*x/(r^2)
 
 """
+La fonction dérivée seconde theta
+ddtheta_r(x)
+In : x :: vecteur ; r :: float
+"""
+function ddtheta(x::Any,r::Float64)
+ y=zeros(length(x))
+ for i=1:size(x,1)
+  y[i]= x[i]>=0 ? -2*r/(x[i]+r)^3 : -2/(r^2)
+ end
+ return y
+end
+ddtheta(x::Float64,r::Float64)= x>=0 ? -2*r/(x+r)^3 : -2/(r^2)
+
+"""
 Essaye de donner la plus petite racine réelle positive du polynome ax^2+bx+c
 """
 function PolyDegre2Positif(a::Float64,b::Float64,c::Float64)

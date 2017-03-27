@@ -14,6 +14,7 @@ liste des méthodes :
 updatew(ma::MPCC_actif)
 setf(ma::MPCC_actif, f::Function, xj::Any)
 setw(ma::MPCC_actif, w::Any)
+setbeta(ma::MPCC_actif,b::Float64)
 
 liste des accesseurs :
 evalx(ma::MPCC_actif,x::Vector)
@@ -64,7 +65,12 @@ type MPCC_actif
  ite_max::Int64 #nombre maximum d'itération pour la recherche linéaire >= 0
  tau_armijo::Float64 #paramètre pour critère d'Armijo doit être entre (0,0.5)
  armijo_update::Float64 ##step=step_0*(1/2)^m
+ tau_wolfe::Float64
+ wolfe_update::Float64
+ #H::Array{Float64,2} - matrice hessienne... faire un constructeur différent pour Quasi-Newton et pour CG
  # idée : on devrait peut-être garder une copie du paramètre rho ici !?
+
+ beta::Float64 #paramètre pour gradient conjugué
 end
 
 """
@@ -112,8 +118,11 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
  ite_max=4000
  tau_armijo=0.4
  armijo_update=0.9
+ tau_wolfe=0.9
+ wolfe_update=2.0
+ beta=0.0
 
- return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update)
+ return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update,tau_wolfe,wolfe_update,beta)
 end
 
 """
@@ -146,6 +155,11 @@ function setw(ma::MPCC_actif, w::Any)
  ma.wnew=max(w-ma.w,zeros(2*ma.nb_comp,2))
  ma.w=w
  return updatew(ma)
+end
+
+function setbeta(ma::MPCC_actif,b::Float64)
+ ma.beta=b
+ return ma
 end
 
 """
@@ -218,7 +232,10 @@ function grad(ma::MPCC_actif,x::Vector)
  if isempty(ma.w1) && isempty(ma.w3)
   gradg=zeros(length(ma.w13c))
  elseif !isempty(ma.w13c)
-  gradg=vcat(zeros(length(ma.w1)),Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
+  #ERREUR : ici on a trié les indices
+  #gradg=vcat(zeros(length(ma.w1)),Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
+  gradg=zeros(length(ma.w13c))
+  gradg[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
  else #ma.w13c est vide
   gradg=[]
  end
@@ -226,7 +243,10 @@ function grad(ma::MPCC_actif,x::Vector)
  if isempty(ma.w2) && isempty(ma.w4)
   gradh=zeros(length(ma.w24c))
  elseif !isempty(ma.w24c)
-  gradh=vcat(zeros(length(ma.w2)),Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
+  #ERREUR : ici on a trié les indices
+  #gradh=vcat(zeros(length(ma.w2)),Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
+  gradh=zeros(length(ma.w24c))
+  gradh[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
  else
   gradh=[]
  end
@@ -234,7 +254,60 @@ function grad(ma::MPCC_actif,x::Vector)
  return vcat(gradf[1:ma.n],gradf[ma.w13c+ma.n]+gradg,gradf[ma.w24c+ma.nb_comp+ma.n]+gradh)
 end
 
+"""
+Evalue la matrice hessienne de la fonction objectif d'un MPCC actif
+x est le vecteur réduit
+"""
+function hess(ma::MPCC_actif,x::Vector)
 
+ #on calcul xf le vecteur complet
+ xf=evalx(ma,x)
+ nred=length(x)
+ nnb=ma.n+ma.nb_comp
+ #construction du vecteur gradient de taille n+2nb_comp
+ gradf=NLPModels.grad(ma.nlp,xf)
+ #construction de la hessienne de taille (n+2nb_comp)^2
+ H=NLPModels.hess(ma.nlp,xf)
+ #la hessienne des variables du sous-espace (nredxnred)
+ Hred=vcat(hcat(H[1:ma.n,1:ma.n],H[1:ma.n,ma.n+ma.w13c],H[1:ma.n,nnb+ma.w24c]),
+             hcat(H[ma.n+ma.w13c,1:ma.n],H[ma.n+ma.w13c,ma.n+ma.w13c],H[ma.n+ma.w13c,nnb+ma.w24c]),
+             hcat(H[nnb+ma.w24c,1:ma.n],H[nnb+ma.w24c,ma.n+ma.w13c],H[nnb+ma.w24c,ma.n+ma.nb_comp+ma.w24c]))
+
+ # Conditionnelles pour gérer le cas où w1 et w3 est vide
+ if isempty(ma.w1) && isempty(ma.w3)
+  hessg=zeros(length(ma.w13c),nred)
+ elseif !isempty(ma.w13c)
+  hessg=zeros(length(ma.w13c),nred)
+  dpsi=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
+  ddpsi=Relaxation.ddpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
+  deriv=hcat(H[ma.n+ma.w3,1:ma.n],H[ma.n+ma.w3,ma.n+ma.w13c],H[ma.n+ma.w3,nnb+ma.w24c])
+  deriv[ma.w3,ma.n+ma.w3]=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t).*deriv[ma.w3,ma.n+ma.w3]
+  comprule=diag(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv
+
+  hessg[ma.w3]=deriv
+  Hred[ma.n+ma.w13c,1:nred]=Hred[ma.n+ma.w13c,1:nred]+hessg
+ else #ma.w13c est vide
+  hessg=[]
+ end
+
+ if isempty(ma.w2) && isempty(ma.w4)
+  hessh=zeros(length(ma.w24c),nred)
+ elseif !isempty(ma.w24c)
+  hessh=zeros(length(ma.w24c),nred)
+  dpsi=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
+  ddpsi=Relaxation.ddpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
+  deriv=hcat(H[nnb+ma.w4,1:ma.n],H[nnb+ma.w4,ma.n+ma.w13c],H[nnb+ma.w4,nnb+ma.w24c])
+  deriv[ma.w4,nnb+ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*deriv[ma.w4,ma.n+ma.nb_comp+ma.w4]
+  comprule=diag(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv
+
+  hessh[ma.w4]=deriv
+  Hred[nnb+ma.w24c,1:nred]=Hred[nnb+ma.w24c,1:nred]+hessh
+ else #ma.w24c est vide
+  hessh=[]
+ end
+
+ return Hred
+end
 
 """
 LSQComputationMultiplier(ma::MPCC_actif,x::Vector) :
