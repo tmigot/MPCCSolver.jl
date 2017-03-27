@@ -1,8 +1,13 @@
 gc()
+
 #Tests des packages
 include("../ALAS/Thetafunc.jl")
 include("../ALAS/Relaxation.jl")
 include("../ALAS/ActifMPCCmod.jl")
+include("../ALAS/DDirection.jl")
+include("../ALAS/LineSearch.jl")
+include("../ALAS/ParamSetmod.jl")
+include("../ALAS/AlgoSetmod.jl")
 include("../ALAS/UnconstrainedMPCCActif.jl")
 include("../ALAS/MPCCmod.jl")
 include("../ALAS/ALASMPCCmod.jl")
@@ -119,9 +124,10 @@ ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,
 println("KDB method:")
 #résolution avec ALAS KDB
 xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
+ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
-#xb,fb,statb, s_xtab = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,t0,sig_t)
+xb,fb,statb, s_xtab = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,t0,sig_t)
 
 if false
  nb_ite=Int(length(s_xtab)/2)
