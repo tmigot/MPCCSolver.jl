@@ -1,12 +1,9 @@
-#Tests des packages
-include("../ALAS/MPCCmod.jl")
-include("../ALAS/ActifMPCCmod.jl")
-
 using ActifMPCCmod
 
 f(x)=x[1]-x[2]
 r=1.0;s=1.0;t=1.0;
 ActifMPCCmod_success=true
+println("On teste le module ActifMPCCmod")
 
 
 nlp=ADNLPModel(f,ones(2), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=c,y0=ones(1),lcon=lcon,ucon=Inf*ones(1))

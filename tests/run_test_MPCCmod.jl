@@ -1,13 +1,10 @@
-#Tests des packages
-include("../ALAS/MPCCmod.jl")
-include("../ALAS/PASMPCC.jl")
-include("../ALAS/MPCCsolve.jl")
-
 using MPCCmod
 
 MPCCmod_success=true
+println("On teste le module MPCCmod")
 f(x)=x[1]-x[2]
 
+if false
 #On transforme la sortie NL en type MPCC :
 #Constructeur 1:
 mpcc1 = MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,Inf*ones(1))
@@ -21,7 +18,6 @@ println("KDB test")
 println("")
 xkdb,fkdb,statkdb = MPCCsolve.solve(mpcc,0.1,0.01,0.1,0.01,0.0,0.01,"KDB")
 
-if false
 #Test le solve
 xss,fss,statss = MPCCsolve.solve(mpcc)
 xb,fb,statb = MPCCsolve.solve(mpcc,0.1,0.01,0.1,0.01,0.1,0.01,"Butterfly")
