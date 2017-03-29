@@ -3,6 +3,8 @@ module MPCCmod
 using NLPModels #devrait disparaitre
 
 import Relaxation
+import ParamSetmod
+import AlgoSetmod
 
 """
 Definit le type MPCC :
@@ -40,22 +42,28 @@ type MPCC
  H::Function #the right-side of the complementarity constraint
  nb_comp::Int64
  #paramètres pour la résolution :
- prec::Float64 #precision à 0
+ prec::Float64 #precision à 0 - doit disparaitre dans paramset
+
+ algoset::AlgoSetmod.AlgoSet
+ paramset::ParamSetmod.ParamSet
 end
 
 #Constructeurs supplémentaires :
 function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
- return MPCC(mp,G,H,nb_comp,1e-3)
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+ return MPCC(mp,G,H,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector,prec::Float64)
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
- return MPCC(mp,G,H,nb_comp,prec)
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+ return MPCC(mp,G,H,nb_comp,prec,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64)
- return MPCC(mp,G,H,nb_comp,1e-3)
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+ return MPCC(mp,G,H,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function addInitialPoint(mod::MPCC,x0::Vector)
@@ -65,6 +73,8 @@ end
 
 """
 Donne la norme 2 de la violation des contraintes avec slack
+
+note : devrait appeler viol_contrainte
 """
 function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
  return norm(mod.G(x)-yg)^2+norm(mod.H(x)-yh)^2+norm(max(mod.mp.meta.lvar-x,0))^2+norm(max(x-mod.mp.meta.uvar,0))^2+norm(max(mod.mp.meta.lcon-mod.mp.c(x),0))^2+norm(max(mod.mp.c(x)-mod.mp.meta.ucon,0))^2

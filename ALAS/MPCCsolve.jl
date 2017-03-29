@@ -19,26 +19,29 @@ using PyPlot
 
 """
 Methode de relaxation pour resoudre :
+
+note : faire autrement l'initialisation de rho. (rho_init définit dans le MPCCmod)
 """
 function solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64,name_relax::AbstractString)
 #initialization
  t=t0;r=r0;s=s0;
-#à garder ici ?
+
  nb_contraintes=length(mod.mp.meta.lvar)+length(mod.mp.meta.uvar)+length(mod.mp.meta.lcon)+length(mod.mp.meta.ucon)+2*mod.nb_comp
- rho=ones(nb_contraintes)
-#
+ rho=ones(nb_contraintes) #à garder ici ?
+
  n=length(mod.mp.meta.x0)
- xk=mod.mp.meta.x0 #-- peut-être pas besoin de la variable xk ?
+ xk=mod.mp.meta.x0
  pmin=mod.prec
  realisable=MPCCmod.viol_comp(mod,xk)<=mod.prec && MPCCmod.viol_cons(mod,xk)<=mod.prec
  solved=true
+ param=true
 
 srelax_xtab=collect(xk[1:n])
 
 #Major Loop
 j=0
-println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk)," rho :","-"," k :","-")
- while (t+r+s)>pmin && !(realisable) && solved
+println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk))
+ while param && !(realisable) && solved
 
  # resolution du sous-problème
  if name_relax=="ALAS"
@@ -55,9 +58,16 @@ println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk)," rho :","-"," k :","-")
  t=t*sigma_t
  append!(srelax_xtab,collect(xk[1:n]))
  realisable=MPCCmod.viol_comp(mod,xk)<=mod.prec && MPCCmod.viol_cons(mod,xk)<=mod.prec
+ param=(t+r+s)>pmin
  j+=1
-println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk)," rho :","-"," k :","-")
+println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk))
  end
+
+#Traitement final :
+realisable || println("Infeasible solution: (comp,cons)=(",MPCCmod.viol_comp(mod,xk),",",MPCCmod.viol_cons(mod,xk),")" )
+solved || println("Subproblem failure")
+param || realisable || println("Parameters too small")
+solved && !param && realisable && println("Success")
 
  # output
  return xk, mod.mp.f(xk), stat, srelax_xtab
@@ -107,11 +117,14 @@ end
 
 """
 Methode pour résoudre le sous-problème relaxé :
+
+note : le choix de la stratégie sur rho devrait être décidé dans mod
 """
 function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
  solved=true
 
- prec=max(s,t,r)
+ prec=max(s,t,r) #Il faut réflechir un peu plus sur des alternatives
+
  #alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec) #recommence rho à chaque itération
  alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
  xk,stat,s_xtab,rho = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
