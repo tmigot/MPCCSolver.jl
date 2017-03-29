@@ -2,19 +2,12 @@
 Package de fonction pour la minimisation ActifMPCC
 
 liste des fonctions :
-SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector)
-Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad::Any,stepmax::Float64,slope::Float64;
-                verbose :: Bool=false, kwargs...)
-ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad::Any,stepmax::Float64,
-                slope::Float64;verbose :: Bool=false, kwargs...)
-LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,d::Any)
+LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false)
 """
 
 module UnconstrainedMPCCActif
 
 using ActifMPCCmod
-using LineSearch
-using DDirection
 
 """
 Input :
@@ -22,8 +15,9 @@ ma : MPCC_actif
 xj : vecteur initial
 hd : direction précédente en version étendue
 """
-function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,direction::Function=DDirection.CGHZ)
-#function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false,CG::Bool=true,direction::Function=DDirection.NwtdirectionLDLt)
+
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false)
+
  output=0
  hd=ActifMPCCmod.redd(ma,hd)
  scale=1.0
@@ -44,7 +38,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  #d=-inv(H)*gradf
  #H=H/norm(H)+0.01*eye(length(xj))
  #Calcul d'une direction de descente de taille (n + length(bar_w))
- d=direction(ma,gradf,xj,hd,beta)
+ d=ma.direction(ma,gradf,xj,hd,beta)
 
  slope = dot(gradf,d)
  if slope > 0.0  # restart with negative gradient
@@ -58,7 +52,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  #Recherche linéaire
  old_grad=NaN #à définir quelque part...
  hg=ActifMPCCmod.obj(ma,xj)
- step,good_grad,ht,nbk,nbW=LineSearch.Armijo(ma,xj,d,hg,old_grad,stepmax,scale*slope)
+ step,good_grad,ht,nbk,nbW=ma.linesearch(ma,xj,d,hg,old_grad,stepmax,scale*slope)
  step*=scale
 
  xjp=xj+step*d
@@ -69,10 +63,8 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  s=xjp-xj
  y=gradft-gradf
 
- #MAJ de Beta : gradient conjugué
- #beta=direction(beta,gradft,gradf,y,d)
- #ma=ActifMPCCmod.setbeta(ma,beta) #à intégrer dans la fonction direction ?
- ma=direction(ma,beta,gradft,gradf,y,d,step)
+ #MAJ des paramètres du calcul de la direction
+ ma=ma.direction(ma,xjp,beta,gradft,gradf,y,d,step)
 
  #MAJ du scaling
  if scaling
@@ -88,11 +80,11 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  else
   wnew = [] #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
- if nbk >= ma.ite_max 
+ if nbk >= ma.paramset.ite_max_armijo 
   output=1
  end
 
- return sol,ma.w,dsol,step,wnew,output #on devrait aussi renvoyer le gradient
+ return sol,ma.w,dsol,step,wnew,output #on devrait aussi renvoyer le gradient !?
 end
 
 #end of module

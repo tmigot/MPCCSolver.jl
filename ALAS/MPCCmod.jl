@@ -14,8 +14,12 @@ lb <= c(x) <= ub
 0 <= G(x) _|_ H(x) >= 0
 
 liste des constructeurs :
-function MPCC(f::Function,x0::Vector,G::Function,H::Function,z0::Vector,nb_comp::Int64;lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector,name::String)
-MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,z0::Vector,nb_comp::Int64)
+MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
+MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector,prec::Float64)
+MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64)
+
+liste des accesseurs :
+addInitialPoint(mod::MPCC,x0::Vector)
 
 liste des fonctions :
 viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)

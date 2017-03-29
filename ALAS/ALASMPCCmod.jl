@@ -8,14 +8,12 @@ using Penalty
 
 using NLPModels
 
-export solvePAS
-
 """
 Type ALASMPCC : 
 
 liste des constructeurs :
-ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64)
 ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64)
+ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64, rho::Vector)
 
 liste des méthodes :
 
@@ -30,9 +28,8 @@ SlackComplementarityProjection(alas::ALASMPCC)
 LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,usg::Vector,ush::Vector)
-Quadratic(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
-Lagrangian(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
-RhoUpdate(rho::Vector,alas::ALASMPCC)
+Penaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+RhoUpdate(rho::Vector,err::Vector,alas::ALASMPCC)
 RhoDetail(rho::Vector,alas::ALASMPCC)
 """
 
@@ -54,35 +51,20 @@ type ALASMPCC
 
  #paramètres algorithmiques
  prec::Float64 #precision à 0
- ite_max::Int64 #entier >=0
- ite_max_viol::Int64 #entier >=0
  rho_init::Vector #nombre >= 0
- rho_update::Float64 #nombre >=1
- goal_viol
- #paramètres algorithmiques pour la minimisation
- tau_armijo::Float64 #entre (0,0.5)
- tau_wolfe::Float64 #entre (tau_armijo,1)
-end
-
-function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64)
- return ALASMPCC(mod,r,s,t,-r,mod.prec)
 end
 
 function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64)
- nb_contraintes_penalise=length(mod.mp.meta.lvar)+length(mod.mp.meta.uvar)+length(mod.mp.meta.lcon)+length(mod.mp.meta.ucon)+2*mod.nb_comp
- rho_init=ones(nb_contraintes_penalise)
+ rho_init=mod.paramset.rho_init
  return ALASMPCC(mod,r,s,t,prec,rho_init)
 end
 
 function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64, rho::Vector)
- ite_max=10000
- ite_max_viol=20
+
  rho_init=rho
- rho_update=2.0
- goal_viol=0.5
- tau_armijo=0.25 #est-ce que c'est utilisé ?
- tau_wolfe=0.9
- return ALASMPCC(mod,r,s,t,-r,prec,ite_max,ite_max_viol,rho_init,rho_update,goal_viol,tau_armijo,tau_wolfe)
+ tb=-r
+
+ return ALASMPCC(mod,r,s,t,tb,prec,rho_init)
 end
 
 """
@@ -90,14 +72,14 @@ solvePAS() : méthode de penalisation/activation de contraintes DHKM 16'
 
 Méthode avec gestion à l'intérieur du paramètre de pénalité
 """
-function solvePAS(alas::ALASMPCC;penalty::Function=Quadratic)
+function solvePAS(alas::ALASMPCC)
 
 #Initialisation paramètres :
  rho=alas.rho_init
- k_max=alas.ite_max
- l_max=alas.ite_max_viol
- rho_update=alas.rho_update
- obj_viol=alas.goal_viol
+ k_max=alas.mod.paramset.ite_max_alas
+ l_max=alas.mod.paramset.ite_max_viol
+ rho_update=alas.mod.paramset.rho_update
+ obj_viol=alas.mod.paramset.goal_viol
 
  n=length(alas.mod.mp.meta.x0)
 
@@ -120,14 +102,14 @@ function solvePAS(alas::ALASMPCC;penalty::Function=Quadratic)
 
 # S1 : Initialisation du MPCC_Actif 
  #objectif du problème avec pénalité lagrangienne sans contrainte :
- penf(x,yg,yh)=penalty(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
  #nlp pénalisé
  pen_mpcc = NLPModels.ADNLPModel(x->penf(x), xj,
                                 lvar=[alas.mod.mp.meta.lvar;alas.tb*ones(2*alas.mod.nb_comp)], 
                                  uvar=[alas.mod.mp.meta.uvar;Inf*ones(2*alas.mod.nb_comp)])
  #initialise notre problème pénalisé avec des contraintes actives w
- ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,length(alas.mod.G(alas.mod.mp.meta.x0)))
+ ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,length(alas.mod.G(alas.mod.mp.meta.x0)),alas.mod.paramset,alas.mod.algoset.direction,alas.mod.algoset.linesearch)
 
  # S2 : Major Loop Activation de contrainte
  #initialisation
@@ -143,8 +125,7 @@ function solvePAS(alas::ALASMPCC;penalty::Function=Quadratic)
  multi_norm=max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
  dual_feasible=norm(gradpen[1:n],Inf)/multi_norm<=alas.prec
 
-println("start k=0,l=0 :", xjk)
- while k<k_max && (l_negative || !feasible || !dual_feasible) && Armijosuccess && !small_step
+ while k<k_max && (l_negative || !feasible || !dual_feasible) && Armijosuccess && !small_step && norm(rho,Inf)<1e150
 
 #println(" -- k: ",k," rho: ", rho,"| l : ", [lg;lh;lphi]," | gradf<e ", gradpen[1:ma.n], " | obj ",alas.mod.mp.f(xjk[1:n]))
   l=0
@@ -157,7 +138,7 @@ println("start k=0,l=0 :", xjk)
    rho=l!=0?RhoUpdate(rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)),alas) : rho
 
    #mise à jour de la fonction objectif quand on met rho à jour
-   penf(x,yg,yh)=penalty(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+   penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
    ActifMPCCmod.setf(ma,x->penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]),xjk)
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
@@ -166,7 +147,7 @@ println("start k=0,l=0 :", xjk)
    Armijosuccess=(outputArmijo==0)
    #small_step=step<=eps(Float64)?true:false #on fait un pas trop petit
    l+=1
-   l>=l_max && println("Max itération en l (rho update). Iteration: ",k)
+   l>=l_max && println("Max itération en l (rho update). Iteration: ",k," ||rho||=",norm(rho,Inf))
   end
   xjk=xjkl
 
@@ -174,7 +155,7 @@ println("start k=0,l=0 :", xjk)
   uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,rho,xjk,uxl,uxu,ucl,ucu,usg,ush)
 
   #met à jouer la fonction objectif après la mise à jour des multiplicateurs
-  penf(x,yg,yh)=penalty(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+  penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
   penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
   ActifMPCCmod.setf(ma,x->penf(x),xjk)
 
@@ -195,8 +176,8 @@ println("start k=0,l=0 :", xjk)
 
   #Relaxation rule si on a fait un pas de Armijo-Wolfe et si un multiplicateur est du mauvais signe
   #quoi faire si on est bloqué ? i.e pas=0.0, on tente de relaxer
-#  if k!=0 && dot(gradpen,dj)>=alas.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) && findfirst(x->x<0,[lg;lh;lphi])!=0
-  if k!=0 && (dot(gradpen,dj)>=alas.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
+#  if k!=0 && dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) && findfirst(x->x<0,[lg;lh;lphi])!=0
+  if k!=0 && (dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
    ActifMPCCmod.RelaxationRule(ma,xjk,lg,lh,lphi,wnew)
   end
 
@@ -230,7 +211,7 @@ println("start k=0,l=0 :", xjk)
    stat=0
   end
  end
-println("+ de details: #iter=",k," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
  return xj,stat,s_xtab,rho;
 end
 
@@ -317,58 +298,13 @@ function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::
  return uxl,uxu,ucl,ucu,usg,ush
 end
 
-"""
-Fonction de pénalité quadratique
-"""
-function Quadratic(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
- #mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64
- rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
-
-# Pen_eq2=rhof*norm((alas.mod.G(x)-yg))^2+rhof*norm((alas.mod.H(x)-yh))^2
- err_eq_g=(alas.mod.G(x)-yg)
- err_eq_h=(alas.mod.H(x)-yh)
- Pen_eq=dot(rho_eqg.*err_eq_g,err_eq_g)+dot(rho_eqh.*err_eq_h,err_eq_h)
-# Pen_in_lv=norm(sqrt(rho_ineq_lvar).*max(alas.mod.mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0))^2
- err_in_lv=max(alas.mod.mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0)
- Pen_in_lv=dot(rho_ineq_lvar.*err_in_lv,err_in_lv)
-# Pen_in_uv=norm(sqrt(rho_ineq_uvar).*max(x-alas.mod.mp.meta.uvar+uxu./rho_ineq_uvar,0.0))^2
- err_in_uv=max(x-alas.mod.mp.meta.uvar+uxu./rho_ineq_uvar,0.0)
- Pen_in_uv=dot(rho_ineq_uvar.*err_in_uv,err_in_uv)
-# Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(alas.mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
- err_in_lc=max(alas.mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0)
- Pen_in_lc=dot(rho_ineq_lcons.*err_in_lc,err_in_lc)
- err_in_uc=max(alas.mod.mp.c(x)-alas.mod.mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
- Pen_in_uc=dot(rho_ineq_ucons.*err_in_uc,err_in_uc)
-
- return alas.mod.mp.f(x)+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
-end
 
 """
-Fonction de pénalité lagrangienne
+Fonction de pénalité générique :
 """
-function Lagrangian(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
- #mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64
- rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
+function Penaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
 
- Lagrangian=dot(alas.mod.G(x)-yg,usg)+dot(alas.mod.H(x)-yh,ush)
-
-# Pen_eq2=rhof*norm((alas.mod.G(x)-yg))^2+rhof*norm((alas.mod.H(x)-yh))^2
- err_eq_g=(alas.mod.G(x)-yg)
- err_eq_h=(alas.mod.H(x)-yh)
- Pen_eq=dot(rho_eqg.*err_eq_g,err_eq_g)+dot(rho_eqh.*err_eq_h,err_eq_h)
-# Pen_in_lv=norm(sqrt(rho_ineq_lvar).*max(alas.mod.mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0))^2
- err_in_lv=max(alas.mod.mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0)
- Pen_in_lv=dot(rho_ineq_lvar.*err_in_lv,err_in_lv)
-# Pen_in_uv=norm(sqrt(rho_ineq_uvar).*max(x-alas.mod.mp.meta.uvar+uxu./rho_ineq_uvar,0.0))^2
- err_in_uv=max(x-alas.mod.mp.meta.uvar+uxu./rho_ineq_uvar,0.0)
- Pen_in_uv=dot(rho_ineq_uvar.*err_in_uv,err_in_uv)
-# Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(alas.mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
- err_in_lc=max(alas.mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0)
- Pen_in_lc=dot(rho_ineq_lcons.*err_in_lc,err_in_lc)
- err_in_uc=max(alas.mod.mp.c(x)-alas.mod.mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
- Pen_in_uc=dot(rho_ineq_ucons.*err_in_uc,err_in_uc)
-
- return alas.mod.mp.f(x)+Lagrangian+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
+ return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
 end
 
 """
@@ -382,25 +318,16 @@ length(mod.mp.meta.ucon)
 """
 function RhoUpdate(rho::Vector,err::Vector,alas::ALASMPCC)
  #rho[find(x->x>0,err)]*=alas.rho_update
- rho*=alas.rho_update
+ rho*=alas.mod.paramset.rho_update
  return rho
-# return min(rho*alas.rho_update,ones(length(rho))/eps(Float64)) #parce qu'à un moment c'est vraiment trop grand
+# return min(rho*alas.mod.paramset.rho_update,ones(length(rho))/eps(Float64)) #parce qu'à un moment c'est vraiment trop grand
 end
 
 """
 Renvoie : rho_eq, rho_ineq_var, rho_ineq_cons
 """
 function RhoDetail(rho::Vector,alas::ALASMPCC)
- nb_comp=alas.mod.nb_comp
- nb_ineq_lvar=length(alas.mod.mp.meta.lvar)
- nb_ineq_uvar=length(alas.mod.mp.meta.uvar)
- nb_ineq_lcons=length(alas.mod.mp.meta.lcon)
- nb_ineq_ucons=length(alas.mod.mp.meta.ucon)
-
- return rho[1:nb_comp],rho[nb_comp+1:2*nb_comp],rho[2*nb_comp+1:2*nb_comp+nb_ineq_lvar],
-        rho[2*nb_comp+nb_ineq_lvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar],
-        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons],
-        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+nb_ineq_ucons]
+ return Penalty.RhoDetail(rho,alas.mod.mp,alas.mod.nb_comp)
 end
 
 #end of module

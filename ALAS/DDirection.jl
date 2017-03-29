@@ -1,37 +1,46 @@
 """
 Package de fonctions pour calculer des directions de descentes :
-les fonctions doivent contenir deux duplicats : le 1er calcul la direction, la 2ème le beta.
+les fonctions doivent contenir deux duplicatas : le 1er calcul la direction, la 2ème le beta et l'approximation de la hessienne.
 
 SteepestDescent(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-SteepestDescent(beta,gradft,gradf,y,d) 
+SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 CGFR(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-CGFR(beta,gradft,gradf,y,d) 
+CGFR(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 CGPR(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-CGPR(beta,gradft,gradf,y,d) 
+CGPR(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 CGHS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-CGHS(beta,gradft,gradf,y,d) 
+CGHS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 CGHZ(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-CGHZ(beta,gradft,gradf,y,d) 
+CGHZ(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
+
+BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+DFP(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
+
+CGHZ(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+CGHZ(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-NwtdirectionSpectral(H,g,hd,beta)
+NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)  #problème définition MA57 matrice ?
-NwtdirectionMA57(H,g,hd,beta)
+NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-NwtdirectionLDLt(H,g,hd,beta)
+NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 Fonctions additionnelles :
+
 ldlt_symm(A0 :: Array{Float64,2}, piv :: Char='r')
 """
 module DDirection
 
 using ActifMPCCmod
+using Relaxation
+
 
 """
 SteepestDescent : Calcul une direction de descente
@@ -40,7 +49,7 @@ function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::An
  return -g
 end
 
-function SteepestDescent(beta,gradft,gradf,y,d,step::Float64) 
+function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
  return 0.0
 end
 
@@ -51,7 +60,7 @@ function CGFR(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Flo
  return - g + beta*hd
 end
 
-function CGFR(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGFR(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula FR
@@ -69,7 +78,7 @@ function CGPR(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Flo
  return - g + beta*hd
 end
 
-function CGPR(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGPR(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula PR
@@ -87,7 +96,7 @@ function CGHS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Flo
  return - g + beta*hd
 end
 
-function CGHS(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function CGHS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula HS
@@ -105,7 +114,7 @@ function CGHZ(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Flo
  return - g + beta*hd
 end
 
-function CGHZ(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGHZ(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula HZ
@@ -121,18 +130,51 @@ end
 """
 Direction de quasi-Newton:
 y=gradft-gradf
-
-EN TRAVAUX
 """
-function quasiNwt(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64) 
- qk=y
- pk=step*d #dépend de la direction qui n'est pas de la bonne taille !
- H=ma.Hess
+function BFGS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+ dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #différence des gradients en version étendue :
+ qk=ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj))-ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj-step*d))
+ pk=step*dt
+
+ H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+ #formule alternative:
+ #H=ma.Hess-ma.Hess*qk*qk'*ma.Hess/dot(qk,ma.Hess*qk)+pk*pk'/dot(pk,qk)
+
+ sym_test=norm(H'-H)/norm(H'+H)
+ sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
+
  return ActifMPCCmod.sethess(ma,H)
 end
 
-function quasiNwt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    H=ma.Hess
+function BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+    H=ActifMPCCmod.hess(ma,xj,ma.Hess)
+    
+    d = -H\g
+    return d
+end
+
+"""
+Direction de quasi-Newton: BFGS
+y=gradft-gradf
+"""
+function DFP(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+ dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #différence des gradients en version étendue :
+ qk=ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj))-ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj-step*d))
+ pk=step*dt
+
+ H=(eye(length(pk))-pk*qk'/dot(qk,pk))*ma.Hess*(eye(length(pk))-qk*pk'/dot(qk,pk))+qk*qk'/dot(qk,pk)
+
+ sym_test=norm(H'-H)/norm(H'+H)
+ sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
+ !isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(H'+H)," ",norm(H'-H))
+
+ return ActifMPCCmod.sethess(ma,H)
+end
+
+function DFP(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+    H=ActifMPCCmod.hess(ma,xj,ma.Hess)
     
     d = - H\g
     return d
@@ -141,7 +183,7 @@ end
 """
 Direction de Newton Spectral:
 """
-function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
 
@@ -166,7 +208,7 @@ end
 """
 Direction de Newton MA57:
 """
-function NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
 
@@ -251,7 +293,7 @@ end
 """
 Direction de Newton 1:
 """
-function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
 

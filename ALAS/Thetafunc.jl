@@ -103,7 +103,7 @@ In : x float (position en x)
 """
 function AlphaThetaMax(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
  #donner la formule analytique pour Theta1 :
-if dx==0 && dy==0
+if dx==0.0 && dy==0.0
  return [Inf,Inf]
 end
 

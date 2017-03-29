@@ -1,11 +1,10 @@
 """
-solve_subproblem(mod::MPCCmod.MPCC, func::Function,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
-solve_subproblem_ipopt(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
-solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,name_relax::AbstractString)
-
-solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64,name_relax::AbstractString)
+solve(mod::MPCCmod.MPCC,r0::Float64=0.1,sigma_r::Float64=0.01,s0::Float64=0.1,sigma_s::Float64=0.01,t0::Float64=0.1,sigma_t::Float64=0.01;name_relax::AbstractString="ALAS")
 solve(mod::MPCCmod.MPCC)
-solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64)
+
+solve_subproblem(mod::MPCCmod.MPCC, func::Function,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
+solve_subproblem_ipopt(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
+solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64,rho::Vector,name_relax::AbstractString)
 """
 module MPCCsolve
 
@@ -22,7 +21,7 @@ Methode de relaxation pour resoudre :
 
 note : faire autrement l'initialisation de rho. (rho_init définit dans le MPCCmod)
 """
-function solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64,name_relax::AbstractString)
+function solve(mod::MPCCmod.MPCC,r0::Float64=0.1,sigma_r::Float64=0.01,s0::Float64=0.1,sigma_s::Float64=0.01,t0::Float64=0.1,sigma_t::Float64=0.01;name_relax::AbstractString="ALAS")
 #initialization
  t=t0;r=r0;s=s0;
 
@@ -46,7 +45,6 @@ println("j :",j," xk :",xk[1:n]," f(xk) :",mod.mp.f(xk))
  # resolution du sous-problème
  if name_relax=="ALAS"
   xk,solved,s_xtab,rho = solve_subproblem(mod,solve_subproblem_alas,r,s,t,rho,name_relax)
-  println(" rho:", norm(rho,Inf)," k:",size(s_xtab))
  else
   xk,solved = solve_subproblem(mod,solve_subproblem_ipopt,r,s,t,rho,name_relax)
  end
@@ -71,13 +69,6 @@ solved && !param && realisable && println("Success")
 
  # output
  return xk, mod.mp.f(xk), stat, srelax_xtab
-end
-
-"""
-Redefinitions de la fonction solve pour MPCC :
-"""
-function solve(mod::MPCCmod.MPCC,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64)
- solve(mod,r0,sigma_r,s0,sigma_s,t0,sigma_t,"ALAS")
 end
 
 """
@@ -125,8 +116,12 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
 
  prec=max(s,t,r) #Il faut réflechir un peu plus sur des alternatives
 
- #alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec) #recommence rho à chaque itération
- alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
+ if mod.paramset.rho_restart
+  alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec) #recommence rho à chaque itération
+ else
+  alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
+ end
+
  xk,stat,s_xtab,rho = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
 
  if stat != 0

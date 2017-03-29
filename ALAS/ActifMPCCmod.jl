@@ -1,39 +1,43 @@
 module ActifMPCCmod
 
 import Relaxation
-
+import ParamSetmod
 import NLPModels #virer le NLPModels...
-using ForwardDiff
+using ForwardDiff #à terme on devrait pouvoir calculer à la main à partir des dérivées de f
 
 """
 Type MPCC_actif : problème MPCC pénalisé avec slack et ensemble des contraintes actives
 
 liste des constructeurs :
-MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
-MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
+MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
+MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
 
 liste des méthodes :
 updatew(ma::MPCC_actif)
 setf(ma::MPCC_actif, f::Function, xj::Any)
 setw(ma::MPCC_actif, w::Any)
 setbeta(ma::MPCC_actif,b::Float64)
+sethess(ma::MPCC_actif,Hess::Array{Float64,2})
 
 liste des accesseurs :
 evalx(ma::MPCC_actif,x::Vector)
 evald(ma::MPCC_actif,d::Vector)
 redd(ma::MPCC_actif,d::Vector)
 obj(ma::MPCC_actif,x::Vector)
+ExtddDirection(ma::ActifMPCCmod.MPCC_actif,dr::Vector,xp::Vector,step::Float64)
 grad(ma::MPCC_actif,x::Vector)
+grad(ma::MPCC_actif,x::Vector,gradf::Vector)
 hess(ma::MPCC_actif,x::Vector)
+hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
 
 liste des fonctions :
 LSQComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
 RelaxationRule(ma::ActifMPCCmod.MPCC_actif,xj::Vector,lg::Vector,lh::Vector,lphi::Vector,wmax::Any)
-PasMax(ma::MPCC_actif,x::Vector,d::Vector)
+PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64)
 AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float64,alpha4::Float64)
-PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
-PasMaxBound(ma::MPCC_actif,x::Vector,d::Vector) # TO DO
+PasMaxBound(ma::MPCC_actif,x::Vector,d::Vector) #TO DO
+PasMax(ma::MPCC_actif,x::Vector,d::Vector)
 """
 
 #TO DO List :
@@ -65,22 +69,19 @@ type MPCC_actif
  wcc::Any #ensemble des indices des contraintes où yG et yH sont fixés
  wnew::Any #dernières contraintes ajoutés
 
- #paramètres pour la minimisation sans contrainte
- ite_max::Int64 #nombre maximum d'itération pour la recherche linéaire >= 0
- tau_armijo::Float64 #paramètre pour critère d'Armijo doit être entre (0,0.5)
- armijo_update::Float64 ##step=step_0*(1/2)^m
- tau_wolfe::Float64
- wolfe_update::Float64
-
  #paramètres pour le calcul de la direction de descente
  beta::Float64 #paramètre pour gradient conjugué
  Hess::Array{Float64,2} #matrice hessienne approximée
+
+ paramset::ParamSetmod.ParamSet
+ direction::Function #fonction qui calcul la direction de descente
+ linesearch::Function #fonction qui calcul la recherche linéaire
 end
 
 """
 Constructeur recommandé pour MPCC_actif
 """
-function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64)
+function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
 
   n=length(nlp.meta.x0)-2*nb_comp
   xk=nlp.meta.x0[1:n]
@@ -101,10 +102,10 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
    end
   end
 
- return MPCC_actif(nlp,r,s,t,w)
+ return MPCC_actif(nlp,r,s,t,w,paramset,direction,linesearch)
 end
 
-function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any)
+function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
 
  bar_w=find(x->x==0,w[:,1]+w[:,2])
  nb_comp=Int(size(w,1)/2)
@@ -119,15 +120,11 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
  wc=find(x->x==0, w[1:nb_comp,1]+w[1:nb_comp,2]+w[nb_comp+1:2*nb_comp,1]+w[nb_comp+1:2*nb_comp,2])
  wcc=find(x->x==2, w[1:nb_comp,1]+w[1:nb_comp,2]+w[nb_comp+1:2*nb_comp,1]+w[nb_comp+1:2*nb_comp,2])
  wnew=[]
- ite_max=4000
- tau_armijo=0.4
- armijo_update=0.9
- tau_wolfe=0.9
- wolfe_update=2.0
+
  beta=0.0
  Hess=eye(n+2*nb_comp)
 
- return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,ite_max,tau_armijo,armijo_update,tau_wolfe,wolfe_update,beta,Hess)
+ return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,beta,Hess,paramset,direction,linesearch)
 end
 
 """
@@ -193,7 +190,7 @@ function evalx(ma::MPCC_actif,x::Vector)
 end
 
 """
-Renvoie la direction d au complet
+Renvoie la direction d au complet (avec des 0 aux actifs)
 """
 function evald(ma::MPCC_actif,d::Vector)
  df=zeros(ma.n+2*ma.nb_comp)
@@ -230,10 +227,50 @@ function obj(ma::MPCC_actif,x::Vector)
 end
 
 """
+Calcul la direction étendue à partir de la direction du sous-domaine
+complète une version étendue de la direction de descente :
+dr : la direction dans le sous-espace actif
+xp : le nouvel itéré
+step : le pas utilisé pour calculé xp
+
+utilise la formule suivante :
+yG+=yG+alpha*dyG --> dyG=(yG+-yG)/alpha
+"""
+function ExtddDirection(ma::ActifMPCCmod.MPCC_actif,dr::Vector,xp::Vector,step::Float64)
+ d=evald(ma,dr) #evald rempli les trous par des 0
+ x=evalx(ma,xp)
+
+ d[1:ma.n]=dr[1:ma.n]
+
+ psip=Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
+ psi=Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp]-step*d[ma.n+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
+ #d[ma.w1]=0 #yG fixé
+ #d[ma.w2]=0 #yH fixé
+
+ d[ma.n+ma.w3]=(psip[ma.w3+ma.nb_comp]-psi[ma.w3+ma.nb_comp])/step #yG fixé
+ d[ma.n+ma.nb_comp+ma.w4]=(psip[ma.w4]-psi[ma.w4])/step #yH fixé
+ #d[ma.n+ma.w13c]=dr[ma.n+ma.w13c] #yG est libre
+ #d[ma.n+ma.nb_comp+ma.w24c]=dr[ma.n+ma.nb_comp+ma.w24c] #yG est libre
+
+ return d
+end
+
+"""
 Evalue le gradient de la fonction objectif d'un MPCC actif
 x est le vecteur réduit
 """
 function grad(ma::MPCC_actif,x::Vector)
+
+ #on calcul xf le vecteur complet
+ xf=evalx(ma,x)
+ #construction du vecteur gradient de taille n+2nb_comp
+ #gradf=NLPModels.grad(ma.nlp,xf)
+ gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+
+ return length(x)==ma.n+2*ma.nb_comp?gradf:grad(ma,x,gradf)
+end
+
+function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
 
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
@@ -334,9 +371,9 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
   hessh=[]
  end
 
- if !isequal(Hred,Hred')
-  println("Error : non-symmetric hessian")
- end
+# sym_test=norm(Hred'-Hred)/norm(Hred'+Hred)
+# !isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(Hred'+Hred))
+# sym_test<1e-10 || println("Non symetric matrix hess: ",sym_test)
 
  return Hred
 end
@@ -558,6 +595,11 @@ alpha : le pas maximum
 w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
 """
 function PasMaxBound(ma::MPCC_actif,x::Vector,d::Vector)
+ if max(l-x)>0 || max(x-u)>0
+  println("Error PasMaxBound: infeasible x")
+ end
+ #ma.nlp.meta.lvar[1:ma.n]
+ #ma.nlp.meta.uvar[1:ma.n]
  return #TO DO : nécessite d'ajouter les x dans l'ensemble des contraintes actives
 end
 

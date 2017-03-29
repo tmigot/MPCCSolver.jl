@@ -32,20 +32,20 @@ function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad::Any
  #First try to increase t to satisfy loose Wolfe condition 
  ht=ActifMPCCmod.obj(ma,xj+step*d)
  slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
- while (slope_t<ma.tau_wolfe*slope) && (ht-hg<=ma.tau_armijo*step*slope) && (nbW<ma.ite_max) && step<stepmax
-  step=min(step*ma.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
+ while (slope_t<ma.paramset.tau_wolfe*slope) && (ht-hg<=ma.paramset.tau_armijo*step*slope) && (nbW<ma.paramset.ite_max_armijo) && step<stepmax
+  step=min(step*ma.paramset.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
   ht=ActifMPCCmod.obj(ma,xj+step*d)
   slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
 
-  true && println("Wolfe Trick",nbW," ",hg," ",ht," ",ma.tau_armijo*step*slope)
+  verbose && println("Wolfe Trick",nbW," ",hg," ",ht," ",ma.paramset.tau_armijo*step*slope)
   nbW+=1
  end
 
  ht=ActifMPCCmod.obj(ma,xj+step*dd)
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- while nbk<ma.ite_max && ht-hg>ma.tau_armijo*step*slope
-  step*=ma.armijo_update #step=step_0*(1/2)^m
+ while nbk<ma.paramset.ite_max_armijo && ht-hg>ma.paramset.tau_armijo*step*slope
+  step*=ma.paramset.armijo_update #step=step_0*(1/2)^m
   ht=ActifMPCCmod.obj(ma,xj+step*dd)
   nbk+=1
  end
@@ -70,17 +70,17 @@ function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad
  #First try to increase t to satisfy loose Wolfe condition 
  ht=ActifMPCCmod.obj(ma,xj+step*d)
  slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
- while (slope_t<ma.tau_wolfe*slope) && (ht-hg<=ma.tau_armijo*step*slope) && (nbW<ma.ite_max) && step<stepmax
-  step=min(step*ma.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
+ while (slope_t<ma.paramset.tau_wolfe*slope) && (ht-hg<=ma.paramset.tau_armijo*step*slope) && (nbW<ma.paramset.ite_max_armijo) && step<stepmax
+  step=min(step*ma.paramset.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
   ht=ActifMPCCmod.obj(ma,xj+step*d)
   slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
 
-  true && println(nbW," ",hg," ",ht," ",ma.tau_armijo*step*slope)
+  true && println(nbW," ",hg," ",ht," ",ma.paramset.tau_armijo*step*slope)
   nbW+=1
  end
 
  ht=ActifMPCCmod.obj(ma,xj+step*d)
- hgoal = hg+slope*step*ma.tau_armijo
+ hgoal = hg+slope*step*ma.paramset.tau_armijo
 # Hager & Zhang numerical trick : pas certain...
  fact=-0.8
  #prec=1e-10
@@ -88,10 +88,10 @@ function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,old_grad
  Armijo= (ht <= hgoal)
  good_grad=true
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- while nbk<ma.ite_max && !Armijo
-  step*=ma.armijo_update #step=step_0*(1/2)^m
+ while nbk<ma.paramset.ite_max_armijo && !Armijo
+  step*=ma.paramset.armijo_update #step=step_0*(1/2)^m
   ht=ActifMPCCmod.obj(ma,xj+step*d)
-  hgoal = hg+slope*step*ma.tau_armijo
+  hgoal = hg+slope*step*ma.paramset.tau_armijo
 
   Armijo=false
   good_grad=false
