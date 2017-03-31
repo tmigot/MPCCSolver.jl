@@ -3,10 +3,11 @@ gc()
 #Tests des packages
 include("../ALAS/Thetafunc.jl")
 include("../ALAS/Relaxation.jl")
+include("../ALAS/Penalty.jl")
+include("../ALAS/ParamSetmod.jl")
 include("../ALAS/ActifMPCCmod.jl")
 include("../ALAS/DDirection.jl")
 include("../ALAS/LineSearch.jl")
-include("../ALAS/ParamSetmod.jl")
 include("../ALAS/AlgoSetmod.jl")
 include("../ALAS/UnconstrainedMPCCActif.jl")
 include("../ALAS/MPCCmod.jl")
@@ -39,25 +40,26 @@ sig_t=0.01
 ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,Inf*ones(1),prec)
 
 println("ALAS Exemple 1 :")
-println("KDB method:")
+#println("KDB method:")
 #résolution avec ALAS KDB
 #xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,statb, s_xtab = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
 
-#ATTENTION La résolution modifie le point initial du ex1...
-
-if false
+if true
+ subplot(311)
+ suptitle("Quadratic penalty and Newton spectral")
  nb_ite=Int(length(s_xtab)/2)
  x1=zeros(nb_ite);x2=zeros(nb_ite)
  for i=1:nb_ite
   x1[i]=s_xtab[2*(i-1)+1] ; x2[i]=s_xtab[2*(i-1)+2]
  end
- PyPlot.plot(x1, x2, color="red", linewidth=2.0, linestyle="-")
+ #PyPlot.plot(x1, x2, color="red", linewidth=2.0, linestyle="o")
+ PyPlot.plot(x1, x2, color="red",marker="*")
  PyPlot.xlabel("x1")
  PyPlot.ylabel("x2")
- PyPlot.title("min x1-x2 s.t. x2<=1,x1>=-1,x2>=-1,(x1-1)=0 ou (x2-1)=0")
+ PyPlot.title("Ex1 : min x1-x2 s.t. x2<=1,x1>=-1,x2>=-1,(x1-1)=0 ou (x2-1)=0")
 end
 
 # Exemple 2 :
@@ -79,23 +81,25 @@ println("ALAS Exemple 2 :")
 
 #déclare le mpcc :
 ex2= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,ucon,prec)
-println("KDB method:")
+#println("KDB method:")
 #résolution avec ALAS KDB
 #xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,statb, s_xtab = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,t0,sig_t)
 
-if false
+if true
+ subplot(312)
  nb_ite=Int(length(s_xtab)/2)
  x1=zeros(nb_ite);x2=zeros(nb_ite)
  for i=1:nb_ite
   x1[i]=s_xtab[2*(i-1)+1] ; x2[i]=s_xtab[2*(i-1)+2]
  end
- PyPlot.plot(x1, x2, color="red", linewidth=2.0, linestyle="-")
+ #PyPlot.plot(x1, x2, color="red", linewidth=2.0, linestyle="-")
+ PyPlot.plot(x1, x2, color="red",marker="*")
  PyPlot.xlabel("x1")
  PyPlot.ylabel("x2")
- PyPlot.title("min 0.5*((x1-1)^2+(x2-1)^2) s.t. 0<=x_1 _|_ x_2 >=0")
+ PyPlot.title("Ex2 : min 0.5*((x1-1)^2+(x2-1)^2) s.t. 0<=x_1 _|_ x_2 >=0")
 end
 
 # Exemple 3 :
@@ -120,23 +124,25 @@ sig_t=0.01
 println("ALAS Exemple 3 :")
 
 #déclare le mpcc :
-ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
-println("KDB method:")
+#ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
+#println("KDB method:")
 #résolution avec ALAS KDB
-xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
+#xkdb,fkdb,statkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
 ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,statb, s_xtab = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,t0,sig_t)
 
-if false
- nb_ite=Int(length(s_xtab)/2)
- x1=zeros(nb_ite);x2=zeros(nb_ite)
+if true
+ subplot(313)
+ nb_ite=Int(length(s_xtab)/3)
+ x1=zeros(nb_ite);x2=zeros(nb_ite);x3=zeros(nb_ite)
  for i=1:nb_ite
-  x1[i]=s_xtab[2*(i-1)+1] ; x2[i]=s_xtab[2*(i-1)+2]
+  x1[i]=s_xtab[3*(i-1)+1] ; x2[i]=s_xtab[3*(i-1)+2] ; x3[i]=s_xtab[3*(i-1)+3]
  end
- PyPlot.plot(x1, x2, color="red", linewidth=2.0, linestyle="-")
+ #PyPlot.plot(x1, x3, color="red", linewidth=2.0, linestyle="-")
+ PyPlot.plot(x1, x2, color="red",marker="*")
  PyPlot.xlabel("x1")
- PyPlot.ylabel("x2")
- PyPlot.title("min x_1+x_2-x_3 s.t. \n 0<=x_1 _|_ x_2 >=0")
+ PyPlot.ylabel("x3")
+ PyPlot.title("Ex3 : min x1+x2-x3 s.t. 0<=x1 _|_ x2 >=0, x3<=4x1, x3<=4x2")
 end
