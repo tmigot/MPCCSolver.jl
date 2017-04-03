@@ -1,10 +1,10 @@
 module ALASMPCCmod
 
+using OutputALASmod
 using ActifMPCCmod
 using UnconstrainedMPCCActif
 using MPCCmod
 using Relaxation
-using Penalty
 
 using NLPModels
 
@@ -36,7 +36,6 @@ RhoDetail(rho::Vector,alas::ALASMPCC)
 #TO DO List :
 #Major :
 # - centraliser les sorties d'observation dans une structure output
-# - faire apparaitre le choix de la direction de descente dans les paramètres
 # - variables d'écart sur les contraintes d'inégalités
 #Minor :
 # - paramètre pour décider ou non l'affichage de sortie texte dans solvePas
@@ -47,7 +46,7 @@ type ALASMPCC
  r::Float64
  s::Float64
  t::Float64
- tb::Float64 #pour l'instant =-r
+ tb::Float64
 
  #paramètres algorithmiques
  prec::Float64 #precision à 0
@@ -62,7 +61,7 @@ end
 function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64, rho::Vector)
 
  rho_init=rho
- tb=-r
+ tb=mod.paramset.tb(r,s,t)
 
  return ALASMPCC(mod,r,s,t,tb,prec,rho_init)
 end
@@ -85,9 +84,6 @@ function solvePAS(alas::ALASMPCC)
 
 # S0 : initialisation du problème avec slack (projection sur _|_ )
  xj=SlackComplementarityProjection(alas)
-
-#Tableau de sortie :
- s_xtab=collect(xj)
 
  #variables globales en sortie du LineSearch
  step=0.0
@@ -121,28 +117,37 @@ function solvePAS(alas::ALASMPCC)
  dj=zeros(n+2*alas.mod.nb_comp)
 
  l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0
- feasible=MPCCmod.viol_contrainte_norm(alas.mod,xjk)<=alas.prec
+ feas=MPCCmod.viol_contrainte_norm(alas.mod,xjk)
+ feasible=feas<=alas.prec
  multi_norm=max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
- dual_feasible=norm(gradpen[1:n],Inf)/multi_norm<=alas.prec
+ dual_feas=norm(gradpen[1:n],Inf)
+ dual_feasible=dual_feas/multi_norm<=alas.prec
 
- while k<k_max && (l_negative || !feasible || !dual_feasible) && Armijosuccess && !small_step && norm(rho,Inf)<1e150
+ oa=OutputALASmod.OutputALAS(xjk,dj,feas,dual_feas,rho)
 
-#println(" -- k: ",k," rho: ", rho,"| l : ", [lg;lh;lphi]," | gradf<e ", gradpen[1:ma.n], " | obj ",alas.mod.mp.f(xjk[1:n]))
+ while k<k_max && (l_negative || !feasible || !dual_feasible) && Armijosuccess && !small_step
+
   l=0
   xjkl=xjk
+  feask=feas
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
-  while l<l_max && (l==0 || (k!=0 && MPCCmod.viol_contrainte_norm(alas.mod,xjkl)>obj_viol*MPCCmod.viol_contrainte_norm(alas.mod,xjk) && !feasible )) && Armijosuccess && !small_step
+  #while l<l_max && (l==0 || (k!=0 && MPCCmod.viol_contrainte_norm(alas.mod,xjkl)>obj_viol*MPCCmod.viol_contrainte_norm(alas.mod,xjk) && !feasible )) && Armijosuccess && !small_step
+  while l<l_max && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
 
    #On ne met pas à jour rho si tout se passe bien.
-   rho=l!=0?RhoUpdate(rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)),alas) : rho
+   rho=l!=0?RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl))) : rho
 
    #mise à jour de la fonction objectif quand on met rho à jour
    penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
    ActifMPCCmod.setf(ma,x->penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]),xjk)
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
- xjkl,ma.w,dj,step,wnew,outputArmijo=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
+   xjkl,ma.w,dj,step,wnew,outputArmijo,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
+
+   feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl)
+   dual_feas=norm(gradpen[1:n],Inf)
+   OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols)
 
    Armijosuccess=(outputArmijo==0)
    #small_step=step<=eps(Float64)?true:false #on fait un pas trop petit
@@ -166,8 +171,9 @@ function solvePAS(alas::ALASMPCC)
   l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif
   multi_norm=max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
 
-  feasible=MPCCmod.viol_contrainte_norm(alas.mod,xjk)<=alas.prec
-  dual_feasible=norm(gradpen[1:n],Inf)/multi_norm<=alas.prec
+  #feasible=MPCCmod.viol_contrainte_norm(alas.mod,xjk)<=alas.prec
+  feasible=feas<=alas.prec
+  dual_feasible=dual_feas/multi_norm<=alas.prec
 
   if l_negative && (!Armijosuccess || small_step) #si on bloque mais qu'un multiplicateur est <0 on continue
    Armijosuccess=true
@@ -182,7 +188,6 @@ function solvePAS(alas::ALASMPCC)
   end
 
   k+=1
-  append!(s_xtab,collect(xjk))
   k>=k_max && println("Max itération Lagrangien augmenté")
  end
 
@@ -202,17 +207,17 @@ function solvePAS(alas::ALASMPCC)
   println("Failure : Infeasible Solution. norm: ",MPCCmod.viol_contrainte_norm(alas.mod,xjk[1:n],xjk[n+1:n+alas.mod.nb_comp],xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]))
   stat=1
  end
- if norm(gradpen[1:ma.n],Inf)>alas.prec
+ if dual_feas>alas.prec
   if k>=k_max
-   println("Failure : Non-optimal Sol. norm:",norm(gradpen[1:n],Inf))
+   println("Failure : Non-optimal Sol. norm:",dual_feas)
    stat=1
   else
-   println("Inexact : Fritz-John Sol. norm:",norm(gradpen[1:n],Inf))
+   println("Inexact : Fritz-John Sol. norm:",dual_feas)
    stat=0
   end
  end
-println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
- return xj,stat,s_xtab,rho;
+#println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]," prec=",alas.prec)
+ return xj,stat,rho,oa;
 end
 
 """
@@ -251,7 +256,7 @@ function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 
   nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
   n=length(alas.mod.mp.meta.x0)
-  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
+  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=max(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
   uxu=max(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
@@ -267,7 +272,7 @@ function LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 
  n=length(alas.mod.mp.meta.x0)
  nb_comp=alas.mod.nb_comp
- rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
+ rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
  
  psiyg=Relaxation.psi(xj[n+1:n+nb_comp],alas.r,alas.s,alas.t)
  psiyh=Relaxation.psi(xj[n+1+nb_comp:n+2*nb_comp],alas.r,alas.s,alas.t)
@@ -286,7 +291,7 @@ Mise à jour des multiplicateurs de Lagrange
 function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,usg::Vector,ush::Vector)
 
   n=length(alas.mod.mp.meta.x0)
-  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,alas)
+  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=uxl+max(rho_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
   uxu=uxu+max(rho_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
@@ -316,9 +321,10 @@ length(mod.mp.meta.uvar)
 length(mod.mp.meta.lcon)
 length(mod.mp.meta.ucon)
 """
-function RhoUpdate(rho::Vector,err::Vector,alas::ALASMPCC)
+function RhoUpdate(alas::ALASMPCC,rho::Vector,err::Vector)
  #rho[find(x->x>0,err)]*=alas.rho_update
- rho*=alas.mod.paramset.rho_update
+ #rho*=alas.mod.paramset.rho_update
+ rho=min(rho*alas.mod.paramset.rho_update,ones(length(rho))*alas.mod.paramset.rho_max)
  return rho
 # return min(rho*alas.mod.paramset.rho_update,ones(length(rho))/eps(Float64)) #parce qu'à un moment c'est vraiment trop grand
 end
@@ -326,8 +332,17 @@ end
 """
 Renvoie : rho_eq, rho_ineq_var, rho_ineq_cons
 """
-function RhoDetail(rho::Vector,alas::ALASMPCC)
- return Penalty.RhoDetail(rho,alas.mod.mp,alas.mod.nb_comp)
+function RhoDetail(alas::ALASMPCC,rho::Vector)
+ nb_ineq_lvar=length(alas.mod.mp.meta.lvar)
+ nb_ineq_uvar=length(alas.mod.mp.meta.uvar)
+ nb_ineq_lcons=length(alas.mod.mp.meta.lcon)
+ nb_ineq_ucons=length(alas.mod.mp.meta.ucon)
+ nb_comp=alas.mod.nb_comp
+
+ return rho[1:nb_comp],rho[nb_comp+1:2*nb_comp],rho[2*nb_comp+1:2*nb_comp+nb_ineq_lvar],
+        rho[2*nb_comp+nb_ineq_lvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar],
+        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons],
+        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+nb_ineq_ucons]
 end
 
 #end of module

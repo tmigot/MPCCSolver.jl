@@ -45,18 +45,18 @@ function Lagrangian(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_co
  #mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64
  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,mp,nb_comp)
 
- Lagrangian=dot(mod.G(x)-yg,usg)+dot(mod.H(x)-yh,ush)
-# Pen_eq2=rhof*norm((alas.mod.G(x)-yg))^2+rhof*norm((alas.mod.H(x)-yh))^2
+ Lagrangian=dot(G(x)-yg,usg)+dot(H(x)-yh,ush)
+# Pen_eq2=rhof*norm((G(x)-yg))^2+rhof*norm((H(x)-yh))^2
  err_eq_g=(G(x)-yg)
  err_eq_h=(H(x)-yh)
  Pen_eq=dot(rho_eqg.*err_eq_g,err_eq_g)+dot(rho_eqh.*err_eq_h,err_eq_h)
-# Pen_in_lv=norm(sqrt(rho_ineq_lvar).*max(mod.mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0))^2
+# Pen_in_lv=norm(sqrt(rho_ineq_lvar).*max(mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0))^2
  err_in_lv=max(mp.meta.lvar-x+uxl./rho_ineq_lvar,0.0)
  Pen_in_lv=dot(rho_ineq_lvar.*err_in_lv,err_in_lv)
-# Pen_in_uv=norm(sqrt(rho_ineq_uvar).*max(x-mod.mp.meta.uvar+uxu./rho_ineq_uvar,0.0))^2
+# Pen_in_uv=norm(sqrt(rho_ineq_uvar).*max(x-mp.meta.uvar+uxu./rho_ineq_uvar,0.0))^2
  err_in_uv=max(x-mp.meta.uvar+uxu./rho_ineq_uvar,0.0)
  Pen_in_uv=dot(rho_ineq_uvar.*err_in_uv,err_in_uv)
-# Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
+# Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(mp.meta.lcon-mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
  err_in_lc=max(mp.meta.lcon-mp.c(x)+ucl./rho_ineq_lcons,0.0)
  Pen_in_lc=dot(rho_ineq_lcons.*err_in_lc,err_in_lc)
  err_in_uc=max(mp.c(x)-mp.meta.ucon+ucu./rho_ineq_ucons,0.0)

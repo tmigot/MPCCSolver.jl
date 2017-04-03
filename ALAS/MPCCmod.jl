@@ -86,7 +86,12 @@ end
 
 function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
  n=length(mod.mp.meta.x0)
- return viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp])
+ if length(x)==n
+  resul=max(viol_comp(mod,x),viol_cons(mod,x))
+ else
+  resul=viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp])
+ end
+ return resul
 end
 
 """
@@ -98,6 +103,7 @@ end
 
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
  n=length(mod.mp.meta.x0)
+
  return viol_contrainte(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp])
 end
 

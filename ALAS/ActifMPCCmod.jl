@@ -312,10 +312,10 @@ function hess(ma::MPCC_actif,x::Vector)
  xf=evalx(ma,x)
 
  #construction de la hessienne de taille (n+2nb_comp)^2
- #H=NLPModels.hess(ma.nlp,xf) #ERREUR : ne rends pas de matrice symétrique !?
- H=ForwardDiff.hessian(ma.nlp.f,xf)
+ H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
+ #H=ForwardDiff.hessian(ma.nlp.f,xf)
 
- Hred=hess(ma,x,H)
+ Hred=hess(ma,x,H+tril(H,-1)')
 
  return Hred
 end

@@ -40,6 +40,8 @@ module DDirection
 
 using ActifMPCCmod
 using Relaxation
+using MatrixMarket
+using HSL
 
 
 """
@@ -148,9 +150,12 @@ function BFGS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,
 end
 
 function BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    H=ActifMPCCmod.hess(ma,xj,ma.Hess)
-    
-    d = -H\g
+    L,V=eig(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    minimum(L)<=0 && println("Non positive definite")
+    H=factorize(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    #H=chol(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    #H=ActifMPCCmod.hess(ma,xj,ma.Hess)
+    d = H\(-g)
     return d
 end
 
@@ -214,15 +219,17 @@ end
 
 function NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
     H=ActifMPCCmod.hess(ma,xj)
-
-    M = Ma57
+println("test in")
+println(isdefined(HSL, :libhsl_ma97))
+println(isdefined(HSL, :libhsl_ma57))
+    M = HSL.Ma57
     L = SparseMatrixCSC{Float64,Int32}
     D57 = SparseMatrixCSC{Float64,Int32}
     pp = Array(Int32,1)
     s = Array{Float64}
     ρ = Float64
     ncomp = Int64
-    
+println("test out")
     #H57 = convert(SparseMatrixCSC{Cdouble,Int32}, H)  #  Hard coded Cdouble
     try
         M = Ma57(H,print_level=-1)
