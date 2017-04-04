@@ -24,6 +24,7 @@ liste des accesseurs :
 liste des fonctions :
 solvePAS(alas::ALASMPCC)
 
+EndingTest(alas::ALASMPCC,Armijosuccess::Bool,small_step::Bool,feas::Float64,dual_feas::Float64,k::Int64)
 SlackComplementarityProjection(alas::ALASMPCC)
 LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
@@ -119,8 +120,8 @@ function solvePAS(alas::ALASMPCC)
  l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0
  feas=MPCCmod.viol_contrainte_norm(alas.mod,xjk)
  feasible=feas<=alas.prec
- multi_norm=max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
  dual_feas=norm(gradpen[1:n],Inf)
+ multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.prec,norm(rho,Inf),dual_feas)
  dual_feasible=dual_feas/multi_norm<=alas.prec
 
  oa=OutputALASmod.OutputALAS(xjk,dj,feas,dual_feas,rho)
@@ -132,7 +133,6 @@ function solvePAS(alas::ALASMPCC)
   feask=feas
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
-  #while l<l_max && (l==0 || (k!=0 && MPCCmod.viol_contrainte_norm(alas.mod,xjkl)>obj_viol*MPCCmod.viol_contrainte_norm(alas.mod,xjk) && !feasible )) && Armijosuccess && !small_step
   while l<l_max && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
 
    #On ne met pas à jour rho si tout se passe bien.
@@ -143,14 +143,13 @@ function solvePAS(alas::ALASMPCC)
    ActifMPCCmod.setf(ma,x->penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]),xjk)
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
-   xjkl,ma.w,dj,step,wnew,outputArmijo,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
+   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
 
    feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl)
    dual_feas=norm(gradpen[1:n],Inf)
    OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols)
 
    Armijosuccess=(outputArmijo==0)
-   #small_step=step<=eps(Float64)?true:false #on fait un pas trop petit
    l+=1
    l>=l_max && println("Max itération en l (rho update). Iteration: ",k," ||rho||=",norm(rho,Inf))
   end
@@ -169,7 +168,7 @@ function solvePAS(alas::ALASMPCC)
 
   lg,lh,lphi=ActifMPCCmod.LSQComputationMultiplier(ma,gradpen,xjk)
   l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif
-  multi_norm=max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
+  multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.prec,norm(rho,Inf),dual_feas)
 
   #feasible=MPCCmod.viol_contrainte_norm(alas.mod,xjk)<=alas.prec
   feasible=feas<=alas.prec
@@ -194,6 +193,14 @@ function solvePAS(alas::ALASMPCC)
 #Traitement finale :
  xj=xjk
 
+ stat=EndingTest(alas,Armijosuccess,small_step,feas,dual_feas,k)
+
+#println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]," prec=",alas.prec)
+ return xj,stat,rho,oa;
+end
+
+function EndingTest(alas::ALASMPCC,Armijosuccess::Bool,small_step::Bool,feas::Float64,dual_feas::Float64,k::Int64)
+
  stat=0
  if !Armijosuccess
   println("Failure : Armijo Failure")
@@ -201,23 +208,23 @@ function solvePAS(alas::ALASMPCC)
  end
  if small_step
   println("Failure : too small step")
-  stat=1
+  #stat=1
  end
- if MPCCmod.viol_contrainte_norm(alas.mod,xj[1:n],xj[n+1:n+alas.mod.nb_comp],xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])>alas.prec
-  println("Failure : Infeasible Solution. norm: ",MPCCmod.viol_contrainte_norm(alas.mod,xjk[1:n],xjk[n+1:n+alas.mod.nb_comp],xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]))
-  stat=1
+ if feas>alas.prec
+  println("Failure : Infeasible Solution. norm: ",feas)
+  #stat=1
  end
  if dual_feas>alas.prec
-  if k>=k_max
+  if k>=alas.mod.paramset.ite_max_alas
    println("Failure : Non-optimal Sol. norm:",dual_feas)
    stat=1
   else
    println("Inexact : Fritz-John Sol. norm:",dual_feas)
-   stat=0
+   #stat=0
   end
  end
-#println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]," prec=",alas.prec)
- return xj,stat,rho,oa;
+
+ return stat
 end
 
 """
@@ -326,7 +333,6 @@ function RhoUpdate(alas::ALASMPCC,rho::Vector,err::Vector)
  #rho*=alas.mod.paramset.rho_update
  rho=min(rho*alas.mod.paramset.rho_update,ones(length(rho))*alas.mod.paramset.rho_max)
  return rho
-# return min(rho*alas.mod.paramset.rho_update,ones(length(rho))/eps(Float64)) #parce qu'à un moment c'est vraiment trop grand
 end
 
 """

@@ -71,7 +71,8 @@ type MPCC_actif
 
  #paramètres pour le calcul de la direction de descente
  beta::Float64 #paramètre pour gradient conjugué
- Hess::Array{Float64,2} #matrice hessienne approximée
+ Hess::Array{Float64,2} #inverse matrice hessienne approximée
+ #Hd::Vector #produit inverse matrice hessienne et gradient
 
  paramset::ParamSetmod.ParamSet
  direction::Function #fonction qui calcul la direction de descente

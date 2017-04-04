@@ -80,11 +80,12 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  else
   wnew = [] #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
- if nbarmijo >= ma.paramset.ite_max_armijo 
+ if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan(sol)
   output=1
  end
+ small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit
 
- return sol,ma.w,dsol,step,wnew,output,ols #on devrait aussi renvoyer le gradient !?
+ return sol,ma.w,dsol,step,wnew,output,small_step,ols #on devrait aussi renvoyer le gradient !?
 end
 
 #end of module

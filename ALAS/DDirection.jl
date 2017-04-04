@@ -134,54 +134,96 @@ Direction de quasi-Newton:
 y=gradft-gradf
 """
 function BFGS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #pk=step*dt
+ xjl=ActifMPCCmod.evalx(ma,xj)
+ xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+ pk=xjl-xjlm
  #différence des gradients en version étendue :
- qk=ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj))-ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj-step*d))
- pk=step*dt
-
- H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
- #formule alternative:
- #H=ma.Hess-ma.Hess*qk*qk'*ma.Hess/dot(qk,ma.Hess*qk)+pk*pk'/dot(pk,qk)
-
- sym_test=norm(H'-H)/norm(H'+H)
- sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
+ qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
+ 
+ #approximation de l'inverse de la hessienne
+ n=length(xjl)
+ rhok=1/dot(pk,qk)
+ #après la première itération on corrige un peu la première approximation:
+ if ma.Hess==eye(n)
+  H=(eye(n)-rhok*qk*pk')*(dot(qk,pk)/dot(qk,qk)*eye(n))*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
+ else
+  H=(eye(n)-rhok*qk*pk')*ma.Hess*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
+ end
 
  return ActifMPCCmod.sethess(ma,H)
 end
 
-function BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    L,V=eig(ActifMPCCmod.hess(ma,xj,ma.Hess))
-    minimum(L)<=0 && println("Non positive definite")
-    H=factorize(ActifMPCCmod.hess(ma,xj,ma.Hess))
-    #H=chol(ActifMPCCmod.hess(ma,xj,ma.Hess))
-    #H=ActifMPCCmod.hess(ma,xj,ma.Hess)
-    d = H\(-g)
+function BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)  
+    d=-ActifMPCCmod.hess(ma,xj,ma.Hess)*g
     return d
 end
 
 """
-Direction de quasi-Newton: BFGS
+Direction de quasi-Newton:
+y=gradft-gradf
+
+ici on approxime la hessienne - ce qui permet un traitement numérique sur la diagonale
+en cas d'instabilité numérique quand on divise par dot(pk,qk)
+"""
+function invBFGS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+ #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #pk=step*dt
+ xjl=ActifMPCCmod.evalx(ma,xj)
+ xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+ pk=xjl-xjlm
+ #différence des gradients en version étendue :
+ qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
+ n=length(xjl)
+
+ #approximation de la hessienne
+ if ma.Hess==eye(n)
+  ma.Hess=(dot(qk,pk)/dot(qk,qk)*eye(n))
+  H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+ else
+  H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+ end
+
+ return ActifMPCCmod.sethess(ma,H)
+end
+
+function invBFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+    L,V=eig(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    minimum(L)<=0 && println("Non positive definite")
+    H=chol(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    d = H\(-g)
+
+    return d
+end
+
+"""
+Direction de quasi-Newton: DFP
 y=gradft-gradf
 """
 function DFP(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+ #pk=step*dt
+ xjl=ActifMPCCmod.evalx(ma,xj)
+ xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+ pk=xjl-xjlm
  #différence des gradients en version étendue :
- qk=ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj))-ActifMPCCmod.grad(ma,ActifMPCCmod.evalx(ma,xj-step*d))
- pk=step*dt
+ qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
 
- H=(eye(length(pk))-pk*qk'/dot(qk,pk))*ma.Hess*(eye(length(pk))-qk*pk'/dot(qk,pk))+qk*qk'/dot(qk,pk)
+ #approximation de la hessienne
+ #H=(eye(length(pk))-pk*qk'/dot(qk,pk))*ma.Hess*(eye(length(pk))-qk*pk'/dot(qk,pk))+qk*qk'/dot(qk,pk)
+ #sym_test=norm(H'-H)/norm(H'+H)
+ #sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
+ #!isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(H'+H)," ",norm(H'-H))
 
- sym_test=norm(H'-H)/norm(H'+H)
- sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
- !isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(H'+H)," ",norm(H'-H))
+ #approximation de l'inverse de la hessienne
+ H=ma.Hess-ma.Hess*qk*qk'*ma.Hess/dot(qk,ma.Hess*qk)+pk*pk'/dot(pk,qk)
 
  return ActifMPCCmod.sethess(ma,H)
 end
 
 function DFP(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    H=ActifMPCCmod.hess(ma,xj,ma.Hess)
-    
-    d = - H\g
+    d = - ActifMPCCmod.hess(ma,xj,ma.Hess)*g
     return d
 end
 
