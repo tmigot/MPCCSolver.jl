@@ -8,6 +8,7 @@ LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool =
 module UnconstrainedMPCCActif
 
 using ActifMPCCmod
+using OutputLSmod
 
 """
 Input :
@@ -34,9 +35,6 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  #Choix de la direction :
  gradf=ActifMPCCmod.grad(ma,xj)
 
- #Newton
- #d=-inv(H)*gradf
- #H=H/norm(H)+0.01*eye(length(xj))
  #Calcul d'une direction de descente de taille (n + length(bar_w))
  d=ma.direction(ma,gradf,xj,hd,beta)
 
@@ -52,8 +50,10 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  #Recherche linéaire
  old_grad=NaN #à définir quelque part...
  hg=ActifMPCCmod.obj(ma,xj)
- step,good_grad,ht,nbk,nbW=ma.linesearch(ma,xj,d,hg,old_grad,stepmax,scale*slope)
+ step,good_grad,ht,nbarmijo,nbwolfe=ma.linesearch(ma,xj,d,hg,old_grad,stepmax,scale*slope)
  step*=scale
+
+ ols=OutputLSmod.OutputLS(stepmax,step,slope,beta,nbarmijo,nbwolfe)
 
  xjp=xj+step*d
  good_grad || (gradft=ActifMPCCmod.grad(ma,xjp))
@@ -80,11 +80,12 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  else
   wnew = [] #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
- if nbk >= ma.paramset.ite_max_armijo 
+ if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan(sol)
   output=1
  end
+ small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit
 
- return sol,ma.w,dsol,step,wnew,output #on devrait aussi renvoyer le gradient !?
+ return sol,ma.w,dsol,step,wnew,output,small_step,ols #on devrait aussi renvoyer le gradient !?
 end
 
 #end of module
