@@ -114,23 +114,34 @@ alphaf2=AlphaThetaMaxOneLeaf(y,dy,x,dx,r,s,t)
  #le premier fixe yg et le deuxième yh
  return [alphaf1,alphaf2]
 end
-
+"""
+Résoud l'équation en a:
+(x+a*dx-s)*(y+a*dy-s+r)-t*(y+a*dy-s)=0 -> alphaf1p
+et si besoin résoud l'équation en a:
+r^2[x+a*dx-s-t*((y+a*dy-s)/r-(y+a*dy-s)^2/r^2)]=0 -> alphaf1n
+"""
 function AlphaThetaMaxOneLeaf(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
 
  if t!=0
 
+ #a=dx.*dy erreur de calcul
+ #b=dy.*(x-s+t)+dx.*(y-s+r)
+ #c=x.*y-x*s+x*r-y*s+s^2-s*r+t*y-t*s
  a=dx.*dy
- b=dy.*(x-s+t)+dx.*(y-s+r)
- c=x.*y-x*s+x*r-y*s+s^2-s*r+t*y-t*s
+ b=dy.*(x-s-t)+dx.*(y-s+r)
+ c=x.*y-x*s+x*r-y*s+s^2-s*r-t*y+t*s
  alphaf1p=PolyDegre2Positif(a,b,c)
 
   if alphaf1p>=0 && (x+alphaf1p*dx>=s && y+alphaf1p*dy>=s)
    alphaf1=alphaf1p
   elseif alphaf1p>=0 && (x+alphaf1p*dx<=s && y+alphaf1p*dy<=s)
    #contrainte candidate mais trop bas
-   a=-dy^2
-   b=r^2*dx+r*t*dy-2*y*dy+2*s*dy
-   c=r^2*x-r^2*s+r*t*y-r*t*s-y^2-s^2+2*s*y
+   #a=-dy^2 erreur de calcul
+   #b=r^2*dx+r*t*dy-2*y*dy+2*s*dy
+   #c=r^2*x-r^2*s+r*t*y-r*t*s-y^2-s^2+2*s*y
+   a=dy^2
+   b=r^2*dx-r*t*dy+t*2*y*dy-t*2*s*dy
+   c=r^2*x-r^2*s-r*t*y+r*t*s+t*y^2+t*s^2-t*2*s*y
    alphaf1n=PolyDegre2Positif(a,b,c)
 
    #alphaf1=alphaf1n devrait être actif si on tient compte de la contrainte "intérieur"
