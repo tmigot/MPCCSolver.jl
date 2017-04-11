@@ -47,12 +47,12 @@ end
 
 r=1.0;s=1.0;t=1.0
 #on tape la contrainte :
-x=1.0;y=2.0;dx=-1.0;dy=0.0;
-if !(minimum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))>=0.0) || !(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))<Inf)
+x=1.0;y=2.0;dx=1.0;dy=0.0;
+if !(minimum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))>=0.0) || !(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))==Inf)
  println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
  Relaxation_success=false
 end
-x=0.0;y=2.0;dx=1.0;dy=-2.0;
+x=2.0;y=1.0;dx=-1.0;dy=2.0;
 if !(minimum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))>=0.0) || !(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))<Inf)
  println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
  Relaxation_success=false
