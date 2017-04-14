@@ -1,6 +1,7 @@
 module MPCCmod
 
 using NLPModels #devrait disparaitre
+using CUTEst
 
 import Relaxation
 import ParamSetmod
@@ -44,6 +45,7 @@ type MPCC
  mp::NLPModels.AbstractNLPModel
  G::Function #the left-side of the complementarity constraint
  H::Function #the right-side of the complementarity constraint
+ xj::Vector #itéré courant
  nb_comp::Int64
  #paramètres pour la résolution :
  prec::Float64 #precision à 0 - doit disparaitre dans paramset
@@ -56,22 +58,36 @@ end
 function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector,prec::Float64)
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,nb_comp,prec,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,x0,nb_comp,prec,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
+function MPCC(mp::NLPModels.AbstractNLPModel)
+ G(x)=()
+ H(x)=()
+ nb_comp=0
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+end
+
+"""
+Accesseur : modifie le point initial
+"""
+
 function addInitialPoint(mod::MPCC,x0::Vector)
- mod.mp=ADNLPModel(mod.mp.f, x0, lvar=mod.mp.meta.lvar, uvar=mod.mp.meta.uvar, y0=mod.mp.meta.y0, c=mod.mp.c, lcon=mod.mp.meta.lcon, ucon=mod.mp.meta.ucon)
+ mod.xj=x0
+ #mod.mp=ADNLPModel(mod.mp.f, x0, lvar=mod.mp.meta.lvar, uvar=mod.mp.meta.uvar, y0=mod.mp.meta.y0, c=mod.mp.c, lcon=mod.mp.meta.lcon, ucon=mod.mp.meta.ucon)
  return mod
 end
 
@@ -98,7 +114,8 @@ end
 Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ; lvar<=x ; x<=uvar ; lvar<=c(x) ; c(x)<=uvar
 """
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
- return [mod.G(x)-yg;mod.H(x)-yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-mod.mp.c(x),0);max(mod.mp.c(x)-mod.mp.meta.ucon,0)]
+ c(z)=NLPModels.cons(mod.mp,z)
+ return [mod.G(x)-yg;mod.H(x)-yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-c(x),0);max(c(x)-mod.mp.meta.ucon,0)]
 end
 
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
@@ -111,14 +128,15 @@ end
 Donne la norme Inf de la violation de la complémentarité min(G,H)
 """
 function viol_comp(mod::MPCCmod.MPCC,x::Vector)
- return norm(mod.G(x).*mod.H(x),Inf)
+ return mod.nb_comp>0?norm(mod.G(x).*mod.H(x),Inf):0
 end
 
 """
 Donne la norme Inf de la violation des contraintes \"classiques\"
 """
 function viol_cons(mod::MPCCmod.MPCC,x::Vector)
- return max(maximum(mod.mp.meta.lcon-mod.mp.c(x)),maximum(mod.mp.c(x)-mod.mp.meta.ucon))
+ c(z)=NLPModels.cons(mod.mp,z)
+ return max(maximum(mod.mp.meta.lcon-c(x)),maximum(c(x)-mod.mp.meta.ucon))
 end
 
 """

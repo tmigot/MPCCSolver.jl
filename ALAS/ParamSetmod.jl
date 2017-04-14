@@ -55,7 +55,7 @@ function ParamSet(nbc::Int64)
  tau_wolfe=0.9
  wolfe_update=2.0
 
- verbose=1.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
+ verbose=3.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
 
  return ParamSet(tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,tau_wolfe,wolfe_update,verbose)
 end

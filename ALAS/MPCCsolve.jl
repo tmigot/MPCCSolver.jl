@@ -35,7 +35,7 @@ function solve(mod::MPCCmod.MPCC,r0::Float64=0.1,sigma_r::Float64=0.01,s0::Float
  realisable=real<=mod.prec
  solved=true
  param=true
- or=OutputRelaxationmod.OutputRelaxation(xk,real,mod.mp.f(xk))
+ or=OutputRelaxationmod.OutputRelaxation(xk,real, NLPModels.obj(mod.mp,xk))
 
 #Major Loop
 j=0
@@ -49,7 +49,7 @@ j=0
  end
 
  real=MPCCmod.viol_contrainte_norm(mod,xk[1:n])
- or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.prec),real,output,mod.mp.f(xk))
+ or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.prec),real,output,NLPModels.obj(mod.mp,xk))
 
  #Je n'aime pas cette fonction, car on utilise ADNLP
  mod=MPCCmod.addInitialPoint(mod,xk[1:n]) #met à jour le MPCC avec le nouveau point
@@ -73,14 +73,14 @@ solved && realisable && println("Success")
 
  mod=MPCCmod.addInitialPoint(mod,x0[1:n]) #remet le point initial du MPCC
  # output
- return xk, mod.mp.f(xk), or
+ return xk, NLPModels.obj(mod.mp,xk), or
 end
 
 """
 Méthode de relaxation avec penalisation des paramètres
 """
 function solve(mod::MPCCmod.MPCC)
- solve(mod,0.1,0.01,0.1,0.01,0.1,0.01,"ALAS")
+ solve(mod,0.1,0.01,0.1,0.01,0.1,0.01,name_relax="ALAS")
 end
 
 """

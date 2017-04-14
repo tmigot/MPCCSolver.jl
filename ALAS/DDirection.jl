@@ -40,7 +40,6 @@ module DDirection
 
 using ActifMPCCmod
 using Relaxation
-using MatrixMarket
 using HSL
 
 

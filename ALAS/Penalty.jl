@@ -16,6 +16,9 @@ using NLPModels
 Fonction de pénalité quadratique
 """
 function Quadratic(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+ f(z)=NLPModels.obj(mp,z)
+ c(z)=NLPModels.cons(mp,z)
+
  #mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64
  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,mp,nb_comp)
 
@@ -30,18 +33,21 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_com
  err_in_uv=max(x-mp.meta.uvar+uxu./rho_ineq_uvar,0.0)
  Pen_in_uv=dot(rho_ineq_uvar.*err_in_uv,err_in_uv)
 # Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(mod.mp.meta.lcon-alas.mod.mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
- err_in_lc=max(mp.meta.lcon-mp.c(x)+ucl./rho_ineq_lcons,0.0)
+ err_in_lc=max(mp.meta.lcon-c(x)+ucl./rho_ineq_lcons,0.0)
  Pen_in_lc=dot(rho_ineq_lcons.*err_in_lc,err_in_lc)
- err_in_uc=max(mp.c(x)-mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
+ err_in_uc=max(c(x)-mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
  Pen_in_uc=dot(rho_ineq_ucons.*err_in_uc,err_in_uc)
 
- return mp.f(x)+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
+ return f(x)+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
 end
 
 """
 Fonction de pénalité lagrangienne
 """
 function Lagrangian(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+ f(z)=NLPModels.obj(mp,z)
+ c(z)=NLPModels.cons(mp,z)
+
  #mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64
  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(rho,mp,nb_comp)
 
@@ -57,12 +63,12 @@ function Lagrangian(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_co
  err_in_uv=max(x-mp.meta.uvar+uxu./rho_ineq_uvar,0.0)
  Pen_in_uv=dot(rho_ineq_uvar.*err_in_uv,err_in_uv)
 # Pen_in_lc=norm(sqrt(rho_ineq_lcons).*max(mp.meta.lcon-mp.c(x)+ucl./rho_ineq_lcons,0.0))^2
- err_in_lc=max(mp.meta.lcon-mp.c(x)+ucl./rho_ineq_lcons,0.0)
+ err_in_lc=max(mp.meta.lcon-c(x)+ucl./rho_ineq_lcons,0.0)
  Pen_in_lc=dot(rho_ineq_lcons.*err_in_lc,err_in_lc)
- err_in_uc=max(mp.c(x)-mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
+ err_in_uc=max(c(x)-mp.meta.ucon+ucu./rho_ineq_ucons,0.0)
  Pen_in_uc=dot(rho_ineq_ucons.*err_in_uc,err_in_uc)
 
- return mp.f(x)+Lagrangian+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
+ return f(x)+Lagrangian+0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
 end
 
 """

@@ -218,11 +218,11 @@ Evalue la fonction objectif d'un MPCC actif : x
 function obj(ma::MPCC_actif,x::Vector)
  sol=0.0
  if length(x)==ma.n+2*ma.nb_comp
-  #sol=NLPModels.obj(ma.nlp,x)
-  sol=ma.nlp.f(x)
+  sol=NLPModels.obj(ma.nlp,x)
+  #sol=ma.nlp.f(x)
  else
-  #sol=NLPModels.obj(ma.nlp,evalx(ma,x))
-  sol=ma.nlp.f(evalx(ma,x))
+  sol=NLPModels.obj(ma.nlp,evalx(ma,x))
+  #sol=ma.nlp.f(evalx(ma,x))
  end
  return sol
 end
@@ -266,7 +266,7 @@ function grad(ma::MPCC_actif,x::Vector)
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
  #gradf=NLPModels.grad(ma.nlp,xf)
- gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+ gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
 
  return length(x)==ma.n+2*ma.nb_comp?gradf:grad(ma,x,gradf)
 end
@@ -277,7 +277,8 @@ function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
  #gradf=NLPModels.grad(ma.nlp,xf)
- gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+ #gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+ gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
 
  gradg=Array{Float64}
  # Conditionnelles pour gérer le cas où w1 et w3 est vide
@@ -332,7 +333,8 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
  nnb=ma.n+ma.nb_comp
  #construction du vecteur gradient de taille n+2nb_comp
  #gradf=NLPModels.grad(ma.nlp,xf)
- gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+ #gradf=ForwardDiff.gradient(ma.nlp.f,xf)
+ gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
 
 #la hessienne des variables du sous-espace (nredxnred)
  Hred=vcat(hcat(H[1:ma.n,1:ma.n],H[1:ma.n,ma.n+ma.w13c],H[1:ma.n,nnb+ma.w24c]),

@@ -235,7 +235,7 @@ pré-requis : x0 doit être de taille n+2q
 function SlackComplementarityProjection(alas::ALASMPCC)
 
  #initialisation :
- x=[alas.mod.mp.meta.x0;alas.mod.G(alas.mod.mp.meta.x0);alas.mod.H(alas.mod.mp.meta.x0)]
+ x=[alas.mod.xj;alas.mod.G(alas.mod.xj);alas.mod.H(alas.mod.xj)]
  nb_comp=alas.mod.nb_comp
  n=length(x)-2*nb_comp
 
@@ -260,6 +260,7 @@ end
 Initialisation des multiplicateurs de Lagrange
 """
 function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
+  c(z)=NLPModels.cons(alas.mod.mp,z)
 
   nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
   n=length(alas.mod.mp.meta.x0)
@@ -267,8 +268,8 @@ function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 
   uxl=max(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
   uxu=max(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
-  ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-alas.mod.mp.c(xj[1:n])),zeros(nc))
-  ucu=max(rho_ineq_ucons.*(alas.mod.mp.c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
+  ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
+  ucu=max(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
   usg=zeros(alas.mod.nb_comp)
   ush=zeros(alas.mod.nb_comp)
 
@@ -296,14 +297,15 @@ end
 Mise à jour des multiplicateurs de Lagrange
 """
 function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,usg::Vector,ush::Vector)
+  c(z)=NLPModels.cons(alas.mod.mp,z)
 
   n=length(alas.mod.mp.meta.x0)
   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=uxl+max(rho_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
   uxu=uxu+max(rho_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
-  ucl=ucl+max(rho_ineq_lcons.*(alas.mod.mp.c(xjk[1:n])-alas.mod.mp.meta.ucon),-ucl)
-  ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-alas.mod.mp.c(xjk[1:n])),-ucu)
+  ucl=ucl+max(rho_ineq_lcons.*(c(xjk[1:n])-alas.mod.mp.meta.ucon),-ucl)
+  ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-c(xjk[1:n])),-ucu)
   usg=usg+rho_eqg.*(alas.mod.G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
   ush=ush+rho_eqh.*(alas.mod.H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
 
