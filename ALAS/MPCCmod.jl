@@ -1,7 +1,6 @@
 module MPCCmod
 
-using NLPModels #devrait disparaitre
-using CUTEst
+using NLPModels
 
 import Relaxation
 import ParamSetmod
@@ -35,50 +34,65 @@ MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractStr
 
 # TO DO List
 #Major :
-# - donner G et H à travers un NLPModel (voir Biniveau par la même occasion)
 # - MPCCtoRelaxNLP : bug à corriger
-#Minor :
-# - Comment on modifie le point initial d'un NLPModels ?
-# - ne pas utiliser NLPModels
+# - appel de la hessienne d'un SimpleNLPModel ? NLPModels.hess(mod.H,x)
 
 type MPCC
  mp::NLPModels.AbstractNLPModel
- G::Function #the left-side of the complementarity constraint
- H::Function #the right-side of the complementarity constraint
+ G::NLPModels.AbstractNLPModel
+ H::NLPModels.AbstractNLPModel
  xj::Vector #itéré courant
  nb_comp::Int64
- #paramètres pour la résolution :
- prec::Float64 #precision à 0 - doit disparaitre dans paramset
 
  algoset::AlgoSetmod.AlgoSet
  paramset::ParamSetmod.ParamSet
 end
 
 #Constructeurs supplémentaires :
-function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
+function MPCC(f::Function,x0::Vector,Gfunc::Function,Hfunc::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
+
+#Manque la jacobienne !!
+ G=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Gfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
+ H=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Hfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
+
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+
+ return MPCC(mp,G,H,x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
-function MPCC(f::Function,x0::Vector,G::Function,H::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector,prec::Float64)
- mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
+function MPCC(f::Function,x0::Vector,G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,lcon::Vector,ucon::Vector)
+
+ mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, c=c, lcon=lcon, ucon=ucon)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,x0,nb_comp,prec,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+
+ return MPCC(mp,G,H,x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
-function MPCC(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64)
+function MPCC(mp::NLPModels.AbstractNLPModel,Gfunc::Function,Hfunc::Function,nb_comp::Int64)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+
+#Manque la jacobienne !!
+ G=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Gfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
+ H=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Hfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
+
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+end
+
+function MPCC(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp)
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+ 
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel)
- G(x)=()
- H(x)=()
+ G=SimpleNLPModel(x->0, mp.meta.x0, lvar=mp.meta.lvar, uvar=mp.meta.uvar, c=x->0, lcon=zeros(0), ucon=Inf*ones(0), J=x->())
+ H=SimpleNLPModel(x->0, mp.meta.x0, lvar=mp.meta.lvar, uvar=mp.meta.uvar, c=x->0, lcon=zeros(0), ucon=Inf*ones(0), J=x->())
+
  nb_comp=0
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
 
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,1e-3,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 """
@@ -87,7 +101,6 @@ Accesseur : modifie le point initial
 
 function addInitialPoint(mod::MPCC,x0::Vector)
  mod.xj=x0
- #mod.mp=ADNLPModel(mod.mp.f, x0, lvar=mod.mp.meta.lvar, uvar=mod.mp.meta.uvar, y0=mod.mp.meta.y0, c=mod.mp.c, lcon=mod.mp.meta.lcon, ucon=mod.mp.meta.ucon)
  return mod
 end
 
@@ -97,10 +110,16 @@ Donne la norme 2 de la violation des contraintes avec slack
 note : devrait appeler viol_contrainte
 """
 function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
- return norm(mod.G(x)-yg)^2+norm(mod.H(x)-yh)^2+norm(max(mod.mp.meta.lvar-x,0))^2+norm(max(x-mod.mp.meta.uvar,0))^2+norm(max(mod.mp.meta.lcon-mod.mp.c(x),0))^2+norm(max(mod.mp.c(x)-mod.mp.meta.ucon,0))^2
+
+ G(x)=mod.nb_comp!=0?NLPModels.cons(mod.G,x):0
+ H(x)=mod.nb_comp!=0?NLPModels.cons(mod.H,x):0
+ c(x)=mod.mp.meta.ncon!=0?NLPModels.cons(mod.mp,x):0
+
+ return norm(G(x)-yg)^2+norm(H(x)-yh)^2+norm(max(mod.mp.meta.lvar-x,0))^2+norm(max(x-mod.mp.meta.uvar,0))^2+norm(max(mod.mp.meta.lcon-mod.mp.c(x),0))^2+norm(max(mod.mp.c(x)-mod.mp.meta.ucon,0))^2
 end
 
 function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
+
  n=length(mod.mp.meta.x0)
  if length(x)==n
   resul=max(viol_comp(mod,x),viol_cons(mod,x))
@@ -115,7 +134,9 @@ Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ;
 """
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
  c(z)=NLPModels.cons(mod.mp,z)
- return [mod.G(x)-yg;mod.H(x)-yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-c(x),0);max(c(x)-mod.mp.meta.ucon,0)]
+ G(x)=NLPModels.cons(mod.G,x)
+ H(x)=NLPModels.cons(mod.H,x)
+ return [G(x)-yg;H(x)-yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-c(x),0);max(c(x)-mod.mp.meta.ucon,0)]
 end
 
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
@@ -128,15 +149,22 @@ end
 Donne la norme Inf de la violation de la complémentarité min(G,H)
 """
 function viol_comp(mod::MPCCmod.MPCC,x::Vector)
- return mod.nb_comp>0?norm(mod.G(x).*mod.H(x),Inf):0
+
+ return mod.nb_comp>0?norm(NLPModels.cons(mod.G,x).*NLPModels.cons(mod.H,x),Inf):0
 end
 
 """
 Donne la norme Inf de la violation des contraintes \"classiques\"
 """
 function viol_cons(mod::MPCCmod.MPCC,x::Vector)
- c(z)=NLPModels.cons(mod.mp,z)
- return max(maximum(mod.mp.meta.lcon-c(x)),maximum(c(x)-mod.mp.meta.ucon))
+ feas=0.0
+ 
+ if mod.mp.meta.ncon !=0
+  c=NLPModels.cons(mod.mp,x)
+  feas=max(maximum(mod.mp.meta.lcon-c),maximum(c-mod.mp.meta.ucon))
+ end
+
+ return feas
 end
 
 """
@@ -145,27 +173,29 @@ mod : MPCC
 return : le MPCC en version NL pour un t donné
 """
 function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
+ G(x)=NLPModels.cons(mod.G,x)
+ H(x)=NLPModels.cons(mod.H,x)
 
  #concatène les contraintes de complémentarité + positivité :
  nl_constraint(x)=emptyfunc
  if relax=="SS"
-  nl_constraint(x)=[mod.mp.c(x);mod.G(x).*mod.H(x)-t;mod.G(x);mod.H(x)]
+  nl_constraint(x)=[mod.mp.c(x);G(x).*H(x)-t;G(x);H(x)]
  elseif relax=="KDB" #(G(x)-s)(H(x)-s)<=0, G(x)>=-r, H(x)>=-r
-  nl_constraint(x)=[mod.mp.c(x);(mod.G(x)-s).*(mod.H(x)-s);mod.G(x)+r;mod.H(x)+r]
+  nl_constraint(x)=[mod.mp.c(x);(G(x)-s).*(H(x)-s);G(x)+r;H(x)+r]
  elseif relax=="KS" #si G(x)-s+H(x)-s>=0 ? (G(x)-s)(H(x)-s)<=0 : -1/2*((G(x)-s)^2+(H(x)-s)^2), G(x)>=0, H(x)>=0
-  KS(x)= mod.G(x)-s+mod.H(x)-s>=0 ? (mod.G(x)-s).*(mod.H(x)-s) : -0.5*((mod.G(x)-s).^2+(mod.H(x)-s).^2)
-  nl_constraint(x)=[mod.mp.c(x);KS(x);mod.G(x);mod.H(x)]
+  KS(x)= G(x)-s+H(x)-s>=0 ? (G(x)-s).*(H(x)-s) : -0.5*((G(x)-s).^2+(H(x)-s).^2)
+  nl_constraint(x)=[mod.mp.c(x);KS(x);G(x);H(x)]
  elseif relax=="Butterfly"
 # On devrait appeler Relaxation et pas Thetamod
 #  FG(x)=mod.G(x)-s-t*Thetamod.theta(mod.H(x)-s,r) Bug à corriger
 #  FH(x)=mod.H(x)-s-t*Thetamod.theta(mod.G(x)-s,r) Bug à corriger
-  FG(x)=mod.G(x)-s-t*(mod.H(x)-s)
-  FH(x)=mod.H(x)-s-t*(mod.G(x)-s)
+  FG(x)=G(x)-s-t*(H(x)-s)
+  FH(x)=H(x)-s-t*(G(x)-s)
   B(x)= FG(x)+FH(x)>=0 ? FG(x).*FH(x) : -0.5*(FG(x).^2+FH(x).^2)
-  nl_constraint(x)=[mod.mp.c(x);B(x);mod.G(x)+r;mod.H(x)+r]
+  nl_constraint(x)=[mod.mp.c(x);B(x);G(x)+r;H(x)+r]
  else
   println("No matching relaxation name. Default : No relaxation. Try : SS, KDB, KS or Butterfly")
-  nl_constraint(x)=[mod.mp.c(x);mod.G(x).*mod.H(x);mod.G(x);mod.H(x)]
+  nl_constraint(x)=[mod.mp.c(x);G(x).*H(x);G(x);H(x)]
  end
 
  lcon=[mod.mp.meta.lcon;-Inf*ones(mod.nb_comp);zeros(mod.nb_comp*2)]

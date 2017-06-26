@@ -2,8 +2,7 @@ module ActifMPCCmod
 
 import Relaxation
 import ParamSetmod
-import NLPModels #virer le NLPModels...
-using ForwardDiff #à terme on devrait pouvoir calculer à la main à partir des dérivées de f
+import NLPModels
 
 """
 Type MPCC_actif : problème MPCC pénalisé avec slack et ensemble des contraintes actives
@@ -147,12 +146,6 @@ function updatew(ma::MPCC_actif)
  return ma
 end
 
-# Fonction qui met à jouer le MPCC_Actif au changement de fonction objectif
-function setf(ma::MPCC_actif, f::Function, xj::Any)
-  pen_mpcc = NLPModels.ADNLPModel(x->f(x), xj, lvar=ma.nlp.meta.lvar, uvar=ma.nlp.meta.uvar)
-  ma.nlp=pen_mpcc
-end
-
 #Mise à jour de w
 function setw(ma::MPCC_actif, w::Any)
  ma.wnew=max(w-ma.w,zeros(2*ma.nb_comp,2))
@@ -219,10 +212,8 @@ function obj(ma::MPCC_actif,x::Vector)
  sol=0.0
  if length(x)==ma.n+2*ma.nb_comp
   sol=NLPModels.obj(ma.nlp,x)
-  #sol=ma.nlp.f(x)
  else
   sol=NLPModels.obj(ma.nlp,evalx(ma,x))
-  #sol=ma.nlp.f(evalx(ma,x))
  end
  return sol
 end
@@ -265,8 +256,7 @@ function grad(ma::MPCC_actif,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
- #gradf=NLPModels.grad(ma.nlp,xf)
- gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
+ gradf=NLPModels.grad(ma.nlp,xf)
 
  return length(x)==ma.n+2*ma.nb_comp?gradf:grad(ma,x,gradf)
 end
@@ -277,8 +267,6 @@ function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
  #gradf=NLPModels.grad(ma.nlp,xf)
- #gradf=ForwardDiff.gradient(ma.nlp.f,xf)
- gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
 
  gradg=Array{Float64}
  # Conditionnelles pour gérer le cas où w1 et w3 est vide
@@ -313,11 +301,14 @@ function hess(ma::MPCC_actif,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
 
- #construction de la hessienne de taille (n+2nb_comp)^2
- H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
- #H=ForwardDiff.hessian(ma.nlp.f,xf)
+#construction de la hessienne de taille (n+2nb_comp)^2
+ #H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
+ #H=H+tril(H,-1)'
 
- Hred=hess(ma,x,H+tril(H,-1)')
+ H=ma.nlp.H(xf)
+ H=H+tril(H,-1)'
+
+ Hred=hess(ma,x,H)
 
  return Hred
 end
@@ -332,9 +323,7 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
  nred=length(x)
  nnb=ma.n+ma.nb_comp
  #construction du vecteur gradient de taille n+2nb_comp
- #gradf=NLPModels.grad(ma.nlp,xf)
- #gradf=ForwardDiff.gradient(ma.nlp.f,xf)
- gradf=ForwardDiff.gradient(z->NLPModels.obj(ma.nlp,z),xf)
+ gradf=NLPModels.grad(ma.nlp,xf)
 
 #la hessienne des variables du sous-espace (nredxnred)
  Hred=vcat(hcat(H[1:ma.n,1:ma.n],H[1:ma.n,ma.n+ma.w13c],H[1:ma.n,nnb+ma.w24c]),
@@ -616,8 +605,13 @@ alpha : le pas maximum
 w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
 """
 function PasMax(ma::MPCC_actif,x::Vector,d::Vector)
- #on récupère les infos sur la contrainte de complémentarité
- alpha,w_save,w_new=PasMaxComp(ma,x,d)
+
+ if ma.nb_comp>0
+  #on récupère les infos sur la contrainte de complémentarité
+  alpha,w_save,w_new=PasMaxComp(ma,x,d)
+ else
+  alpha=Inf;w_save=[];w_new=ma.w;
+ end
  #alpha,w_save,w_new=PasMaxBound(ma,x,d)
  
  if alpha<0.0

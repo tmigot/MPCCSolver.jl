@@ -87,7 +87,7 @@ function solvePAS(alas::ALASMPCC)
  xj=SlackComplementarityProjection(alas)
 
  #variables globales en sortie du LineSearch
- step=0.0
+ step=1.0
  Armijosuccess=true
  wnew=[]
 
@@ -99,14 +99,10 @@ function solvePAS(alas::ALASMPCC)
 
 # S1 : Initialisation du MPCC_Actif 
  #objectif du problème avec pénalité lagrangienne sans contrainte :
- penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
- penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
- #nlp pénalisé
- pen_mpcc = NLPModels.ADNLPModel(x->penf(x), xj,
-                                lvar=[alas.mod.mp.meta.lvar;alas.tb*ones(2*alas.mod.nb_comp)], 
-                                 uvar=[alas.mod.mp.meta.uvar;Inf*ones(2*alas.mod.nb_comp)])
+ pen_mpcc=CreatePenaltyNLP(alas,xj,rho,usg,ush,uxl,uxu,ucl,ucu)
+
  #initialise notre problème pénalisé avec des contraintes actives w
- ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,length(alas.mod.G(alas.mod.mp.meta.x0)),alas.mod.paramset,alas.mod.algoset.direction,alas.mod.algoset.linesearch)
+ ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,alas.mod.nb_comp,alas.mod.paramset,alas.mod.algoset.direction,alas.mod.algoset.linesearch)
 
  # S2 : Major Loop Activation de contrainte
  #initialisation
@@ -114,14 +110,17 @@ function solvePAS(alas::ALASMPCC)
  xjk=xj
  small_step=false
  gradpen=NLPModels.grad(pen_mpcc,xj)
+
  #direction initial
  dj=zeros(n+2*alas.mod.nb_comp)
 
  l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0
+
  feas=MPCCmod.viol_contrainte_norm(alas.mod,xjk)
+
  feasible=feas<=alas.prec
  dual_feas=norm(gradpen[1:n],Inf)
- multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.prec,norm(rho,Inf),dual_feas)
+ multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.paramset.precmpcc,norm(rho,Inf),dual_feas)
  dual_feasible=dual_feas/multi_norm<=alas.prec
 
  oa=OutputALASmod.OutputALAS(xjk,dj,feas,dual_feas,rho)
@@ -139,11 +138,10 @@ function solvePAS(alas::ALASMPCC)
    rho=l!=0?RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl))) : rho
 
    #mise à jour de la fonction objectif quand on met rho à jour
-   penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
-   ActifMPCCmod.setf(ma,x->penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]),xjk)
-
+   ma.nlp=UpdatePenaltyNLP(alas,xjkl,rho,usg,ush,uxl,uxu,ucl,ucu,pen_mpcc)
+true || println("S3 (k,l)=",k,",",l," : n_obj=",alas.mod.mp.counters.neval_obj," n_grad=",alas.mod.mp.counters.neval_grad," n_cons=",alas.mod.mp.counters.neval_cons)
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
-   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj) #specifique CG 
+   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen)
 
    feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl)
    dual_feas=norm(gradpen[1:n],Inf)
@@ -151,7 +149,7 @@ function solvePAS(alas::ALASMPCC)
 
    Armijosuccess=(outputArmijo==0)
    l+=1
-   l>=l_max && println("Max itération en l (rho update). Iteration: ",k," ||rho||=",norm(rho,Inf))
+   l>=l_max && print_with_color(:red, "Max itération en l (rho update). Iteration: $k ||rho||=$(norm(rho,Inf))\n")
   end
   xjk=xjkl
 
@@ -159,18 +157,18 @@ function solvePAS(alas::ALASMPCC)
   uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,rho,xjk,uxl,uxu,ucl,ucu,usg,ush)
 
   #met à jouer la fonction objectif après la mise à jour des multiplicateurs
-  penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
-  penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
-  ActifMPCCmod.setf(ma,x->penf(x),xjk)
+  ma.nlp=UpdatePenaltyNLP(alas,xjk,rho,usg,ush,uxl,uxu,ucl,ucu,pen_mpcc)
 
   #Mise à jour des multiplicateurs de la complémentarité
+  gradpen_prec=gradpen
   gradpen=NLPModels.grad(pen_mpcc,xjk)
 
-  lg,lh,lphi=ActifMPCCmod.LSQComputationMultiplier(ma,gradpen,xjk)
-  l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif
-  multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.prec,norm(rho,Inf),dual_feas)
+  if alas.mod.nb_comp>0
+   lg,lh,lphi=ActifMPCCmod.LSQComputationMultiplier(ma,gradpen,xjk)
+   l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif
+  end
+  multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.paramset.precmpcc,norm(rho,Inf),dual_feas)
 
-  #feasible=MPCCmod.viol_contrainte_norm(alas.mod,xjk)<=alas.prec
   feasible=feas<=alas.prec
   dual_feasible=dual_feas/multi_norm<=alas.prec
 
@@ -181,13 +179,12 @@ function solvePAS(alas::ALASMPCC)
 
   #Relaxation rule si on a fait un pas de Armijo-Wolfe et si un multiplicateur est du mauvais signe
   #quoi faire si on est bloqué ? i.e pas=0.0, on tente de relaxer
-#  if k!=0 && dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) && findfirst(x->x<0,[lg;lh;lphi])!=0
-  if k!=0 && (dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(NLPModels.grad(pen_mpcc,xjk-step*dj),dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
+  if k!=0 && (dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(gradpen_prec,dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
    ActifMPCCmod.RelaxationRule(ma,xjk,lg,lh,lphi,wnew)
   end
 
   k+=1
-  k>=k_max && println("Max itération Lagrangien augmenté")
+  k>=k_max && print_with_color(:red, "Max itération Lagrangien augmenté\n")
  end
 
 #Traitement finale :
@@ -195,7 +192,6 @@ function solvePAS(alas::ALASMPCC)
 
  stat=EndingTest(alas,Armijosuccess,small_step,feas,dual_feas,k)
 
-#println("#iter=",k," rho=",norm(rho,Inf),", x=",xj[1:n]," sg=",xj[n+1:n+alas.mod.nb_comp]," sh=",xj[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp]," prec=",alas.prec)
  return xj,stat,rho,oa;
 end
 
@@ -203,23 +199,23 @@ function EndingTest(alas::ALASMPCC,Armijosuccess::Bool,small_step::Bool,feas::Fl
 
  stat=0
  if !Armijosuccess
-  println("Failure : Armijo Failure")
+  print_with_color(:red, "Failure : Armijo Failure\n")
   stat=1
  end
  if small_step
-  println("Failure : too small step")
+  print_with_color(:red, "Failure : too small step\n")
   #stat=1
  end
  if feas>alas.prec
-  println("Failure : Infeasible Solution. norm: ",feas)
+  print_with_color(:red, "Failure : Infeasible Solution. norm: $feas\n")
   #stat=1
  end
  if dual_feas>alas.prec
   if k>=alas.mod.paramset.ite_max_alas
-   println("Failure : Non-optimal Sol. norm:",dual_feas)
+   print_with_color(:red, "Failure : Non-optimal Sol. norm: $dual_feas\n")
    stat=1
   else
-   println("Inexact : Fritz-John Sol. norm:",dual_feas)
+   print_with_color(:red, "Inexact : Fritz-John Sol. norm: $dual_feas\n")
    #stat=0
   end
  end
@@ -234,9 +230,15 @@ pré-requis : x0 doit être de taille n+2q
 """
 function SlackComplementarityProjection(alas::ALASMPCC)
 
- #initialisation :
- x=[alas.mod.xj;alas.mod.G(alas.mod.xj);alas.mod.H(alas.mod.xj)]
  nb_comp=alas.mod.nb_comp
+
+ if nb_comp==0
+  return alas.mod.xj
+ end
+
+ #initialisation :
+ #x=[alas.mod.xj;alas.mod.G(alas.mod.xj);alas.mod.H(alas.mod.xj)]
+ x=[alas.mod.xj;NLPModels.cons(alas.mod.G,alas.mod.xj);NLPModels.cons(alas.mod.H,alas.mod.xj)]
  n=length(x)-2*nb_comp
 
  #projection sur les contraintes de positivité relaxés : yG>=tb et yH>=tb
@@ -268,8 +270,12 @@ function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 
   uxl=max(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
   uxu=max(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
-  ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
-  ucu=max(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
+  if alas.mod.mp.meta.ncon!=0
+   ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
+   ucu=max(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
+  else
+   ucl=[];ucu=[];
+  end
   usg=zeros(alas.mod.nb_comp)
   ush=zeros(alas.mod.nb_comp)
 
@@ -298,16 +304,27 @@ Mise à jour des multiplicateurs de Lagrange
 """
 function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,usg::Vector,ush::Vector)
   c(z)=NLPModels.cons(alas.mod.mp,z)
+  G(x)=NLPModels.cons(alas.mod.G,x)
+  H(x)=NLPModels.cons(alas.mod.H,x)
 
   n=length(alas.mod.mp.meta.x0)
   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=uxl+max(rho_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
   uxu=uxu+max(rho_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
-  ucl=ucl+max(rho_ineq_lcons.*(c(xjk[1:n])-alas.mod.mp.meta.ucon),-ucl)
-  ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-c(xjk[1:n])),-ucu)
-  usg=usg+rho_eqg.*(alas.mod.G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
-  ush=ush+rho_eqh.*(alas.mod.H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+  if alas.mod.mp.meta.ncon!=0
+   ucl=ucl+max(rho_ineq_lcons.*(c(xjk[1:n])-alas.mod.mp.meta.ucon),-ucl)
+   ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-c(xjk[1:n])),-ucu)
+  else
+   ucl=[];ucu=[];
+  end
+
+  if alas.mod.nb_comp!=0
+   usg=usg+rho_eqg.*(G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
+   ush=ush+rho_eqh.*(H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+  else
+   usg=[];ush=[];
+  end
 
  return uxl,uxu,ucl,ucu,usg,ush
 end
@@ -318,7 +335,56 @@ Fonction de pénalité générique :
 """
 function Penaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
 
- return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ G(x)=NLPModels.cons(alas.mod.G,x) #unnecessary call if nb_comp==0
+ H(x)=NLPModels.cons(alas.mod.H,x) #unnecessary call if nb_comp==0
+
+ return alas.mod.algoset.penalty(alas.mod.mp,G,H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+end
+
+function GradPenaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+
+ return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu,"grad")
+end
+
+function HessPenaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+
+ return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu,"hess")
+end
+
+function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,xj::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+ n=length(alas.mod.mp.meta.x0)
+
+ penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ gpenf(x,yg,yh)=GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ gpenf(x)=gpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ Hpenf(x,yg,yh)=HessPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ Hpenf(x)=Hpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ pen_mpcc = NLPModels.SimpleNLPModel(x->penf(x), xj,
+                                lvar=[alas.mod.mp.meta.lvar;alas.tb*ones(2*alas.mod.nb_comp)], 
+                                uvar=[alas.mod.mp.meta.uvar;Inf*ones(2*alas.mod.nb_comp)],
+				g=x->gpenf(x),H=x->Hpenf(x))
+ return pen_mpcc
+end
+
+function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,xj::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,pen_mpcc::NLPModels.AbstractNLPModel)
+ n=length(alas.mod.mp.meta.x0)
+
+ penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+ gpenf(x,yg,yh)=GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ gpenf(x)=gpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+ Hpenf(x,yg,yh)=HessPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ Hpenf(x)=Hpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ pen_mpcc.f=x->penf(x)
+ pen_mpcc.g=x->gpenf(x)
+ pen_mpcc.H=x->Hpenf(x)
+
+ return pen_mpcc
 end
 
 """

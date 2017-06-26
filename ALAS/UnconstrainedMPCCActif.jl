@@ -17,7 +17,7 @@ xj : vecteur initial
 hd : direction précédente en version étendue
 """
 
-function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool = false)
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any,step::Float64,gradpen::Vector;scaling :: Bool = false)
 
  output=0
  hd=ActifMPCCmod.redd(ma,hd)
@@ -33,7 +33,9 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  end
 
  #Choix de la direction :
- gradf=ActifMPCCmod.grad(ma,xj)
+
+ gradf=ActifMPCCmod.grad(ma,xj,gradpen)
+ gradft=Array{Float64,1}
 
  #Calcul d'une direction de descente de taille (n + length(bar_w))
  d=ma.direction(ma,gradf,xj,hd,beta)
@@ -50,7 +52,8 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling 
  #Recherche linéaire
  old_grad=NaN #à définir quelque part...
  hg=ActifMPCCmod.obj(ma,xj)
- step,good_grad,ht,nbarmijo,nbwolfe=ma.linesearch(ma,xj,d,hg,old_grad,stepmax,scale*slope)
+
+ step,good_grad,ht,nbarmijo,nbwolfe=ma.linesearch(ma,xj,d,hg,gradft,stepmax,scale*slope,step)
  step*=scale
 
  ols=OutputLSmod.OutputLS(stepmax,step,slope,beta,nbarmijo,nbwolfe)

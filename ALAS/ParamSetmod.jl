@@ -5,6 +5,8 @@ Liste les paramètres utilisés dans la résolution du MPCC
 """
 
 type ParamSet
+ #paramètres pour la résolution du MPCC
+ precmpcc::Float64
 
  #paramètres algorithmiques pour la relaxation
  # le t_bar
@@ -37,27 +39,29 @@ end
 #Constructeur par défaut
 #nbc est le nombre de contraintes du problème
 function ParamSet(nbc::Int64)
- tb=(r,s,t)->-r
- prec_oracle=(r,s,t,prec)->max(r,s,t,eps(Float64))
- rho_restart=false
- paramin=eps(Float64)
+ precmpcc=1e-6
 
- ite_max_alas=10000
+ tb=(r,s,t)->-r
+ prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
+ rho_restart=false
+ paramin=sqrt(eps(Float64))
+
+ ite_max_alas=1000
  ite_max_viol=20
- rho_init=ones(nbc)
+ rho_init=1*ones(nbc)
  rho_update=2.0 #2.0 bien pour Newton, trop grand sinon.
  rho_max=1/sqrt(eps(Float64)) #le grand max est 1/eps(Float64)
  goal_viol=0.5
 
- ite_max_armijo=8000
- tau_armijo=0.4
- armijo_update=0.9
+ ite_max_armijo=2000
+ tau_armijo=0.4 #0.4
+ armijo_update=0.5 #0.9
  tau_wolfe=0.9
  wolfe_update=2.0
 
- verbose=3.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
+ verbose=1.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
 
- return ParamSet(tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,tau_wolfe,wolfe_update,verbose)
+ return ParamSet(precmpcc,tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,tau_wolfe,wolfe_update,verbose)
 end
 
 #end of module

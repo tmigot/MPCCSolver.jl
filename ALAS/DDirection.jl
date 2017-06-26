@@ -18,6 +18,9 @@ CGHZ(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
 CGHZ(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 BFGS(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+BFGS(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
+
+DFP(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
 DFP(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
 
 CGHZ(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
@@ -51,7 +54,7 @@ function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::An
 end
 
 function SteepestDescent(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- return 0.0
+ return ma
 end
 
 """

@@ -24,9 +24,9 @@ end
 #Constructeur par défaut
 function AlgoSet()
 
-  scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
+  scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->max(sqrt(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi])),1)
 
- return AlgoSet(Penalty.Quadratic,DDirection.NwtdirectionSpectral,LineSearch.ArmijoWolfe,scaling_dual)
+ return AlgoSet(Penalty.Quadratic,DDirection.CGHZ,LineSearch.ArmijoWolfe,scaling_dual)
 end
 
 #end of module
