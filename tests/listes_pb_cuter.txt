@@ -1,0 +1,1276 @@
+Liste de problèmes CUTEr
+"3PK","10FOLDTR","A0ENDNDL","A0ENINDL","A0ENSNDL","A0ESDNDL","A0ESINDL"
+3A0ESSNDL","AONNDNDL"
+
+3PK 	ascii file, gzipped file 	SBR2-MN-30-0
+10FOLDTR 	ascii file, gzipped file 	NOR2-AN-V-0
+A0ENDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0ENINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0ENSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0ESDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0ESINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0ESSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A0NNDNDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NNDNIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NNDNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NNSNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NSDSDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NSDSDS 	ascii file, gzipped file 	QLR2-AN-6012-2004
+A0NSDSIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NSDSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A0NSSSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2ENDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2ENINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2ENSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2ESDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2ESINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2ESSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A2NNDNDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NNDNIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NNDNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NNSNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NSDSDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NSDSIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NSDSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A2NSSSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5ENDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5ENINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5ENSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5ESDNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5ESINDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5ESSNDL 	ascii file, gzipped file 	QLR2-AN-45006-15002
+A5NNDNDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NNDNIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NNDNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NNSNSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NSDSDL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NSDSDM 	ascii file, gzipped file 	QLR2-AN-6012-2004
+A5NSDSIL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NSDSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+A5NSSNSM 	ascii file, gzipped file 	QLR2-AN-6012-2004
+A5NSSSSL 	ascii file, gzipped file 	QLR2-AN-60012-20004
+ACOPP14 	ascii file, gzipped file 	QOR2-AY-38-68
+ACOPP30 	ascii file, gzipped file 	QOR2-AY-72-142
+ACOPP57 	ascii file, gzipped file 	QOR2-AY-128-274
+ACOPP118 	ascii file, gzipped file 	QOR2-AY-344-608
+ACOPP300 	ascii file, gzipped file 	QOR2-AY-738-1422
+ACOPR14 	ascii file, gzipped file 	QOR2-AN-38-82
+ACOPR30 	ascii file, gzipped file 	QOR2-AN-72-172
+ACOPR57 	ascii file, gzipped file 	QOR2-AN-128-331
+ACOPR118 	ascii file, gzipped file 	QOR2-AN-344-726
+ACOPR300 	ascii file, gzipped file 	QOR2-AN-738-1722
+AGG 	ascii file, gzipped file 	LLR2-AN-163-488
+AIRCRFTA 	ascii file, gzipped file 	NOR2-RN-8-5
+AIRCRFTB 	ascii file, gzipped file 	SXR2-RN-8-0
+AIRPORT 	ascii file, gzipped file 	SQR2-MN-84-42
+AKIVA 	ascii file, gzipped file 	OUR2-AN-2-0
+ALJAZZAF 	ascii file, gzipped file 	QQR2-AN-V-1
+ALLINIT 	ascii file, gzipped file 	OBR2-AY-4-0
+ALLINITA 	ascii file, gzipped file 	OOR2-AY-4-4
+ALLINITC 	ascii file, gzipped file 	OOR2-AY-4-1
+ALLINITU 	ascii file, gzipped file 	OUR2-AY-4-0
+ALLINQP 	ascii file, gzipped file 	QLR2-AN-V-V
+ALSOTAME 	ascii file, gzipped file 	OOR2-AN-2-1
+ANTWERP 	ascii file, gzipped file 	SBR2-RN-27-8
+ARGLALE 	ascii file, gzipped file 	NLR2-AN-V-V
+ARGAUSS 	ascii file, gzipped file 	NOR2-AN-3-15
+ARGLBLE 	ascii file, gzipped file 	SUR2-AN-V-V
+ARGLCLE 	ascii file, gzipped file 	SUR2-AN-V-V
+ARGLINA 	ascii file, gzipped file 	SUR2-AN-V-0
+ARGLINB 	ascii file, gzipped file 	SUR2-AN-V-0
+ARGLINC 	ascii file, gzipped file 	SUR2-AN-V-0
+ARGTRIG 	ascii file, gzipped file 	NOR2-AN-V-V
+ARGTRIGLS 	ascii file, gzipped file 	SUR2-AN-V-0
+ARTIF 	ascii file, gzipped file 	NOR2-AN-V-V
+ARWHEAD 	ascii file, gzipped file 	OUR2-AN-V-0
+ARWHDNE 	ascii file, gzipped file 	NOR2-AN-V-V
+AUG2D 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG2DC 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG2DCQP 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG2DQP 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG3D 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG3DC 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG3DCQP 	ascii file, gzipped file 	QLR2-AN-V-V
+AUG3DQP 	ascii file, gzipped file 	QLR2-AN-V-V
+AVGASA 	ascii file, gzipped file 	QLR2-AN-8-10
+AVGASB 	ascii file, gzipped file 	QLR2-AN-8-10
+AVION2 	ascii file, gzipped file 	OLR2-RN-49-15
+A4X12 	ascii file, gzipped file 	LQR2-AN-130-385
+BA-L1 	ascii file, gzipped file 	NOR2-MN- 57- 12
+BA-L1LS 	ascii file, gzipped file 	SUR2-MN- 57- 0
+BA-L1SP 	ascii file, gzipped file 	NOR2-MN- 57- 12
+BA-L1SPLS 	ascii file, gzipped file 	NOR2-MN- 57- 0
+BA-L21 	ascii file, gzipped file 	NOR2-MN-34134-36455
+BA-L21LS 	ascii file, gzipped file 	SUR2-MN-34134- 0
+BA-L16 	ascii file, gzipped file 	NOR2-MN-66462-83718
+BA-L16LS 	ascii file, gzipped file 	SUR2-MN-66462- 0
+BA-L49 	ascii file, gzipped file 	NOR2-MN-23769-31843
+BA-L49LS 	ascii file, gzipped file 	SUR2-MN-23769- 0
+BA-L52 	ascii file, gzipped file 	Problem BA-L52 has impossible number of variables! NOR2-MN- 0- 0
+BA-L52LS 	ascii file, gzipped file 	Problem BA-L52LS has impossible number of variables! SUR2-MN- 0- 0
+BA-L73 	ascii file, gzipped file 	NOR2-MN-33753-46122
+BA-L73LS 	ascii file, gzipped file 	SUR2-MN-33753- 0
+BARD 	ascii file, gzipped file 	SUR2-AN-3-0
+BARDNE 	ascii file, gzipped file 	NOR2-AN-3-15
+BATCH 	ascii file, gzipped file 	OOR2-AN-46-73
+BDEXP 	ascii file, gzipped file 	OBR2-AY-V-0
+BDRY2 	ascii file, gzipped file 	QLR2-AN-V-V
+BDQRTIC 	ascii file, gzipped file 	SUR2-AN-V-0
+BDVALUE 	ascii file, gzipped file 	NOR2-MN-V-V
+BDVALUES 	ascii file, gzipped file 	NOR2-MN-V-V
+BEALE 	ascii file, gzipped file 	SUR2-AN-2-0
+BENNETT5LS 	ascii file, gzipped file 	SUR2-MN-3-0
+BENNETT5 	ascii file, gzipped file 	NOR2-MN-3-154
+BIGBANK 	ascii file, gzipped file 	ONI2-RN-2230-1112
+BIGGS3 	ascii file, gzipped file 	SXR2-AN-6-0
+BIGGS5 	ascii file, gzipped file 	SXR2-AN-6-0
+BIGGS6 	ascii file, gzipped file 	SUR2-AN-6-0
+BIGGS6NE 	ascii file, gzipped file 	NOR2-AN-6-13
+BIGGSB1 	ascii file, gzipped file 	QBR2-AN-V-V
+BIGGSC4 	ascii file, gzipped file 	QLR2-AN-4-7
+BLEACHNG 	ascii file, gzipped file 	SBR1-RN-17-0
+BLOCKQP1 	ascii file, gzipped file 	QLR2-AN-V-V
+BLOCKQP2 	ascii file, gzipped file 	QLR2-AN-V-V
+BLOCKQP3 	ascii file, gzipped file 	QLR2-AN-V-V
+BLOCKQP4 	ascii file, gzipped file 	QLR2-AN-V-V
+BLOCKQP5 	ascii file, gzipped file 	QLR2-AN-V-V
+BLOWEYA 	ascii file, gzipped file 	QLR2-MN-V-V
+BLOWEYB 	ascii file, gzipped file 	QLR2-MN-V-V
+BLOWEYC 	ascii file, gzipped file 	QLR2-MN-V-V
+BOOTH 	ascii file, gzipped file 	NLR2-AN-2-2
+BOX 	ascii file, gzipped file 	OUR2-AN-V-0
+BOX2 	ascii file, gzipped file 	SXR2-AN-3-0
+BOX3 	ascii file, gzipped file 	SUR2-AN-3-0
+BOX3NE 	ascii file, gzipped file 	NOR2-AN-3-10
+BOXBODLS 	ascii file, gzipped file 	SUR2-MN-2-0
+BOXBOD 	ascii file, gzipped file 	NOR2-MN-2-6
+BOXPOWER 	ascii file, gzipped file 	OUR2-AN-V-0
+BQP1VAR 	ascii file, gzipped file 	QBR2-AN-1-0
+BQPGABIM 	ascii file, gzipped file 	QBR2-AN-50-0
+BQPGASIM 	ascii file, gzipped file 	QBR2-AN-50-0
+BQPGAUSS 	ascii file, gzipped file 	QBR2-AN-2003-0
+BRAINPC0 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC1 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC2 	ascii file, gzipped file 	SOR2-MY-13807-13800
+BRAINPC3 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC4 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC5 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC6 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC7 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC8 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRAINPC9 	ascii file, gzipped file 	SOR2-MY-6907-6900
+BRATU1D 	ascii file, gzipped file 	OXR2-MN-V-0
+BRATU2D 	ascii file, gzipped file 	NOR2-MN-V-V
+BRATU2DT 	ascii file, gzipped file 	NOR2-MN-V-V
+BRATU3D 	ascii file, gzipped file 	NOR2-MN-V-V
+BRIDGEND 	ascii file, gzipped file 	LOI2-RN-2734-2727
+BRITGAS 	ascii file, gzipped file 	OOI2-RN-450-360
+BRKMCC 	ascii file, gzipped file 	OUR2-AN-2-0
+BROWNAL 	ascii file, gzipped file 	SUR2-AN-V-0
+BROWNALE 	ascii file, gzipped file 	NOR2-AN-V-0
+BROWNBS 	ascii file, gzipped file 	SUR2-AN-2-0
+BROWNDEN 	ascii file, gzipped file 	SUR2-AN-4-0
+BROWDENE 	ascii file, gzipped file 	NOR2-AN-4-20
+BROYDN3D 	ascii file, gzipped file 	NQR2-AN-V-V
+BROYDN3DLS 	ascii file, gzipped file 	SUR2-AN-V-0
+BROYDN7D 	ascii file, gzipped file 	OUR2-AN-V-0
+BROYDNBD 	ascii file, gzipped file 	NOR2-AN-V-V
+BROYDNBDLS 	ascii file, gzipped file 	SUR2-AN-V-0
+BRYBND 	ascii file, gzipped file 	SUR2-AN-V-0
+BTS4 	ascii file, gzipped file 	QLR2-RN-36570-36310
+BT1 	ascii file, gzipped file 	QQR2-AN-2-1
+BT2 	ascii file, gzipped file 	QQR2-AY-3-1
+BT3 	ascii file, gzipped file 	SLR2-AY-5-3
+BT4 	ascii file, gzipped file 	QQR2-AN-3-2
+BT5 	ascii file, gzipped file 	QQR2-AN-3-2
+BT6 	ascii file, gzipped file 	OOR2-AY-5-2
+BT7 	ascii file, gzipped file 	OQR2-AN-5-3
+BT8 	ascii file, gzipped file 	QQR2-AN-5-2
+BT9 	ascii file, gzipped file 	LOR2-AN-4-2
+BT10 	ascii file, gzipped file 	LOR2-AN-2-2
+BT11 	ascii file, gzipped file 	OOR2-AY-5-3
+BT12 	ascii file, gzipped file 	QQR2-AN-5-3
+BT13 	ascii file, gzipped file 	LQR2-AY-5-1
+BURKEHAN 	ascii file, gzipped file 	QOR2-AN-1-1
+BYRDSPHR 	ascii file, gzipped file 	LQR2-AN-3-2
+CAMEL6 	ascii file, gzipped file 	OBR2-AN-2-0
+CAMSHAPE 	ascii file, gzipped file 	LOR2-AN-V-V
+CANTILVR 	ascii file, gzipped file 	LOR2-MN-5-1
+CAR2 	ascii file, gzipped file 	LOR1-RN-V-V
+CATENA 	ascii file, gzipped file 	LQR2-AY-V-V
+CATENARY 	ascii file, gzipped file 	LQR2-AY-V-V
+CATMIX 	ascii file, gzipped file 	OOR2-AN-V-V
+CBS 	ascii file, gzipped file 	QLR2-RN-11163-244
+CB2 	ascii file, gzipped file 	LOR2-AN-3-3
+CB3 	ascii file, gzipped file 	LOR2-AN-3-3
+CBRATU2D 	ascii file, gzipped file 	NOR2-MN-V-V
+CBRATU3D 	ascii file, gzipped file 	NOR2-MN-V-V
+CHACONN1 	ascii file, gzipped file 	LOR2-AY-3-3
+CHACONN2 	ascii file, gzipped file 	LOR2-AY-3-3
+CHAIN 	ascii file, gzipped file 	OOR2-AN-V-V
+CHAINWOO 	ascii file, gzipped file 	SUR2-AN-V-0
+CHANDHEQ 	ascii file, gzipped file 	OQR2-AY-V-V
+CHANDHEU 	ascii file, gzipped file 	NOR2-RN-V-V
+CHANNEL 	ascii file, gzipped file 	NOR2-AN-V-V
+CHARDIS0 	ascii file, gzipped file 	NOR2-RN-V-V
+CHARDIS1 	ascii file, gzipped file 	OBR2-AY-V-V
+CHEBYQAD 	ascii file, gzipped file 	SBR2-AN-V-0
+CHEMRCTA 	ascii file, gzipped file 	NOR2-MN-V-V
+CHEMRCTB 	ascii file, gzipped file 	NOR2-MN-V-V
+CHENHARK 	ascii file, gzipped file 	QBR2-AN-V-V
+CHNROSNB 	ascii file, gzipped file 	SUR2-AN-V-0
+CHNRSBNE 	ascii file, gzipped file 	NOR2-AN-V-V
+CHNRSNBM 	ascii file, gzipped file 	SUR2-AN-V-0
+CHWIRUT1LS 	ascii file, gzipped file 	SUR2-MN-3-0
+CHWIRUT1 	ascii file, gzipped file 	NOR2-MN-3-214
+CHWIRUT2LS 	ascii file, gzipped file 	SUR2-MN-3-0
+CHWIRUT2 	ascii file, gzipped file 	NOR2-MN-3-54
+CKOEHELB 	ascii file, gzipped file 	SUR2-RN-2-0
+CLIFF 	ascii file, gzipped file 	OUR2-AN-2-0
+CLNLBEAM 	ascii file, gzipped file 	OOR2-MN-V-V
+CLPLATEA 	ascii file, gzipped file 	OXR2-MN-V-0
+CLPLATEB 	ascii file, gzipped file 	OXR2-MN-V-0
+CLPLATEC 	ascii file, gzipped file 	OXR2-MN-V-0
+CLUSTER 	ascii file, gzipped file 	NOR2-AN-2-2
+CONCON 	ascii file, gzipped file 	LOI2-MN-15-11
+CONGIGMZ 	ascii file, gzipped file 	LQR2-AN-3-5
+CONT5-QP 	ascii file, gzipped file 	QLR2-AN-V-V
+CONT6-QQ 	ascii file, gzipped file 	QQR2-AN-V-V
+COOLHANS 	ascii file, gzipped file 	NQR2-RN-9-9
+CORE1 	ascii file, gzipped file 	LQI2-RN-65-59
+CORE2 	ascii file, gzipped file 	LQI2-RN-157-134
+CORKSCRW 	ascii file, gzipped file 	SOR2-AN-V-V
+COSHFUN 	ascii file, gzipped file 	LOR2-AN-V-V
+COSINE 	ascii file, gzipped file 	OUR2-AN-V-0
+CRAGGLVY 	ascii file, gzipped file 	OUR2-AY-V-0
+C-RELOAD 	ascii file, gzipped file 	LOR2-MN-342-284
+CRESC100 	ascii file, gzipped file 	OOR2-MY-6-200
+CRESC132 	ascii file, gzipped file 	OOR2-MY-6-2654
+CRESC4 	ascii file, gzipped file 	OOR2-MY-6-8
+CRESC50 	ascii file, gzipped file 	OOR2-MY-6-100
+CSFI1 	ascii file, gzipped file 	LOR2-RN-5-4
+CSFI2 	ascii file, gzipped file 	LOR2-RN-5-4
+CUBE 	ascii file, gzipped file 	SUR2-AN-2-0
+CUBENE 	ascii file, gzipped file 	NOR2-AN-2-2
+CURLY10 	ascii file, gzipped file 	SUR2-AN-V-0
+CURLY20 	ascii file, gzipped file 	SUR2-AN-V-0
+CURLY30 	ascii file, gzipped file 	SUR2-AN-V-0
+CVXBQP1 	ascii file, gzipped file 	QBR2-AN-V-0
+CVXQP1 	ascii file, gzipped file 	QLR2-AN-V-V
+CVXQP2 	ascii file, gzipped file 	QLR2-AN-V-V
+CVXQP3 	ascii file, gzipped file 	QLR2-AN-V-V
+CYCLIC3 	ascii file, gzipped file 	NOR2-AN-V-0
+DALE 	ascii file, gzipped file 	QLR2-RN-16514-405
+DALLASL 	ascii file, gzipped file 	ONR2-MN-906-667
+DALLASM 	ascii file, gzipped file 	ONR2-MN-196-151
+DALLASS 	ascii file, gzipped file 	ONR2-MN-46-31
+DANWOODLS 	ascii file, gzipped file 	SUR2-MN-2-0
+DANWOOD 	ascii file, gzipped file 	NOR2-MN-2-6
+DECONVB 	ascii file, gzipped file 	SBR2-MN-61-0
+DECONVC 	ascii file, gzipped file 	SQR2-MN-61-1
+DECONVU 	ascii file, gzipped file 	SUR2-MN-61-0
+DECONVNE 	ascii file, gzipped file 	NOR2-MN-61-0
+DEGENLPA 	ascii file, gzipped file 	LLR2-AN-20-15
+DEGENLPB 	ascii file, gzipped file 	LLR2-AN-20-15
+DEGDIAG 	ascii file, gzipped file 	QBR2-AN-V-0
+DEGENQP 	ascii file, gzipped file 	QLR2-AN-V-V
+DEGENQPC 	ascii file, gzipped file 	QLR2-AN-V-V
+DEGTRID 	ascii file, gzipped file 	QBR2-AN-V-0
+DEGTRID2 	ascii file, gzipped file 	QBR2-AN-V-0
+DEGTRIDL 	ascii file, gzipped file 	QLR2-AN-V-1
+DEMBO7 	ascii file, gzipped file 	QOR2-MN-16-20
+DEMYMALO 	ascii file, gzipped file 	LQR2-AN-3-3
+DENSCHNA 	ascii file, gzipped file 	OUR2-AN-2-0
+DENSCHNB 	ascii file, gzipped file 	SUR2-AN-2-0
+DENSCHNC 	ascii file, gzipped file 	SUR2-AN-2-0
+DENSCHND 	ascii file, gzipped file 	SUR2-AN-3-0
+DENSCHNE 	ascii file, gzipped file 	SUR2-AN-3-0
+DENSCHNF 	ascii file, gzipped file 	SUR2-AY-2-0
+DIPIGRI 	ascii file, gzipped file 	OOR2-AN-7-4
+DISC2 	ascii file, gzipped file 	LQR2-MY-29-23
+DISCS 	ascii file, gzipped file 	LQR2-MY-36-66
+DITTERT 	ascii file, gzipped file 	OQR2-AN-V-V
+DIXCHLNG 	ascii file, gzipped file 	SOR2-AN-10-5
+DIXCHLNV 	ascii file, gzipped file 	SOR2-AN-V-V
+DIXMAANA 	ascii file, gzipped file 	OUR2-AN-V-0
+DIXMAANB"
+DIXMAANC"
+DIXMAAND"
+DIXMAANE"
+DIXMAANF"
+DIXMAANG"
+DIXMAANH"
+DIXMAANI"
+DIXMAANJ"
+DIXMAANK"
+DIXMAANL"
+DIXMAANM"
+DIXMAANN"
+DIXMAANO"
+DIXMAANP"
+DIXON3DQ"
+DJTL"
+DMN15102LS 	ascii file, gzipped file 	Problem DMN15102 has impossible problem interest specification! Problem DMN15102 has internal variable specification! NOR2-SU-2-66
+DMN15102"
+DMN15103LS"
+DMN15103"
+DMN15332LS"
+DMN15332"
+DMN15333LS"
+DMN15333"
+DMN37142LS"
+DMN37142"
+DMN37143LS"
+DMN37143"
+DNIEPER"
+DQDRTIC"
+DQRTIC"
+DRCAV1LQ"
+DRCAV2LQ"
+DRCAV3LQ"
+DRCAVTY1"
+DRCAVTY2"
+DRCAVTY3"
+DRUGDIS"
+DRUGDISE"
+DTOC1L"
+DTOC1NA"
+DTOC1NB"
+DTOC1NC"
+DTOC1ND"
+DTOC2"
+DTOC3"
+DTOC4"
+DTOC5"
+DTOC6"
+DUAL1"
+DUAL2"
+DUAL3"
+DUAL4"
+DUALC1"
+DUALC2"
+DUALC5"
+DUALC8"
+ECKERLE4LS"
+ECKERLE4"
+EDENSCH"
+EG1"
+EG2"
+EG3"
+EIGENA"
+EIGENA2"
+EIGENACO"
+EIGENALS"
+EIGENAU"
+EIGENB"
+EIGENB2"
+EIGENBCO"
+EIGENBLS"
+EIGENC"
+EIGENC2"
+EIGENCCO"
+EIGENCLS"
+EIGMAXA"
+EIGMAXB"
+EIGMAXC"
+EIGMINA"
+EIGMINB"
+EIGMINC"
+ELATTAR"
+ELEC"
+ENGVAL1"
+ENGVAL2"
+ENSOLS"
+ENSO"
+EQC"
+ERRINBAR"
+ERRINROS"
+ERRINRSM"
+EXPFIT"
+EXPFITA"
+EXPFITB"
+EXPFITC"
+EXPLIN"
+EXPLIN2"
+EXPQUAD"
+EXTRASIM"
+EXTROSNB"
+FCCU"
+FEEDLOC"
+FERRISDC"
+FIVE20B"
+FIVE20C"
+FLETBV3M"
+FLETCBV2"
+FLETCBV3"
+FLETCHBV"
+FLETCHCR"
+FLETCHER"
+FLOSP2HH"
+FLOSP2HL"
+FLOSP2HM"
+FLOSP2TH"
+FLOSP2TL"
+FLOSP2TM"
+FLT"
+FMINSRF2"
+FMINSURF"
+FREUROTH"
+FREURONE"
+GASOIL"
+GAUSSELM"
+GAUSS1LS"
+GAUSS1"
+GAUSS2LS"
+GAUSS2"
+GAUSS3LS"
+GAUSS3"
+GAUSSIAN"
+GENHS28"
+GENHUMPS"
+GENROSE"
+GIGOMEZ1"
+GIGOMEZ2"
+GIGOMEZ3"
+GILBERT"
+GLIDER"
+GMNCASE1"
+GMNCASE2"
+GMNCASE3"
+GMNCASE4"
+GOFFIN"
+GOTTFR"
+GOULDQP1"
+GOULDQP2"
+GOULDQP3"
+GPP"
+GRIDGENA"
+GRIDNETA"
+GRIDNETB"
+GRIDNETC"
+GRIDNETD"
+GRIDNETE"
+GRIDNETF"
+GRIDNETG"
+GRIDNETH"
+GRIDNETI"
+GROUPING"
+GROWTH"
+GROWTHLS"
+GULF"
+GULFNE"
+HADAMALS"
+HADAMARD"
+HAGER1"
+HAGER2"
+HAGER3"
+HAGER4"
+HAIFAL"
+HAIFAM"
+HAIFAS"
+HAHN1LS"
+HAHN1"
+HAIRY"
+HALDMADS"
+HANGING"
+HARKERP2"
+HART6"
+HATFLDA"
+HATFLDB"
+HATFLDC"
+HATFLDD"
+HATFLDE"
+HATFLDF"
+HATFLDFL"
+HATFLDG"
+HATFLDH"
+HEART6"
+HEART6LS"
+HEART8"
+HEART8LS"
+HELIX"
+HELIXNE"
+HELSBY"
+HET-Z"
+HIELOW"
+HIE1327D"
+HIE1372D"
+HIER133A"
+HIER133B"
+HIER133C"
+HIER133D"
+HIER133E"
+HIER13"
+HIER163A"
+HIER163B"
+HIER163C"
+HIER163D"
+HIER163E"
+HIER16"
+HILBERTA"
+HILBERTB"
+HIMMELBA"
+HIMMELBB"
+HIMMELBC"
+HIMMELBD"
+HIMMELBE"
+HIMMELBF"
+HIMMELBG"
+HIMMELBH"
+HIMMELBI"
+HIMMELBJ"
+HIMMELBK"
+HIMMELP1"
+HIMMELP2"
+HIMMELP3"
+HIMMELP4"
+HIMMELP5"
+HIMMELP6"
+HOLMES"
+HONG"
+HS1"
+HS10"
+HS100"
+HS100LNP"
+HS100MOD"
+HS101"
+HS102"
+HS103"
+HS104"
+HS105"
+HS106"
+HS107"
+HS108"
+HS109"
+HS11"
+HS110"
+HS111"
+HS111LNP"
+HS112"
+HS113"
+HS114"
+HS116"
+HS117"
+HS118"
+HS119"
+HS12"
+HS13"
+HS14"
+HS15"
+HS16"
+HS17"
+HS18"
+HS19"
+HS2"
+HS20"
+HS21"
+HS21MOD"
+HS22"
+HS23"
+HS24"
+HS25"
+HS26"
+HS268"
+HS27"
+HS28"
+HS29"
+HS3"
+HS30"
+HS31"
+HS32"
+HS33"
+HS34"
+HS35"
+HS35I"
+HS35MOD"
+HS36"
+HS37"
+HS38"
+HS39"
+HS3MOD"
+HS4"
+HS40"
+HS41"
+HS42"
+HS43"
+HS44"
+HS44NEW"
+HS45"
+HS46"
+HS47"
+HS48"
+HS49"
+HS5"
+HS50"
+HS51"
+HS52"
+HS53"
+HS54"
+HS55"
+HS56"
+HS57"
+HS59"
+HS6"
+HS60"
+HS61"
+HS62"
+HS63"
+HS64"
+HS65"
+HS66"
+HS67"
+HS68"
+HS69"
+HS7"
+HS70"
+HS71"
+HS72"
+HS73"
+HS74"
+HS75"
+HS76"
+HS76I"
+HS77"
+HS78"
+HS79"
+HS8"
+HS80"
+HS81"
+HS83"
+HS84"
+HS85"
+HS86"
+HS87"
+HS88"
+HS89"
+HS9"
+HS90"
+HS91"
+HS92"
+HS93"
+HS95"
+HS96"
+HS97"
+HS98"
+HS99"
+HS99EXP"
+HUBFIT"
+HUESTIS"
+HUES-MOD"
+HUMPS"
+HVYCRASH"
+HYDC20LS"
+HYDCAR20"
+HYDCAR6"
+HYDROELL"
+HYDROELM"
+HYDROELS"
+HYPCIR"
+INDEF"
+INDEFM"
+INTEGREQ"
+INTEQNELS"
+INTEQNE"
+JANNSON3"
+JANNSON4"
+JENSMP"
+JENSMPNE"
+JIMACK"
+JJTABEL3"
+JNLBRNG1"
+JNLBRNG2"
+JNLBRNGA"
+JNLBRNGB"
+JUNKTURN"
+KIRBY2LS"
+KIRBY2"
+KISSING"
+KISSING2"
+KIWCRESC"
+KOEBHELB"
+KOWOSB"
+KOWOSBNE"
+KSIP"
+KSS"
+KTMODEL"
+LAKES"
+LANCZOS1LS"
+LANCZOS1"
+LANCZOS2LS"
+LANCZOS2"
+LANCZOS3LS"
+LANCZOS3"
+LAUNCH"
+LCH"
+LEAKNET"
+LEUVEN1"
+LEUVEN2"
+LEUVEN3"
+LEUVEN4"
+LEUVEN5"
+LEUVEN6"
+LEUVEN7"
+LEWISPOL"
+LIARWHD"
+LIN"
+LINCONT"
+LINSPANH"
+LINVERSE"
+LIPPERT1"
+LIPPERT2"
+LISWET1"
+LISWET10"
+LISWET11"
+LISWET12"
+LISWET2"
+LISWET3"
+LISWET4"
+LISWET5"
+LISWET6"
+LISWET7"
+LISWET8"
+LISWET9"
+LMINSURF"
+LOADBAL"
+LOBSTERZ"
+LOGHAIRY"
+LOGROS"
+LOOTSMA"
+LOTSCHD"
+LSC1"
+LSC1LS"
+LSC2"
+LSC2LS"
+LSNNODOC"
+LSQFIT"
+LUBRIF"
+LUBRIFC"
+LUKVLE1"
+LUKVLE2"
+LUKVLE3"
+LUKVLE4"
+LUKVLE5"
+LUKVLE6"
+LUKVLE7"
+LUKVLE8"
+LUKVLE9"
+LUKVLE10"
+LUKVLE11"
+LUKVLE12"
+LUKVLE13"
+LUKVLE14"
+LUKVLE15"
+LUKVLE16"
+LUKVLE17"
+LUKVLE18"
+LUKVLI1"
+LUKVLI2"
+LUKVLI3"
+LUKVLI4"
+LUKVLI5"
+LUKVLI6"
+LUKVLI7"
+LUKVLI8"
+LUKVLI9"
+LUKVLI10"
+LUKVLI11"
+LUKVLI12"
+LUKVLI13"
+LUKVLI14"
+LUKVLI15"
+LUKVLI16"
+LUKVLI17"
+LUKVLI18"
+MADSEN"
+MADSSCHJ"
+MAKELA1"
+MAKELA2"
+MAKELA3"
+MAKELA4"
+MANCINO"
+MANNE"
+MARATOS"
+MARATOSB"
+MARINE"
+MATRIX2"
+MAXLIKA"
+MCCORMCK"
+MCONCON"
+MDHOLE"
+MESH"
+METHANB8"
+METHANL8"
+METHANOL"
+MEXHAT"
+MEYER3"
+MEYER3NE"
+MGH09LS"
+MGH09"
+MGH10LS"
+MGH10"
+MGH10S"
+MGH17LS"
+MGH17"
+MGH17S"
+MIFFLIN1"
+MIFFLIN2"
+MINC44"
+MINMAXBD"
+MINMAXRB"
+MINPERM"
+MINSURF"
+MINSURFO"
+MISRA1ALS"
+MISRA1A"
+MISRA1BLS"
+MISRA1B"
+MISRA1CLS"
+MISRA1C"
+MISRA1DLS"
+MISRA1D"
+MISTAKE"
+MODBEALE"
+MODEL"
+MOREBV"
+MOREBVNE"
+MOSARQP1"
+MOSARQP2"
+MPC1"
+MPC2"
+MPC3"
+MPC4"
+MPC5"
+MPC6"
+MPC7"
+MPC8"
+MPC9"
+MPC10"
+MPC11"
+MPC12"
+MPC13"
+MPC14"
+MPC15"
+MPC16"
+MRIBASIS"
+MSQRTA"
+MSQRTALS"
+MSQRTB"
+MSQRTBLS"
+MSS1"
+MSS2"
+MSS3"
+MWRIGHT"
+MUONSINE"
+NASH"
+NCB20"
+NCB20B"
+NCVXBQP1"
+NCVXBQP2"
+NCVXBQP3"
+NCVXQP1"
+NCVXQP2"
+NCVXQP3"
+NCVXQP4"
+NCVXQP5"
+NCVXQP6"
+NCVXQP7"
+NCVXQP8"
+NCVXQP9"
+NELSONLS"
+NELSON"
+NET1"
+NET2"
+NET3"
+NET4"
+NGONE"
+NINE12"
+NINE5D"
+NINENEW"
+NLMSURF"
+NOBNDTOR"
+NONCVXU2"
+NONCVXUN"
+NONDIA"
+NONDQUAR"
+NONMSQRT"
+NONSCOMP"
+NUFFIELD"
+NYSTROM5"
+OBSTCLAE"
+OBSTCLAL"
+OBSTCLBL"
+OBSTCLBM"
+OBSTCLBU"
+ODC"
+ODFITS"
+ODNAMUR"
+OET1"
+OET2"
+OET3"
+OET4"
+OET5"
+OET6"
+OET7"
+OPTCDEG2"
+OPTCDEG3"
+OPTCNTRL"
+OPTCTRL3"
+OPTCTRL6"
+OPTMASS"
+OPTPRLOC"
+ORBIT2"
+ORTHRDM2"
+ORTHRDS2"
+ORTHREGA"
+ORTHREGB"
+ORTHREGC"
+ORTHREGD"
+ORTHREGE"
+ORTHREGF"
+ORTHRGDM"
+ORTHRGDS"
+OSBORNEA"
+OSBORNEB"
+OSBORNE1"
+OSBORNE2"
+OSCIGRAD"
+OSCIGRNE"
+OSCIPANE"
+OSCIPATH"
+OSLBQP"
+OSORIO"
+PALMER1"
+PALMER1A"
+PALMER1B"
+PALMER1C"
+PALMER1D"
+PALMER1E"
+PALMER2"
+PALMER2A"
+PALMER2B"
+PALMER2C"
+PALMER2E"
+PALMER3"
+PALMER3A"
+PALMER3B"
+PALMER3C"
+PALMER3E"
+PALMER4"
+PALMER4A"
+PALMER4B"
+PALMER4C"
+PALMER4E"
+PALMER5A"
+PALMER5B"
+PALMER5C"
+PALMER5D"
+PALMER5E"
+PALMER6A"
+PALMER6C"
+PALMER6E"
+PALMER7A"
+PALMER7C"
+PALMER7E"
+PALMER8A"
+PALMER8C"
+PALMER8E"
+PARKCH"
+PDE1"
+PDE2"
+PENALTY1"
+PENALTY2"
+PENALTY3"
+PENLT1NE"
+PENLT2NE"
+PENTAGON"
+PENTDI"
+PFIT1"
+PFIT1LS"
+PFIT2"
+PFIT2LS"
+PFIT3"
+PFIT3LS"
+PFIT4"
+PFIT4LS"
+PINENE"
+POLAK1"
+POLAK2"
+POLAK3"
+POLAK4"
+POLAK5"
+POLAK6"
+POLYGON"
+POROUS1"
+POROUS2"
+PORTFL1"
+PORTFL2"
+PORTFL3"
+PORTFL4"
+PORTFL6"
+PORTSNQP"
+PORTSQP"
+POWELL20"
+POWELLBC"
+POWELLBS"
+POWELLBSLS"
+POWELLSG"
+POWELLSE"
+POWELLSQ"
+POWER"
+PRIMAL1"
+PRIMAL2"
+PRIMAL3"
+PRIMAL4"
+PRIMALC1"
+PRIMALC2"
+PRIMALC5"
+PRIMALC8"
+PROBPENL"
+PRODPL0"
+PRODPL1"
+PSPDOC"
+PT"
+QPBAND"
+QC"
+QCNEW"
+QPCBLEND"
+QPCBOEI1"
+QPCBOEI2"
+QPCSTAIR"
+QPNBAND"
+QPNBLEND"
+QPNBOEI1"
+QPNBOEI2"
+QPNSTAIR"
+QR3D"
+QR3DBD"
+QR3DLS"
+QRTQUAD"
+QUARTC"
+QUDLIN"
+RAT42LS"
+RAT42"
+RAT43LS"
+RAT43"
+RAYBENDL"
+RAYBENDS"
+READING1"
+READING2"
+READING3"
+READING4"
+READING5"
+READING6"
+READING7"
+READING8"
+READING9"
+RDW2D52B"
+RDW2D52U"
+RDW2D51F"
+RDW2D51U"
+RDW2D52F"
+RECIPE"
+RES"
+RK23"
+ROBOT"
+ROBOTARM"
+ROCKET"
+ROSENBR"
+ROSENMMX"
+ROSZMAN1LS"
+ROSZMAN1"
+ROTDISC"
+RSNBRNE"
+S268"
+S277-280"
+S308"
+S316-322"
+S365"
+S365MOD"
+S368"
+SANTA"
+SANTALS"
+SARO"
+SAROMM"
+SAWPATH"
+SBRYBND"
+SCHMVETT"
+SCOND1LS"
+SCOSINE"
+SCURLY10"
+SCURLY20"
+SCURLY30"
+SEMICN2U"
+SEMICON1"
+SEMICON2"
+SENSORS"
+SIM2BQP"
+SIMBQP"
+SIMPLLPA"
+SIMPLLPB"
+SINEALI"
+SINEVAL"
+SINVALNE"
+SINQUAD"
+SINROSNB"
+SIPOW1"
+SIPOW1M"
+SIPOW2"
+SIPOW2M"
+SIPOW3"
+SIPOW4"
+SISSER"
+SMBANK"
+SMMPSF"
+SNAIL"
+SNAKE"
+SOSQP1"
+SOSQP2"
+SPANHYD"
+SPARSINE"
+SPARSQUR"
+SPECAN"
+SPIN"
+SPINOP"
+SPIN2"
+SPIN2OP"
+SPIRAL"
+SPMSQRT"
+SPMSRTLS"
+SREADIN3"
+SROSENBR"
+SSBRYBND"
+SSC"
+SSCOSINE"
+SSEBLIN"
+SSEBNLN"
+SSI"
+SSINE"
+SSNLBEAM"
+STANCMIN"
+STATIC3"
+STCQP1"
+STCQP2"
+STEENBRA"
+STEENBRB"
+STEENBRC"
+STEENBRD"
+STEENBRE"
+STEENBRF"
+STEENBRG"
+STEERING"
+STNQP1"
+STNQP2"
+STRATEC"
+SUPERSIM"
+SVANBERG"
+SWOPF"
+SYNPOP24"
+SYNTHES1"
+SYNTHES2"
+SYNTHES3"
+TABLE1"
+TABLE3"
+TABLE4"
+TABLE5"
+TABLE6"
+TABLE7"
+TABLE8"
+TAME"
+TARGUS"
+TENBARS1"
+TENBARS2"
+TENBARS3"
+TENBARS4"
+TESTQUAD"
+TFI1"
+TFI2"
+TFI3"
+THURBERLS"
+THURBER"
+TOINTGOR"
+TOINTGSS"
+TOINTPSP"
+TOINTQOR"
+TORSION1"
+TORSION2"
+TORSION3"
+TORSION4"
+TORSION5"
+TORSION6"
+TORSIONA"
+TORSIONB"
+TORSIONC"
+TORSIOND"
+TORSIONE"
+TORSIONF"
+TOYSARAH"
+TQUARTIC"
+TRAINF"
+TRAINH"
+TRIDIA"
+TRIGGER"
+TRIMLOSS"
+TRO11X3"
+TRO21X5"
+TRO3X3"
+TRO41X9"
+TRO4X4"
+TRO5X5"
+TRO6X2"
+TRUSPYR1"
+TRUSPYR2"
+TRY-B"
+TWIRISM1"
+TWIRIMD1"
+TWIRIBG1"
+TWOBARS"
+TWOD"
+TWO5IN6"
+UBH1"
+UBH5"
+VANDANIUMS"
+VANDERM1"
+VANDERM2"
+VANDERM3"
+VANDERM4"
+VARDIM"
+VARDIMNE"
+VAREIGVL"
+VIBRBEAM"
+VESUVIALS"
+VESUVIA"
+VESUVIOLS"
+VESUVIO"
+VESUVIOULS"
+VESUVIOU"
+WACHBIEG"
+WALL10"
+WALL20"
+WALL50"
+WALL100"
+WATER"
+WATSON"
+WATSONNE"
+WEEDS"
+WOMFLET"
+WOODS"
+WOODSNE"
+YAO"
+YATP1SQ"
+YATP2SQ"
+YFIT"
+YFITNE"
+YFITU"
+YORKNET"
+ZAMB2"
+ZAMB2-8"
+ZAMB2-9"
+ZAMB2-10"
+ZAMB2-11"
+ZANGWIL2"
+ZANGWIL3"
+ZECEVIC2"
+ZECEVIC3"
+ZECEVIC4"
+ZIGZAG"
+ZY2"

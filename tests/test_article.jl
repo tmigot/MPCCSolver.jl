@@ -8,28 +8,33 @@ using OutputRelaxationmod
 #package pour plot
 using PyPlot
 
-prec=1e-6
+using NLPModels
 
 #Est-ce que l'on veut les figures :
 plot=false
 
 # Exemple 1 :
+ nb_comp=1
  f(x)=x[1]-x[2]
- G(x)=x[1]
- H(x)=x[2]
+ Gfunc(x)=x[1]
+ Hfunc(x)=x[2]
  c(x)=[1-x[2]]
- lcon=zeros(1)
+ lcon=[0.0]
+ ucon=[Inf]
+ G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0], Jtp=(x,v)->[v[1], 0.0])
+ H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0], Jtp=(x,v)->[0.0, v[1]])
 
 r0=0.1
 s0=0.1
 #t0=sqrt(0.1) #t=o(r) normalement
-t0=0.01
+t0=0.0
 sig_r=0.1
 sig_s=0.1
 sig_t=0.01
 
 #déclare le mpcc :
-ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,Inf*ones(1),prec)
+#ex1= MPCCmod.MPCC(f,ones(2),Gfunc,Hfunc,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
+ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
 
 println("\n \n ALAS Exemple 1 :")
 #println("KDB method:")
@@ -52,10 +57,15 @@ if plot
  PyPlot.title("Ex1 : min x1-x2 s.t. 0<=x_1 _|_ x_2 >=0")
 end
 
+break
+
 # Exemple 2 :
  f(x)=0.5*((x[1]-1)^2+(x[2]-1)^2)
- G(x)=x[1]
- H(x)=x[2]
+ Gfunc(x)=x[1]
+ nb_comp=1
+ Hfunc(x)=x[2]
+ G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0])
+ H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0])
  c(x)=zeros(1)
  lcon=zeros(1)
  ucon=ones(1)
@@ -69,7 +79,7 @@ sig_t=0.01
 println("\n \n ALAS Exemple 2 :")
 
 #déclare le mpcc :
-ex2= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,ones(1),lcon,ucon,prec)
+ex2= MPCCmod.MPCC(f,collect([1.0,1.0]),G,H,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
 #println("KDB method:")
 #résolution avec ALAS KDB
 #xkdb,fkdb,statkdb = MPCCsolve.solve(ex2,r0,sig_r,s0,sig_s,0.0,sig_t)
@@ -99,11 +109,13 @@ end
 #          -4x1+x3<=0
 #          -4x2+x3<=0
  f(x)=x[1]+x[2]-x[3]
- G(x)=x[1]
- H(x)=x[2]
+ Gfunc(x)=[x[1]+0*x[2]+0*x[3]]
+ Hfunc(x)=[x[2]+0*x[1]+0*x[3]]
  c(x)=[-4*x[1]+x[3];-4*x[2]+x[3]]
  lcon=-Inf*ones(2)
  ucon=zeros(2)
+ G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0])
+ H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0])
 
 r0=0.1
 s0=0.1
@@ -115,11 +127,11 @@ sig_t=0.01
 println("\n \n ALAS Exemple 3 :")
 
 #déclare le mpcc :
-#ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
+#ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon)
 #println("KDB method:")
 #résolution avec ALAS KDB
 #xkdb,fkdb,orkdb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,0.0,sig_t)
-ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,ones(2),lcon,ucon,prec)
+ex3= MPCCmod.MPCC(f,[0.5;1.0;0.0],G,H,1,-Inf*ones(3),Inf*ones(3),c,lcon,ucon)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
 xb,fb,orb = MPCCsolve.solve(ex3,r0,sig_r,s0,sig_s,t0,sig_t)
