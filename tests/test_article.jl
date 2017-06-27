@@ -27,14 +27,13 @@ plot=false
 r0=0.1
 s0=0.1
 #t0=sqrt(0.1) #t=o(r) normalement
-t0=0.0
+t0=0.01
 sig_r=0.1
 sig_s=0.1
 sig_t=0.01
 
 #déclare le mpcc :
-#ex1= MPCCmod.MPCC(f,ones(2),Gfunc,Hfunc,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
-ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
+@time ex1= MPCCmod.MPCC(f,ones(2),G,H,1,-Inf*ones(2),Inf*ones(2),c,lcon,ucon)
 
 println("\n \n ALAS Exemple 1 :")
 #println("KDB method:")
@@ -42,8 +41,8 @@ println("\n \n ALAS Exemple 1 :")
 #xkdb,fkdb,statkdb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,0.0,sig_t)
 println("Butterfly method:")
 #résolution avec ALAS Butterfly
-xb,fb,orb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
-
+@time xb,fb,orb = MPCCsolve.solve(ex1,r0,sig_r,s0,sig_s,t0,sig_t)
+ break
 if plot
  subplot(311)
  suptitle("Quadratic penalty and Newton spectral")
@@ -57,15 +56,13 @@ if plot
  PyPlot.title("Ex1 : min x1-x2 s.t. 0<=x_1 _|_ x_2 >=0")
 end
 
-break
-
 # Exemple 2 :
  f(x)=0.5*((x[1]-1)^2+(x[2]-1)^2)
  Gfunc(x)=x[1]
  nb_comp=1
  Hfunc(x)=x[2]
- G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0])
- H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0])
+ G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0], Jtp=(x,v)->[v[1], 0.0])
+ H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0], Jtp=(x,v)->[0.0, v[1]])
  c(x)=zeros(1)
  lcon=zeros(1)
  ucon=ones(1)
@@ -114,8 +111,8 @@ end
  c(x)=[-4*x[1]+x[3];-4*x[2]+x[3]]
  lcon=-Inf*ones(2)
  ucon=zeros(2)
- G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0])
- H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0])
+ G=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Gfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[1.0 0.0], Jtp=(x,v)->[v[1], 0.0])
+ H=SimpleNLPModel(f, collect([1.0,1.0]), lvar=-Inf*ones(2), uvar=Inf*ones(2), c=Hfunc,  lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp), J=x->[0.0 1.0], Jtp=(x,v)->[0.0,v[1]])
 
 r0=0.1
 s0=0.1
