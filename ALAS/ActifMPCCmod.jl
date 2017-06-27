@@ -209,13 +209,13 @@ end
 Evalue la fonction objectif d'un MPCC actif : x
 """
 function obj(ma::MPCC_actif,x::Vector)
- sol=0.0
+
  if length(x)==ma.n+2*ma.nb_comp
-  sol=NLPModels.obj(ma.nlp,x)
+  return NLPModels.obj(ma.nlp,x)
  else
-  sol=NLPModels.obj(ma.nlp,evalx(ma,x))
+  return NLPModels.obj(ma.nlp,evalx(ma,x))
  end
- return sol
+
 end
 
 """
@@ -301,16 +301,19 @@ function hess(ma::MPCC_actif,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
 
-#construction de la hessienne de taille (n+2nb_comp)^2
+ #construction de la hessienne de taille (n+2nb_comp)^2
+
  #H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
  #H=H+tril(H,-1)'
 
  H=ma.nlp.H(xf)
  H=H+tril(H,-1)'
 
- Hred=hess(ma,x,H)
-
- return Hred
+ if ma.nb_comp>0
+  return hess(ma,x,H)
+ else
+  return H
+ end
 end
 
 """

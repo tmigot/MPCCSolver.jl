@@ -232,11 +232,13 @@ end
 """
 Direction de Newton Spectral:
 """
-function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,xj::Vector,
+                             beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
 
-function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
+                              hd::Any,beta::Float64)
     H=ActifMPCCmod.hess(ma,xj)
 
     Δ = ones(g)
@@ -344,11 +346,13 @@ end
 """
 Direction de Newton 1:
 """
-function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,xj::Vector,beta::Float64,
+                          gradft,gradf,y,d,step::Float64)  
  return ma
 end
 
-function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
+                          hd::Any,beta::Float64)
     H=ActifMPCCmod.hess(ma,xj)
 
     L = Array(Float64,2)

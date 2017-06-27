@@ -17,7 +17,10 @@ xj : vecteur initial
 hd : direction précédente en version étendue
 """
 
-function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any,step::Float64,gradpen::Vector;scaling :: Bool = false)
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
+                         xj::Vector,hd::Any,
+                         step::Float64,gradpen::Vector;
+                         scaling :: Bool = false)
 
  output=0
  hd=ActifMPCCmod.redd(ma,hd)
@@ -41,6 +44,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any,step::Fl
  d=ma.direction(ma,gradf,xj,hd,beta)
 
  slope = dot(gradf,d)
+
  if slope > 0.0  # restart with negative gradient
   d = - gradf
   slope =  dot(gradf,d)

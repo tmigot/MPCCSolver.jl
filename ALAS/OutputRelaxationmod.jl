@@ -81,9 +81,18 @@ function Print(or::OutputRelaxation,n::Int64,verbose::Int64)
  if verbose>0
   println("")
   j=1
-  print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(or.xtab[1:n,j]) f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
+  if n<=4
+   print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(or.xtab[1:n,j]) f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
+  else
+   print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
+  end
+
   for r in or.rtab
-   print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+   if n<=4
+    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+   else
+    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+   end
    OutputALASmod.Print(or.inner_output_alas[j],n,verbose)
    j+=1
   end

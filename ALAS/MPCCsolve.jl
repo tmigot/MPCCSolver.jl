@@ -140,7 +140,6 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
  if stat != 0
   println("Error solve_subproblem_alas : ",stat)
   solved=false
- else
  end
 
  return xk,solved,rho,oa
@@ -150,12 +149,14 @@ function stationary_check(mod::MPCCmod.MPCC,x::Vector)
 
  b=-NLPModels.grad(mod.mp,x)
 
- if mod.mp.meta.ncon ==0
+ if mod.mp.meta.ncon+mod.nb_comp ==0
   optimal=norm(b,Inf)<=mod.paramset.precmpcc
  else
-
-  A=[NLPModels.jac(mod.mp,x); NLPModels.jac(mod.G,x); NLPModels.jac(mod.H,x) ]'
-  #A=NLPModels.jac(mod.mp,x)'
+  if mod.nb_comp>0
+   A=[NLPModels.jac(mod.mp,x); NLPModels.jac(mod.G,x); NLPModels.jac(mod.H,x) ]'
+  else
+   A=NLPModels.jac(mod.mp,x)'
+  end
   l=pinv(full(A))*b #pinv not defined for sparse matrix
   optimal=maximum(max(A*l-b,0))<=mod.paramset.precmpcc
 

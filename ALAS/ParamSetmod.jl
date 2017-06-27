@@ -53,9 +53,9 @@ function ParamSet(nbc::Int64)
  rho_max=1/sqrt(eps(Float64)) #le grand max est 1/eps(Float64)
  goal_viol=0.5
 
- ite_max_armijo=2000
+ ite_max_armijo=400
  tau_armijo=0.4 #0.4
- armijo_update=0.5 #0.9
+ armijo_update=0.9 #0.9
  tau_wolfe=0.9
  wolfe_update=2.0
 

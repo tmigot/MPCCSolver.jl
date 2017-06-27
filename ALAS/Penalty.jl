@@ -98,23 +98,27 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
  elseif dev=="hess" #ATTENTION IL DOIT Y AVOIR UN PAQUET D'ERREUR ICI
   lv=zeros(n);ilv=find(x->x>0,mp.meta.lvar-x+uxl./rho_ineq_lvar);lv[ilv]=ones(length(ilv));
   uv=zeros(n);iuv=find(x->x>0,x-mp.meta.uvar+uxu./rho_ineq_uvar);uv[iuv]=ones(length(iuv));
-  if nb_comp>0
-   HCG=hess(G, x, obj_weight=1.0, y=err_eq_g)+(diagm(rho_eqg)*NLPModels.jac(G,x)')*NLPModels.jac(G,x)
-   HCH=hess(H, x, obj_weight=1.0, y=err_eq_h)+(diagm(rho_eqh)*NLPModels.jac(H,x)')*NLPModels.jac(H,x)
-  else
-   HCG=zeros(n,n)
-   HCH=zeros(n,n)
-  end
-  if mp.meta.ncon!=0
-   ilc=find(x->x>0,mp.meta.lcon-c+ucl./rho_ineq_lcons);rho_ineq_lcons[ilc]=zeros(length(ilc));
+  if nb_comp>0 && mp.meta.ncon!=0
+   ilc=find(x->x>0,mp.meta.lcon-c+ucl./rho_ineq_lcons);rho_ineq_lcons[ilc]=zeros(length(ilc))
    iuc=find(x->x>0,c-mp.meta.ucon+ucu./rho_ineq_ucons);rho_ineq_ucons[iuc]=zeros(length(iuc))
    Hlc=hess(mp, x, obj_weight=1.0, y=rho_ineq_lcons.*err_in_lc)+(diagm(rho_ineq_lcons)*NLPModels.jac(mp,x))'*NLPModels.jac(mp,x)
    Huc=hess(mp, x, obj_weight=1.0, y=rho_ineq_ucons.*err_in_uc)+(diagm(rho_ineq_ucons)*NLPModels.jac(mp,x))'*NLPModels.jac(mp,x)
+   HCG=hess(G, x, obj_weight=1.0, y=err_eq_g)+(diagm(rho_eqg)*NLPModels.jac(G,x)')*NLPModels.jac(G,x)
+   HCH=hess(H, x, obj_weight=1.0, y=err_eq_h)+(diagm(rho_eqh)*NLPModels.jac(H,x)')*NLPModels.jac(H,x)
+   return tril(NLPModels.hess(mp,x)+diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv)+HCG+HCH+Hlc+Huc)
+  elseif nb_comp>0
+   HCG=hess(G, x, obj_weight=1.0, y=err_eq_g)+(diagm(rho_eqg)*NLPModels.jac(G,x)')*NLPModels.jac(G,x)
+   HCH=hess(H, x, obj_weight=1.0, y=err_eq_h)+(diagm(rho_eqh)*NLPModels.jac(H,x)')*NLPModels.jac(H,x)
+   return tril(NLPModels.hess(mp,x)+diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv)+HCG+HCH)
+  elseif mp.meta.ncon!=0
+   ilc=find(x->x>0,mp.meta.lcon-c+ucl./rho_ineq_lcons);rho_ineq_lcons[ilc]=zeros(length(ilc))
+   iuc=find(x->x>0,c-mp.meta.ucon+ucu./rho_ineq_ucons);rho_ineq_ucons[iuc]=zeros(length(iuc))
+   Hlc=hess(mp, x, obj_weight=1.0, y=rho_ineq_lcons.*err_in_lc)+(diagm(rho_ineq_lcons)*NLPModels.jac(mp,x))'*NLPModels.jac(mp,x)
+   Huc=hess(mp, x, obj_weight=1.0, y=rho_ineq_ucons.*err_in_uc)+(diagm(rho_ineq_ucons)*NLPModels.jac(mp,x))'*NLPModels.jac(mp,x)
+   return tril(NLPModels.hess(mp,x)+diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv)+Hlc+Huc)
   else
-   Hlc=zeros(n,n)
-   Huc=zeros(n,n)
+   return tril(NLPModels.hess(mp,x)+diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv))
   end
-  return tril(NLPModels.hess(mp,x)+diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv))+HCG+HCH+Hlc+Huc
  end
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 end

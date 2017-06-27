@@ -41,7 +41,7 @@ end
 ArmijoWolfe : Backtracking line search + amélioration si le pas initial peut être augmenté
          1D Minimization
 """
-function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Float64,gradft::Any,stepmax::Float64,slope::Float64,old_alpha::Float64;
+function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::AbstractVector,d::AbstractVector,hg::Float64,gradft::Any,stepmax::Float64,slope::Float64,old_alpha::Float64;
                 verbose :: Bool=true, kwargs...)
 
  good_grad=false
@@ -51,13 +51,16 @@ function ArmijoWolfe(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Float64,grad
 
  #First try to increase t to satisfy loose Wolfe condition 
  ht=ActifMPCCmod.obj(ma,xj+step*d)
- slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
+
+ gradft=ActifMPCCmod.grad(ma,xj+step*d)
+ slope_t=dot(d,gradft)
 
  while (slope_t<ma.paramset.tau_wolfe*slope) && (ht-hg<=ma.paramset.tau_armijo*step*slope) && (nbW<ma.paramset.ite_max_armijo) && step<stepmax
 
   step=min(step*ma.paramset.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
   ht=ActifMPCCmod.obj(ma,xj+step*d)
-  slope_t=dot(d,ActifMPCCmod.grad(ma,xj+step*d))
+  gradft=ActifMPCCmod.grad(ma,xj+step*d)
+  slope_t=dot(d,gradft)
 
   nbW+=1
  end

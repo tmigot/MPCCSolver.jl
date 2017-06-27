@@ -34,13 +34,6 @@ RhoUpdate(rho::Vector,err::Vector,alas::ALASMPCC)
 RhoDetail(rho::Vector,alas::ALASMPCC)
 """
 
-#TO DO List :
-#Major :
-# - centraliser les sorties d'observation dans une structure output
-# - variables d'écart sur les contraintes d'inégalités
-#Minor :
-# - paramètre pour décider ou non l'affichage de sortie texte dans solvePas
-
 type ALASMPCC
  mod::MPCCmod.MPCC
  #paramètres du pb
@@ -139,7 +132,7 @@ function solvePAS(alas::ALASMPCC)
 
    #mise à jour de la fonction objectif quand on met rho à jour
    ma.nlp=UpdatePenaltyNLP(alas,xjkl,rho,usg,ush,uxl,uxu,ucl,ucu,pen_mpcc)
-true || println("S3 (k,l)=",k,",",l," : n_obj=",alas.mod.mp.counters.neval_obj," n_grad=",alas.mod.mp.counters.neval_grad," n_cons=",alas.mod.mp.counters.neval_cons)
+
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
    xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen)
 
@@ -262,20 +255,22 @@ end
 Initialisation des multiplicateurs de Lagrange
 """
 function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
-  c(z)=NLPModels.cons(alas.mod.mp,z)
 
-  nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
   n=length(alas.mod.mp.meta.x0)
   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=max(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
   uxu=max(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
   if alas.mod.mp.meta.ncon!=0
+   c(z)=NLPModels.cons(alas.mod.mp,z)
+   nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
+
    ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
    ucu=max(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
   else
    ucl=[];ucu=[];
   end
+
   usg=zeros(alas.mod.nb_comp)
   ush=zeros(alas.mod.nb_comp)
 
@@ -302,28 +297,27 @@ end
 """
 Mise à jour des multiplicateurs de Lagrange
 """
-function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,usg::Vector,ush::Vector)
-  c(z)=NLPModels.cons(alas.mod.mp,z)
-  G(x)=NLPModels.cons(alas.mod.G,x)
-  H(x)=NLPModels.cons(alas.mod.H,x)
+function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,
+                        uxl::Vector,uxu::Vector,
+                        ucl::Vector,ucu::Vector,
+                        usg::Vector,ush::Vector)
 
   n=length(alas.mod.mp.meta.x0)
-  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
+   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
   uxl=uxl+max(rho_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
   uxu=uxu+max(rho_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
   if alas.mod.mp.meta.ncon!=0
+   c(z)=NLPModels.cons(alas.mod.mp,z)
    ucl=ucl+max(rho_ineq_lcons.*(c(xjk[1:n])-alas.mod.mp.meta.ucon),-ucl)
    ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-c(xjk[1:n])),-ucu)
-  else
-   ucl=[];ucu=[];
   end
 
   if alas.mod.nb_comp!=0
+   G(x)=NLPModels.cons(alas.mod.G,x)
+   H(x)=NLPModels.cons(alas.mod.H,x)
    usg=usg+rho_eqg.*(G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
    ush=ush+rho_eqh.*(H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
-  else
-   usg=[];ush=[];
   end
 
  return uxl,uxu,ucl,ucu,usg,ush
@@ -333,25 +327,51 @@ end
 """
 Fonction de pénalité générique :
 """
-function Penaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+function Penaltygen(alas::ALASMPCCmod.ALASMPCC,
+                    x::Vector,yg::Vector,yh::Vector,
+                    rho::Vector,usg::Vector,ush::Vector,
+                    uxl::Vector,uxu::Vector,
+                    ucl::Vector,ucu::Vector)
 
- G(x)=NLPModels.cons(alas.mod.G,x) #unnecessary call if nb_comp==0
- H(x)=NLPModels.cons(alas.mod.H,x) #unnecessary call if nb_comp==0
+ if alas.mod.nb_comp>0
+  G(x)=NLPModels.cons(alas.mod.G,x)
+  H(x)=NLPModels.cons(alas.mod.H,x)
+  return alas.mod.algoset.penalty(alas.mod.mp,G,H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ else
+  return alas.mod.algoset.penalty(alas.mod.mp,x->(),x->(),alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ end
 
- return alas.mod.algoset.penalty(alas.mod.mp,G,H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
 end
 
-function GradPenaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+function GradPenaltygen(alas::ALASMPCCmod.ALASMPCC,
+                        x::Vector,yg::Vector,yh::Vector,
+                        rho::Vector,usg::Vector,ush::Vector,
+                        uxl::Vector,uxu::Vector,
+                        ucl::Vector,ucu::Vector)
 
- return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu,"grad")
+ return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 alas.mod.nb_comp,
+                                 x,yg,yh,rho,
+                                 usg,ush,uxl,uxu,ucl,ucu,"grad")
 end
 
-function HessPenaltygen(alas::ALASMPCCmod.ALASMPCC,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+function HessPenaltygen(alas::ALASMPCCmod.ALASMPCC,
+                        x::Vector,yg::Vector,yh::Vector,
+                        rho::Vector,usg::Vector,ush::Vector,
+                        uxl::Vector,uxu::Vector,
+                        ucl::Vector,ucu::Vector)
 
- return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu,"hess")
+ return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 alas.mod.nb_comp,
+                                 x,yg,yh,rho,
+                                 usg,ush,uxl,uxu,ucl,ucu,"hess")
 end
 
-function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,xj::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
+function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
+                          xj::Vector,rho::Vector,
+                          usg::Vector,ush::Vector,
+                          uxl::Vector,uxu::Vector,
+                          ucl::Vector,ucu::Vector)
  n=length(alas.mod.mp.meta.x0)
 
  penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
@@ -370,7 +390,12 @@ function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,xj::Vector,rho::Vector,usg:
  return pen_mpcc
 end
 
-function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,xj::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,pen_mpcc::NLPModels.AbstractNLPModel)
+function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
+                          xj::Vector,rho::Vector,
+                          usg::Vector,ush::Vector,
+                          uxl::Vector,uxu::Vector,
+                          ucl::Vector,ucu::Vector,
+                          pen_mpcc::NLPModels.AbstractNLPModel)
  n=length(alas.mod.mp.meta.x0)
 
  penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
