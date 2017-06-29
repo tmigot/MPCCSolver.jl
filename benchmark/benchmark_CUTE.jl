@@ -26,14 +26,16 @@ n=5
 
 T=zeros(n,3)
 
+@printf("Start of a benchmark test from CUTEst: %i \n",n)
+
 for i=1:min(n,length(pb))
  nlp = CUTEstModel(pb[i])
- @printf("CUTEst %i: %s	",i,nlp.meta.name)
+ @printf("CUTEst %i: %s ",i,nlp.meta.name)
 
  #resolution avec ALAS
  exemple_nlp=MPCCmod.MPCC(nlp)
  xb,fb,orb,nb_eval = MPCCsolve.solve(exemple_nlp)
- @printf("%s",orb.solve_message)
+ @printf("%s ",orb.solve_message)
  println(nb_eval)
 
  T[i,1]=sum(nb_eval)
