@@ -44,7 +44,11 @@ function Print(oa::OutputALAS,n::Int64,verbose::Int64)
   nb_comp=Int64(0.5*(length(oa.xtab)/length(oa.realisabilite)-n))
   for step in oa.steptab
    #println("k :",j," xjk=",oa.xtab[1:n,j+1]," sg=",oa.xtab[n+1:n+nb_comp,j+1]," sh=",oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1],"\n\|c(xjk)\|=",oa.realisabilite[j+1]," JL(xjk)=",oa.dualrealisabilite[j+1]," rho= ",oa.rhotab[j+1]," \nalpha=",oa.steptab[j]," d=",oa.dtab[1:n+2*nb_comp,j+1])
-   print_with_color(:white, "k: $j xjk=$(oa.xtab[1:n,j+1]) sg=$(oa.xtab[n+1:n+nb_comp,j+1]) sh=$(oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) \n")
+   if n<=4
+    print_with_color(:white, "k: $j xjk=$(oa.xtab[1:n,j+1]) sg=$(oa.xtab[n+1:n+nb_comp,j+1]) sh=$(oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) \n\n")
+   else
+    print_with_color(:white, "k: $j xjk=oa.xtab[(oa.xtab[1:n,j+1]) sg=(oa.xtab[n+1:n+nb_comp,j+1]) sh=(oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=(oa.dtab[1:n+2*nb_comp,j+1]) \n\n")
+   end
    OutputLSmod.Print(oa.inner_output_linesearch[j],n,verbose)
    j+=1
   end

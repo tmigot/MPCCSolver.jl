@@ -148,6 +148,7 @@ end
 
 #Mise à jour de w
 function setw(ma::MPCC_actif, w::Any)
+
  ma.wnew=max(w-ma.w,zeros(2*ma.nb_comp,2))
  ma.w=w
  return updatew(ma)

@@ -65,7 +65,7 @@ solvePAS() : méthode de penalisation/activation de contraintes DHKM 16'
 
 Méthode avec gestion à l'intérieur du paramètre de pénalité
 """
-function solvePAS(alas::ALASMPCC)
+function solvePAS(alas::ALASMPCC; verbose::Bool=false)
 
 #Initialisation paramètres :
  rho=alas.rho_init
@@ -75,6 +75,12 @@ function solvePAS(alas::ALASMPCC)
  obj_viol=alas.mod.paramset.goal_viol
 
  n=length(alas.mod.mp.meta.x0)
+
+ gradpen=Vector(n)
+ gradpen_prec=Vector(n)
+ xj=Vector(n+2*alas.mod.nb_comp)
+ xjk=Vector(n+2*alas.mod.nb_comp)
+ xjkl=Vector(n+2*alas.mod.nb_comp)
 
 # S0 : initialisation du problème avec slack (projection sur _|_ )
  xj=SlackComplementarityProjection(alas)
@@ -102,7 +108,7 @@ function solvePAS(alas::ALASMPCC)
  k=0
  xjk=xj
  small_step=false
- gradpen=NLPModels.grad(pen_mpcc,xj)
+ gradpen=NLPModels.grad(ma.nlp,xj)
 
  #direction initial
  dj=zeros(n+2*alas.mod.nb_comp)
@@ -121,28 +127,31 @@ function solvePAS(alas::ALASMPCC)
  while k<k_max && (l_negative || !feasible || !dual_feasible) && Armijosuccess && !small_step
 
   l=0
-  xjkl=xjk
   feask=feas
+  gradpen_prec=gradpen
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
   while l<l_max && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
 
    #On ne met pas à jour rho si tout se passe bien.
-   rho=l!=0?RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl))) : rho
-
-   #mise à jour de la fonction objectif quand on met rho à jour
-   ma.nlp=UpdatePenaltyNLP(alas,xjkl,rho,usg,ush,uxl,uxu,ucl,ucu,pen_mpcc)
+   if l!=0
+    rho=RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)))
+    #met à jouer la fonction objectif après la mise à jour de rho
+    ma.nlp=UpdatePenaltyNLP(alas,xjk,rho,usg,ush,uxl,uxu,ucl,ucu,ma.nlp)
+    gradpen=NLPModels.grad(ma.nlp,xjk) #intégrer dans "UpdatePenaltyNLP" pour éviter ce calcul
+   end
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
-   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen)
+   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen=UnconstrainedMPCCActif.LineSearchSolve(ma,xjk,dj,step,gradpen)
 
    feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl)
-   dual_feas=norm(gradpen[1:n],Inf)
+   dual_feas=norm(gradpen[1:n],Inf) #(n'est pas utile ici)
+
    OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols)
 
    Armijosuccess=(outputArmijo==0)
    l+=1
-   l>=l_max && print_with_color(:red, "Max itération en l (rho update). Iteration: $k ||rho||=$(norm(rho,Inf))\n")
+   verbose && l==l_max && print_with_color(:red, "Max itération en l (rho update). Iteration: $k ||rho||=$(norm(rho,Inf))\n")
   end
   xjk=xjkl
 
@@ -150,12 +159,10 @@ function solvePAS(alas::ALASMPCC)
   uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,rho,xjk,uxl,uxu,ucl,ucu,usg,ush)
 
   #met à jouer la fonction objectif après la mise à jour des multiplicateurs
-  ma.nlp=UpdatePenaltyNLP(alas,xjk,rho,usg,ush,uxl,uxu,ucl,ucu,pen_mpcc)
+  ma.nlp=UpdatePenaltyNLP(alas,xjk,rho,usg,ush,uxl,uxu,ucl,ucu,ma.nlp)
+  gradpen=NLPModels.grad(ma.nlp,xjk) #intégrer dans "UpdatePenaltyNLP" pour éviter ce calcul
 
   #Mise à jour des multiplicateurs de la complémentarité
-  gradpen_prec=gradpen
-  gradpen=NLPModels.grad(pen_mpcc,xjk)
-
   if alas.mod.nb_comp>0
    lg,lh,lphi=ActifMPCCmod.LSQComputationMultiplier(ma,gradpen,xjk)
    l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif

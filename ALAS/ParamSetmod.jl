@@ -49,11 +49,11 @@ function ParamSet(nbc::Int64)
  ite_max_alas=1000
  ite_max_viol=20
  rho_init=1*ones(nbc)
- rho_update=2.0 #2.0 bien pour Newton, trop grand sinon.
+ rho_update=1.5 #2.0 bien pour Newton, trop grand sinon.
  rho_max=1/sqrt(eps(Float64)) #le grand max est 1/eps(Float64)
  goal_viol=0.5
 
- ite_max_armijo=400
+ ite_max_armijo=4000
  tau_armijo=0.4 #0.4
  armijo_update=0.9 #0.9
  tau_wolfe=0.9

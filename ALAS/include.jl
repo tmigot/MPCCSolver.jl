@@ -1,3 +1,13 @@
+#fist we check if all package are installed:
+package_check=false
+
+if package_check
+#JuMP
+#NLPModels
+#CUTEst
+#Pkg.add("BenchmarkProfiles")
+end
+
 #include file
 include("../ALAS/OutputLSmod.jl")
 include("../ALAS/OutputALASmod.jl")

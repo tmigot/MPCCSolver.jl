@@ -8,6 +8,7 @@ LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,xj::Vector,hd::Any;scaling :: Bool =
 module UnconstrainedMPCCActif
 
 using ActifMPCCmod
+using NLPModels
 using OutputLSmod
 
 """
@@ -63,10 +64,14 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  ols=OutputLSmod.OutputLS(stepmax,step,slope,beta,nbarmijo,nbwolfe)
 
  xjp=xj+step*d
- good_grad || (gradft=ActifMPCCmod.grad(ma,xjp))
 
  sol = ActifMPCCmod.evalx(ma,xjp)
  dsol = ActifMPCCmod.evald(ma,d)
+
+ #good_grad || (gradft=ActifMPCCmod.grad(ma,xjp))
+ gradpen=NLPModels.grad(ma.nlp,sol)
+ gradft=ActifMPCCmod.grad(ma,xjp,gradpen)
+
  s=xjp-xj
  y=gradft-gradf
 
@@ -92,7 +97,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  end
  small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit
 
- return sol,ma.w,dsol,step,wnew,output,small_step,ols #on devrait aussi renvoyer le gradient !?
+ return sol,ma.w,dsol,step,wnew,output,small_step,ols,gradpen #on devrait aussi renvoyer le gradient !? (mais ici on a que accès au gradient réduit)
 end
 
 #end of module

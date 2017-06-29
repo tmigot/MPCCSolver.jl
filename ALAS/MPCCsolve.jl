@@ -50,7 +50,7 @@ j=0
   end
 
   real=MPCCmod.viol_contrainte_norm(mod,xk[1:n])
-  or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc),real,output,NLPModels.obj(mod.mp,xk))
+  or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc),real,output,NLPModels.obj(mod.mp,xk[1:n]))
 
   mod=MPCCmod.addInitialPoint(mod,xk[1:n]) #met à jour le MPCC avec le nouveau point
 
@@ -75,9 +75,13 @@ param || realisable || print_with_color(:green,"Parameters too small\n")
 solved && realisable && print_with_color(:green,"Success\n")
 
  mod=MPCCmod.addInitialPoint(mod,x0[1:n]) #remet le point initial du MPCC
+ nb_eval=[mod.mp.counters.neval_obj,mod.mp.counters.neval_cons,
+          mod.mp.counters.neval_grad,mod.mp.counters.neval_hess,
+          mod.G.counters.neval_cons,mod.G.counters.neval_jac,
+          mod.H.counters.neval_cons,mod.H.counters.neval_jac]
 
  # output
- return xk, NLPModels.obj(mod.mp,xk), or
+ return xk, NLPModels.obj(mod.mp,xk[1:n]), or, nb_eval
 end
 
 """
