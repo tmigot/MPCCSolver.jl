@@ -49,34 +49,12 @@ type MPCC
 end
 
 #Constructeurs supplémentaires :
-function MPCC(f::Function,x0::Vector,Gfunc::Function,Hfunc::Function,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,y0::Vector,lcon::Vector,ucon::Vector)
-
-#Manque la jacobienne !!
- G=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Gfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
- H=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Hfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
-
- mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, y0=y0, c=c, lcon=lcon, ucon=ucon)
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
-
- return MPCC(mp,G,H,x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
-end
-
 function MPCC(f::Function,x0::Vector,G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp::Int64,lvar::Vector,uvar::Vector,c::Function,lcon::Vector,ucon::Vector)
 
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, c=c, lcon=lcon, ucon=ucon)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
 
  return MPCC(mp,G,H,x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
-end
-
-function MPCC(mp::NLPModels.AbstractNLPModel,Gfunc::Function,Hfunc::Function,nb_comp::Int64)
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
-
-#Manque la jacobienne !!
- G=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Gfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
- H=SimpleNLPModel(f, x0, lvar=lvar, uvar=uvar, c=Hfunc, lcon=zeros(nb_comp), ucon=Inf*ones(nb_comp))
-
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp)
@@ -132,24 +110,17 @@ Donne la norme 2 de la violation des contraintes avec slack
 
 note : devrait appeler viol_contrainte
 """
-function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
-
- #si on entre là on a forcément nb_comp!=0
- G=NLPModels.cons(mod.G,x)
- H=NLPModels.cons(mod.H,x)
-
- c=mod.mp.meta.ncon!=0?NLPModels.cons(mod.mp,x):0
-
- return norm(G-yg)^2+norm(H-yh)^2+norm(max(mod.mp.meta.lvar-x,0))^2+norm(max(x-mod.mp.meta.uvar,0))^2+norm(max(mod.mp.meta.lcon-c,0))^2+norm(max(c-mod.mp.meta.ucon,0))^2
+function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector;tnorm::Real=Inf)
+ return norm(viol_contrainte(mod,x,yg,yh),tnorm)
 end
 
-function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
+function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2) #x de taille n+2nb_comp
 
  n=length(mod.mp.meta.x0)
  if length(x)==n
   resul=max(viol_comp(mod,x),viol_cons(mod,x))
  else
-  resul=viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp])
+  resul=viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp],tnorm=tnorm)
  end
  return resul
 end
@@ -162,9 +133,9 @@ function viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
  if mod.nb_comp>0
   G=NLPModels.cons(mod.G,x)
   H=NLPModels.cons(mod.H,x)
-  return [G-yg;H-yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-c,0);max(c-mod.mp.meta.ucon,0)]
+  return [G-yg;H-yh;max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0);max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)]
  else
-  return [yg;yh;max(mod.mp.meta.lvar-x,0);max(x-mod.mp.meta.uvar,0);max(mod.mp.meta.lcon-c,0);max(c-mod.mp.meta.ucon,0)]
+  return [yg;yh;max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0);max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)]
  end
 end
 
@@ -175,19 +146,19 @@ function viol_contrainte(mod::MPCCmod.MPCC,x::Vector) #x de taille n+2nb_comp
 end
 
 """
-Donne la norme Inf de la violation de la complémentarité min(G,H)
+Donne la norme de la violation de la complémentarité min(G,H)
 """
-function viol_comp(mod::MPCCmod.MPCC,x::Vector)
+function viol_comp(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
 
  n=length(mod.mp.meta.x0)
  x=length(x)==n?x:x[1:n]
- return mod.nb_comp>0?norm(NLPModels.cons(mod.G,x).*NLPModels.cons(mod.H,x),Inf):0
+ return mod.nb_comp>0?norm(NLPModels.cons(mod.G,x).*NLPModels.cons(mod.H,x),tnorm):0
 end
 
 """
-Donne la norme Inf de la violation des contraintes \"classiques\"
+Donne la norme de la violation des contraintes \"classiques\"
 """
-function viol_cons(mod::MPCCmod.MPCC,x::Vector)
+function viol_cons(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
  feas=0.0
  n=length(mod.mp.meta.x0)
  x=length(x)==n?x:x[1:n]

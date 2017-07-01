@@ -31,16 +31,17 @@ function solve(mod::MPCCmod.MPCC,r0::Float64=0.1,sigma_r::Float64=0.01,s0::Float
  xk=x0
  pmin=mod.paramset.paramin
 
- real=MPCCmod.viol_contrainte_norm(mod,xk)
+ real=MPCCmod.viol_contrainte_norm(mod,xk);feas=NaN #test
  realisable=real<=mod.paramset.precmpcc
  solved=true
  param=true
- or=OutputRelaxationmod.OutputRelaxation(xk,real, NLPModels.obj(mod.mp,xk))
+ f=NLPModels.obj(mod.mp,xk)
+ or=OutputRelaxationmod.OutputRelaxation(xk,real, f)
  optimal=stationary_check(mod,x0) #reste à checker le signe des multiplicateurs
 
 #Major Loop
 j=0
- while param && !(realisable && solved && optimal) 
+ while param && !(realisable && solved && optimal)
 
   # resolution du sous-problème
   if name_relax=="ALAS"
@@ -50,7 +51,8 @@ j=0
   end
 
   real=MPCCmod.viol_contrainte_norm(mod,xk[1:n])
-  or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc),real,output,NLPModels.obj(mod.mp,xk[1:n]))
+  f=NLPModels.obj(mod.mp,xk[1:n])
+  or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc),real,output,f)
 
   mod=MPCCmod.addInitialPoint(mod,xk[1:n]) #met à jour le MPCC avec le nouveau point
 
@@ -70,7 +72,7 @@ if mod.paramset.verbose != 0.0
  realisable || print_with_color(:green,"Infeasible solution: (comp,cons)=($(MPCCmod.viol_comp(mod,xk)),$(MPCCmod.viol_cons(mod,xk)))\n" )
  solved || print_with_color(:green,"Subproblem failure. NaN in the solution ? $(true in isnan(xk)). Stationary ? $(realisable && optimal)\n")
  param || realisable || print_with_color(:green,"Parameters too small\n")
- solved && realisable && print_with_color(:green,"Success\n")
+ solved && realisable && optimal && print_with_color(:green,"Success\n")
 end
 
 if solved && optimal && realisable
@@ -93,7 +95,7 @@ OutputRelaxationmod.Print(or,n,mod.paramset.verbose)
           mod.H.counters.neval_cons,mod.H.counters.neval_jac]
 
  # output
- return xk, NLPModels.obj(mod.mp,xk[1:n]), or, nb_eval
+ return xk, f, or, nb_eval
 end
 
 """
@@ -176,7 +178,7 @@ function stationary_check(mod::MPCCmod.MPCC,x::Vector)
    A=NLPModels.jac(mod.mp,x)'
   end
   l=pinv(full(A))*b #pinv not defined for sparse matrix
-  optimal=maximum(max(A*l-b,0))<=mod.paramset.precmpcc
+  optimal=maximum(max.(A*l-b,0))<=mod.paramset.precmpcc
 
 #Checker les signes des multiplicateurs est virtuellement impossible...
 

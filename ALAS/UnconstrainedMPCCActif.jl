@@ -15,16 +15,16 @@ using OutputLSmod
 Input :
 ma : MPCC_actif
 xj : vecteur initial
-hd : direction précédente en version étendue
+d : direction précédente en version étendue
 """
 
 function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
-                         xj::Vector,hd::Any,
-                         step::Float64,gradpen::Vector;
+                         xj::Vector,d::Vector,
+                         step::Float64,gradpen::Vector,hg::Float64;
                          scaling :: Bool = false)
 
  output=0
- hd=ActifMPCCmod.redd(ma,hd)
+ d=ActifMPCCmod.redd(ma,d)
  scale=1.0
  beta=ma.beta
 
@@ -42,7 +42,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  gradft=Array{Float64,1}
 
  #Calcul d'une direction de descente de taille (n + length(bar_w))
- d=ma.direction(ma,gradf,xj,hd,beta)
+ d=ma.direction(ma,gradf,xj,d,beta)
 
  slope = dot(gradf,d)
 
@@ -54,9 +54,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  #Calcul du pas maximum (peut être infinie!)
  stepmax,wmax,wnew = ActifMPCCmod.PasMax(ma,xj,d)
 
- #Recherche linéaire
- old_grad=NaN #à définir quelque part...
- hg=ActifMPCCmod.obj(ma,xj)
+ #hg=ActifMPCCmod.obj(ma,xj)
 
  step,good_grad,ht,nbarmijo,nbwolfe=ma.linesearch(ma,xj,d,hg,gradft,stepmax,scale*slope,step)
  step*=scale
@@ -92,7 +90,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  else
   wnew = zeros(Bool,0,0) #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
- if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan(sol)
+ if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan.(sol)
   output=1
  end
  small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit

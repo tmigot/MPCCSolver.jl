@@ -108,7 +108,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  k=0
  xjk=xj
  small_step=false
- gradpen=NLPModels.grad(ma.nlp,xjk)
+ ht,gradpen=NLPModels.objgrad(ma.nlp,xjk)
 
  #direction initial
  dj=zeros(n+2*alas.mod.nb_comp)
@@ -121,7 +121,6 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.paramset.precmpcc,norm(rho,Inf),dual_feas)
  dual_feasible=dual_feas/multi_norm<=alas.prec
 
- ht=NLPModels.obj(pen_mpcc,xjk)
  oa=OutputALASmod.OutputALAS(xjk,dj,feas,dual_feas,rho,ht)
 
  while k<k_max && (l_negative || !(feasible && dual_feasible)) && Armijosuccess && !small_step
@@ -132,40 +131,36 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   gradpen_prec=gradpen
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
-  while l<l_max && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
+  while l<l_max && !dual_feasible && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
 
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
-   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen)
+   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen,ht)
 
-   feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl)
-   dual_feas=norm(gradpen[1:n],Inf)
+   feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl);feasible=feas<=alas.prec
+   dual_feas=norm(gradpen[1:n],Inf);dual_feasible=dual_feas<=alas.prec
 
    OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols,ht)
 
    Armijosuccess=(outputArmijo==0)
    l+=1
+  end
 
-   #On ne met pas à jour rho si tout se passe bien.
-   if l==l_max && (k!=0 && feas>obj_viol*feask && !feasible)
-    rho=RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)))
-
-    #met à jouer la fonction objectif après la mise à jour de rho
-    ma.nlp=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp)
-    ActifMPCCmod.setbeta(ma,0.0) #on change le problème donc on réinitialise beta
-    #ActifMPCCmod.sethess(ma,H) #on change le problème donc on réinitialise Hess
-    gradpen=NLPModels.grad(ma.nlp,xjk) #intégrer dans "UpdatePenaltyNLP" pour éviter ce calcul
-   end
-   #verbose && l==l_max && print_with_color(:red, "Max itération en l (rho update). Iteration: $k ||rho||=$(norm(rho,Inf))\n")
+  #On met à jour rho si ça n'a pas été:
+  if (l==l_max || dual_feasible) && (feas>obj_viol*feask && !feasible)
+   rho=RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)))
+   #met à jour la fonction objectif après la mise à jour de rho
+   ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen)
+   ActifMPCCmod.setbeta(ma,0.0) #on change le problème donc on réinitialise beta
+   #ActifMPCCmod.sethess(ma,H) #on change le problème donc on réinitialise Hess
+   dual_feas=norm(gradpen[1:n],Inf);dual_feasible=dual_feas<=alas.prec
   end
   xjk=xjkl
 
   #Mise à jour des paramètres de la pénalité Lagrangienne (uxl,uxu,ucl,ucu)
   uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,rho,xjk,uxl,uxu,ucl,ucu,usg,ush)
+  #met à jour la fonction objectif après la mise à jour des multiplicateurs
 
-  #met à jouer la fonction objectif après la mise à jour des multiplicateurs
-  ma.nlp=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp)
-
-  gradpen=NLPModels.grad(ma.nlp,xjk) #intégrer dans "UpdatePenaltyNLP" pour éviter ce calcul
+  temp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen)
 
   #Mise à jour des multiplicateurs de la complémentarité
   if alas.mod.nb_comp>0
@@ -196,7 +191,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
  stat=EndingTest(alas,Armijosuccess,small_step,feas,dual_feas,k)
 
- return xj,stat,rho,oa;
+ return xj,stat,rho,oa
 end
 
 function EndingTest(alas::ALASMPCC,Armijosuccess::Bool,small_step::Bool,feas::Float64,dual_feas::Float64,k::Int64)
@@ -253,8 +248,8 @@ function SlackComplementarityProjection(alas::ALASMPCC)
  n=length(x)-2*nb_comp
 
  #projection sur les contraintes de positivité relaxés : yG>=tb et yH>=tb
- x[n+1:n+nb_comp]=max(x[n+1:n+nb_comp],ones(nb_comp)*alas.tb)
- x[n+nb_comp+1:n+2*nb_comp]=max(x[n+nb_comp+1:n+2*nb_comp],ones(nb_comp)*alas.tb)
+ x[n+1:n+nb_comp]=max.(x[n+1:n+nb_comp],ones(nb_comp)*alas.tb)
+ x[n+nb_comp+1:n+2*nb_comp]=max.(x[n+nb_comp+1:n+2*nb_comp],ones(nb_comp)*alas.tb)
 
  #projection sur les contraintes papillons : yG<=psi(yH,r,s,t) et yH<=psi(yG,r,s,t)
  for i=1:nb_comp
@@ -277,14 +272,14 @@ function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
   n=length(alas.mod.mp.meta.x0)
   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
 
-  uxl=max(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
-  uxu=max(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
+  uxl=max.(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
+  uxu=max.(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
   if alas.mod.mp.meta.ncon!=0
    c(z)=NLPModels.cons(alas.mod.mp,z)
    nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
 
-   ucl=max(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
-   ucu=max(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
+   ucl=max.(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
+   ucu=max.(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
   else
    ucl=[];ucu=[];
   end
@@ -305,9 +300,9 @@ function LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
  psiyh=Relaxation.psi(xj[n+1+nb_comp:n+2*nb_comp],alas.r,alas.s,alas.t)
  phi=(xj[n+1:n+nb_comp]-psiyh).*(xj[n+1+nb_comp:n+2*nb_comp]-psiyg)
 
- lphi=max(phi,zeros(nb_comp))
- lg=max(-rho_eqg.*(xj[n+1:n+nb_comp]-alas.tb),zeros(nb_comp))
- lh=max(-rho_eqh.*(xj[n+1+nb_comp:n+2*nb_comp]-alas.tb),zeros(nb_comp))
+ lphi=max.(phi,zeros(nb_comp))
+ lg=max.(-rho_eqg.*(xj[n+1:n+nb_comp]-alas.tb),zeros(nb_comp))
+ lh=max.(-rho_eqh.*(xj[n+1+nb_comp:n+2*nb_comp]-alas.tb),zeros(nb_comp))
 
  return lg,lh,lphi
 end
@@ -350,15 +345,11 @@ function Penaltygen(alas::ALASMPCCmod.ALASMPCC,
                     rho::Vector,usg::Vector,ush::Vector,
                     uxl::Vector,uxu::Vector,
                     ucl::Vector,ucu::Vector)
+ nb_comp=alas.mod.nb_comp
 
- if alas.mod.nb_comp>0
-  G(x)=NLPModels.cons(alas.mod.G,x)
-  H(x)=NLPModels.cons(alas.mod.H,x)
-  return alas.mod.algoset.penalty(alas.mod.mp,G,H,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
- else
-  return alas.mod.algoset.penalty(alas.mod.mp,x->(),x->(),alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
- end
+ err=MPCCmod.viol_contrainte(alas.mod,x,yg,yh)
 
+ return alas.mod.algoset.penalty(alas.mod.mp,err,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
 end
 
 function GradPenaltygen(alas::ALASMPCCmod.ALASMPCC,
@@ -366,11 +357,13 @@ function GradPenaltygen(alas::ALASMPCCmod.ALASMPCC,
                         rho::Vector,usg::Vector,ush::Vector,
                         uxl::Vector,uxu::Vector,
                         ucl::Vector,ucu::Vector)
+ g=Vector(x)
+ err=MPCCmod.viol_contrainte(alas.mod,x,yg,yh)
 
  return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
-                                 alas.mod.nb_comp,
+                                 err,alas.mod.nb_comp,
                                  x,yg,yh,rho,
-                                 usg,ush,uxl,uxu,ucl,ucu,"grad")
+                                 usg,ush,uxl,uxu,ucl,ucu,g)
 end
 
 function HessPenaltygen(alas::ALASMPCCmod.ALASMPCC,
@@ -378,23 +371,65 @@ function HessPenaltygen(alas::ALASMPCCmod.ALASMPCC,
                         rho::Vector,usg::Vector,ush::Vector,
                         uxl::Vector,uxu::Vector,
                         ucl::Vector,ucu::Vector)
+ n=length(alas.mod.mp.meta.x0)
+ nb_comp=alas.mod.nb_comp
 
- return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
-                                 alas.mod.nb_comp,
+ Hess=zeros(0,0)
+ Hf=tril([NLPModels.hess(alas.mod.mp,x) zeros(n,2*nb_comp);zeros(2*nb_comp,n) eye(2*nb_comp)])
+
+ err=MPCCmod.viol_contrainte(alas.mod,x,yg,yh)
+
+ return Hf+alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 err,nb_comp,
                                  x,yg,yh,rho,
-                                 usg,ush,uxl,uxu,ucl,ucu,"hess")
+                                 usg,ush,uxl,uxu,ucl,ucu,Hess)
 end
 
-function GradHessPenaltygen(alas::ALASMPCCmod.ALASMPCC,
-                        x::Vector,yg::Vector,yh::Vector,
-                        rho::Vector,usg::Vector,ush::Vector,
-                        uxl::Vector,uxu::Vector,
-                        ucl::Vector,ucu::Vector)
+function ObjGradPenaltygen(alas::ALASMPCCmod.ALASMPCC,
+                            x::Vector,yg::Vector,yh::Vector,
+                            rho::Vector,usg::Vector,ush::Vector,
+                            uxl::Vector,uxu::Vector,
+                            ucl::Vector,ucu::Vector)
+ n=length(x)
+ nb_comp=alas.mod.nb_comp
 
- return alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
-                                 alas.mod.nb_comp,
+ err=MPCCmod.viol_contrainte(alas.mod,x,yg,yh)
+
+ f=NLPModels.obj(alas.mod.mp,x)
+ f+=alas.mod.algoset.penalty(alas.mod.mp,err,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ g=vec([NLPModels.grad(alas.mod.mp,x)' zeros(2*alas.mod.nb_comp)'])
+ g+=alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 err,alas.mod.nb_comp,
                                  x,yg,yh,rho,
-                                 usg,ush,uxl,uxu,ucl,ucu,"gradhess")
+                                 usg,ush,uxl,uxu,ucl,ucu,Array{Float64}(0))
+
+ return f,g
+end
+
+function ObjGradHessPenaltygen(alas::ALASMPCCmod.ALASMPCC,
+                            x::Vector,yg::Vector,yh::Vector,
+                            rho::Vector,usg::Vector,ush::Vector,
+                            uxl::Vector,uxu::Vector,
+                            ucl::Vector,ucu::Vector)
+ n=length(x)
+ nb_comp=alas.mod.nb_comp
+
+ err=MPCCmod.viol_contrainte(alas.mod,x,yg,yh)
+
+ f=NLPModels.obj(alas.mod.mp,x)
+ f+=alas.mod.algoset.penalty(alas.mod.mp,err,alas.mod.nb_comp,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ g=vec([NLPModels.grad(alas.mod.mp,x)' zeros(2*alas.mod.nb_comp)'])
+ g+=alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 err,alas.mod.nb_comp,
+                                 x,yg,yh,rho,
+                                 usg,ush,uxl,uxu,ucl,ucu,g)
+ Hess=tril([NLPModels.hess(alas.mod.mp,x) zeros(n,n);zeros(2*nb_comp,n) eye(2*nb_comp)])
+ Hess+=alas.mod.algoset.penalty(alas.mod.mp,alas.mod.G,alas.mod.H,
+                                 err,nb_comp,
+                                 x,yg,yh,rho,
+                                 usg,ush,uxl,uxu,ucl,ucu,Array{Float64}(0,0))
+
+ return f,g,Hess
 end
 
 function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
@@ -403,42 +438,58 @@ function CreatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
                           uxl::Vector,uxu::Vector,
                           ucl::Vector,ucu::Vector)
  n=length(alas.mod.mp.meta.x0)
+ nb_comp=alas.mod.nb_comp
 
- penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ penf(x,yg,yh)=NLPModels.obj(alas.mod.mp,x)+Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
 
- gpenf(x,yg,yh)=GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ gpenf(x,yg,yh)=vec([NLPModels.grad(alas.mod.mp,x)' zeros(2*alas.mod.nb_comp)'])+GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  gpenf(x)=gpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ gfpenf(x,yg,yh)=ObjGradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ gfpenf(x)=gfpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
 
  Hpenf(x,yg,yh)=HessPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  Hpenf(x)=Hpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
 
+
  return NLPModels.SimpleNLPModel(x->penf(x), xj,
                                 lvar=[alas.mod.mp.meta.lvar;alas.tb*ones(2*alas.mod.nb_comp)], 
                                 uvar=[alas.mod.mp.meta.uvar;Inf*ones(2*alas.mod.nb_comp)],
-				g=x->gpenf(x),H=x->Hpenf(x))
+				g=x->gpenf(x),H=x->Hpenf(x),fg=x->gfpenf(x))
 end
 
 function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
-                          rho::Vector,x::Vector,
+                          rho::Vector,xj::Vector,
                           usg::Vector,ush::Vector,
                           uxl::Vector,uxu::Vector,
                           ucl::Vector,ucu::Vector,
                           pen_nlp::NLPModels.AbstractNLPModel;gradpen::Vector=[],objpen::Float64=NaN)
  n=length(alas.mod.mp.meta.x0)
 
- penf(x,yg,yh)=Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ penf(x,yg,yh)=NLPModels.obj(alas.mod.mp,x)+Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  penf(x)=penf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
- gpenf(x,yg,yh)=GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+
+ gpenf(x,yg,yh)=vec([NLPModels.grad(alas.mod.mp,x)' zeros(2*alas.mod.nb_comp)'])+GradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  gpenf(x)=gpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
+ gfpenf(x,yg,yh)=ObjGradPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
+ gfpenf(x)=gfpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+
  Hpenf(x,yg,yh)=HessPenaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
  Hpenf(x)=Hpenf(x[1:n],x[n+1:n+alas.mod.nb_comp],x[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
 
  pen_nlp.f=x->penf(x)
  pen_nlp.g=x->gpenf(x)
+ pen_nlp.fg=x->gfpenf(x)
  pen_nlp.H=x->Hpenf(x)
 
- return pen_nlp
+ if isnan(objpen)
+  return pen_nlp
+ else
+  f,g=gfpenf(xj)
+  return pen_nlp,f,g
+ end
 end
 
 """
@@ -453,7 +504,7 @@ length(mod.mp.meta.ucon)
 function RhoUpdate(alas::ALASMPCC,rho::Vector,err::Vector;l::Int64=0)
  #rho[find(x->x>0,err)]*=alas.rho_update
  #rho*=alas.mod.paramset.rho_update
- rho=min(rho*alas.mod.paramset.rho_update,ones(length(rho))*alas.mod.paramset.rho_max)
+ rho=min.(rho*alas.mod.paramset.rho_update,ones(length(rho))*alas.mod.paramset.rho_max)
 
  return rho
 end

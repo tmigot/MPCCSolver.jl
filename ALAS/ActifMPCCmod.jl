@@ -118,11 +118,11 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
  w2=find(w[1:nb_comp,2])
  w3=find(w[nb_comp+1:2*nb_comp,1])
  w4=find(w[nb_comp+1:2*nb_comp,2])
- wcomp=find(w[nb_comp+1:2*nb_comp,1] | w[nb_comp+1:2*nb_comp,2])
- w13c=find(!w[1:nb_comp,1] & !w[nb_comp+1:2*nb_comp,1])
- w24c=find(!w[1:nb_comp,2] & !w[nb_comp+1:2*nb_comp,2])
- wc=find(!w[1:nb_comp,1] & !w[1:nb_comp,2] & !w[nb_comp+1:2*nb_comp,1] & !w[nb_comp+1:2*nb_comp,2])
- wcc=find(x->x==2, (w[1:nb_comp,1] | w[nb_comp+1:2*nb_comp,1]) & (w[1:nb_comp,2] | w[nb_comp+1:2*nb_comp,2]))
+ wcomp=find(w[nb_comp+1:2*nb_comp,1] .| w[nb_comp+1:2*nb_comp,2])
+ w13c=find(.!w[1:nb_comp,1] .& .!w[nb_comp+1:2*nb_comp,1])
+ w24c=find(.!w[1:nb_comp,2] .& .!w[nb_comp+1:2*nb_comp,2])
+ wc=find(.!w[1:nb_comp,1] .& .!w[1:nb_comp,2] .& .!w[nb_comp+1:2*nb_comp,1] .& .!w[nb_comp+1:2*nb_comp,2])
+ wcc=find(x->x==2, (w[1:nb_comp,1] .| w[nb_comp+1:2*nb_comp,1]) .& (w[1:nb_comp,2] .| w[nb_comp+1:2*nb_comp,2]))
 
  wnew=zeros(Bool,0,0)
 
@@ -142,18 +142,18 @@ function updatew(ma::MPCC_actif)
  ma.w2=find(ma.w[1:ma.nb_comp,2])
  ma.w3=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
  ma.w4=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcomp=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1] | ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.w13c=find(!ma.w[1:ma.nb_comp,1] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
- ma.w24c=find(!ma.w[1:ma.nb_comp,2] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wc=find(!ma.w[1:ma.nb_comp,1] & !ma.w[1:ma.nb_comp,2] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,1] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] | ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) & (ma.w[1:ma.nb_comp,2] | ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
+ ma.wcomp=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.w13c=find(.!ma.w[1:ma.nb_comp,1] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
+ ma.w24c=find(.!ma.w[1:ma.nb_comp,2] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wc=find(.!ma.w[1:ma.nb_comp,1] & .!ma.w[1:ma.nb_comp,2] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) & (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
  return ma
 end
 
 #Mise à jour de w
 function setw(ma::MPCC_actif, w::Array{Bool,2})
 
- ma.wnew=w & !ma.w
+ ma.wnew=w & .!ma.w
  ma.w=w
  return updatew(ma)
 end
@@ -561,7 +561,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
  end #fin boucle for ma.wc
 
- return alpha,w_save,w_save & !ma.w
+ return alpha,w_save,Array(w_save & .!ma.w)
 end
 
 """
@@ -618,7 +618,7 @@ function PasMax(ma::MPCC_actif,x::Vector,d::Vector)
   #on récupère les infos sur la contrainte de complémentarité
   alpha,w_save,w_new=PasMaxComp(ma,x,d)
  else
-  alpha=Inf;w_save=[];w_new=ma.w;
+  alpha=Inf;w_save=zeros(Bool,0,0);w_new=ma.w;
  end
  #alpha,w_save,w_new=PasMaxBound(ma,x,d)
  

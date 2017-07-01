@@ -43,7 +43,6 @@ module DDirection
 
 using ActifMPCCmod
 using Relaxation
-using HSL
 
 
 """
@@ -267,10 +266,8 @@ end
 
 function NwtdirectionMA57(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,hd::Any,beta::Float64)
     H=ActifMPCCmod.hess(ma,xj)
-println("test in")
-println(isdefined(HSL, :libhsl_ma97))
-println(isdefined(HSL, :libhsl_ma57))
-    M = HSL.Ma57
+
+    M = Ma57
     L = SparseMatrixCSC{Float64,Int32}
     D57 = SparseMatrixCSC{Float64,Int32}
     pp = Array(Int32,1)
@@ -357,9 +354,9 @@ function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
                           hd::Any,beta::Float64)
     H=ActifMPCCmod.hess(ma,xj)
 
-    L = Array(Float64,2)
-    D = Array(Float64,2)
-    pp = Array(Int,1)
+    L = Array{Float64,2}
+    D = Array{Float64,2}
+    pp = Array{Int,1}
     ρ = Float64
     ncomp = Int64
 
@@ -375,7 +372,7 @@ function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
 
     # A[pp,pp] = P*A*P' =  L*D*L'
 
-    if true in isnan(D) 
+    if true in isnan.(D) 
  	println("*******   Problem in D from LDLt: NaN")
         println(" cond (H) = $(cond(H))")
         #res = PDataLDLt()
@@ -387,7 +384,7 @@ function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
     Δ, Q = eig(D)
 
     ϵ2 =  1.0e-8
-    Γ = max(abs(Δ),ϵ2)
+    Γ = max.(abs(Δ),ϵ2)
 
     # Ad = P'*L*Q*Δ*Q'*L'*Pd =    -g
     # replace Δ by Γ to ensure positive definiteness
@@ -462,7 +459,7 @@ function  ldlt_symm(A0 :: Array{Float64,2}, piv :: Char='r')
     
     α = (1 + sqrt(17))/8
     while k < n
-        (λ, vr) = findmax( abs(A[k+1:n,k]) );
+        (λ, vr) = findmax( abs.(A[k+1:n,k]) );
         r = vr[1] + k;
         if λ > 0
             swap = false;
@@ -496,7 +493,7 @@ function  ldlt_symm(A0 :: Array{Float64,2}, piv :: Char='r')
                     pivot = false;
                     λ_j = λ;
                     while ~pivot
-                        (temp1,vr) = findmax( abs(A[k:n,j]) );
+                        (temp1,vr) = findmax( abs.(A[k:n,j]) );
                         ncomp = ncomp + n-k;
                         r = vr[1] + k - 1;
                         temp = A[k:n,r]; temp[r-k+1] = 0.0;
@@ -560,7 +557,7 @@ function  ldlt_symm(A0 :: Array{Float64,2}, piv :: Char='r')
             end
             
             if  k+s <= n
-                val, = findmax(abs(A[k+s:n,k+s:n]))
+                val, = findmax(abs.(A[k+s:n,k+s:n]))
                 ρ = max(ρ, val );
             end
             
