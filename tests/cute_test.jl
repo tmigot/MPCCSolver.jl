@@ -10,12 +10,12 @@ using CUTEst
 using NLPModels
 
 problems_unconstrained = CUTEst.select(contype="unc")
-problems_linconstrained = CUTEst.select(contype="linear")
+problems_linconstrained = CUTEst.select(contype="linear",min_var=1, max_var=100)
 problems_boundconstrained = CUTEst.select(contype="bounds")
 problems_quadconstrained = CUTEst.select(contype="quadratic")
 problems_genconstrained = CUTEst.select(contype="general")
-
-nlp = CUTEstModel(problems_quadconstrained[1])
+#problems_linconstrained[50] NaN ?
+nlp = CUTEstModel(problems_linconstrained[51])
 print(nlp)
 
 #déclare le mpcc :
@@ -31,6 +31,8 @@ print(nlp)
 @printf("Butterfly method:\n")
 #résolution avec ALAS Butterfly
 @time xb,fb,orb,nb_eval = MPCCsolve.solve(exemple_nlp)
+oa=orb.inner_output_alas[1]
+@printf("%s	",orb.solve_message)
 @show nb_eval
 
 finalize(nlp)
