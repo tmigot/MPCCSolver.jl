@@ -11,6 +11,7 @@ using NLPModels
 sprob=names(OptimizationProblems)[91]
 #sprob=:hs1
 @time n=4
+nlp=AbstractNLPModel
 try
 nlp = MathProgNLPModel(eval(sprob)(n))
 catch

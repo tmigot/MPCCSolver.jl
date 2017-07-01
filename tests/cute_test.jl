@@ -15,7 +15,7 @@ problems_boundconstrained = CUTEst.select(contype="bounds")
 problems_quadconstrained = CUTEst.select(contype="quadratic")
 problems_genconstrained = CUTEst.select(contype="general")
 #problems_linconstrained[50] NaN ?
-nlp = CUTEstModel(problems_linconstrained[51])
+nlp = CUTEstModel("MAXLIKA")
 print(nlp)
 
 #déclare le mpcc :
@@ -31,8 +31,10 @@ print(nlp)
 @printf("Butterfly method:\n")
 #résolution avec ALAS Butterfly
 @time xb,fb,orb,nb_eval = MPCCsolve.solve(exemple_nlp)
-oa=orb.inner_output_alas[1]
-@printf("%s	",orb.solve_message)
+try
+ oa=orb.inner_output_alas[1]
+ @printf("%s	",orb.solve_message)
+end
 @show nb_eval
 
 finalize(nlp)
