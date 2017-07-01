@@ -66,13 +66,25 @@ j=0
   j+=1
  end
 
+if mod.paramset.verbose != 0.0
+ realisable || print_with_color(:green,"Infeasible solution: (comp,cons)=($(MPCCmod.viol_comp(mod,xk)),$(MPCCmod.viol_cons(mod,xk)))\n" )
+ solved || print_with_color(:green,"Subproblem failure. NaN in the solution ? $(true in isnan(xk)). Stationary ? $(realisable && optimal)\n")
+ param || realisable || print_with_color(:green,"Parameters too small\n")
+ solved && realisable && print_with_color(:green,"Success\n")
+end
+
+if solved && optimal && realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Success")
+elseif !realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Infeasible")
+elseif realisable && !optimal
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Feasible, but not optimal")
+else
+ or=OutputRelaxationmod.UpdateFinalOR(or,"autres")
+end
+
 #Traitement final :
 OutputRelaxationmod.Print(or,n,mod.paramset.verbose)
-
-realisable || print_with_color(:green,"Infeasible solution: (comp,cons)=($(MPCCmod.viol_comp(mod,xk)),$(MPCCmod.viol_cons(mod,xk)))\n" )
-solved || print_with_color(:green,"Subproblem failure. NaN in the solution ? $(true in isnan(xk)). Stationary ? $(realisable && optimal)\n")
-param || realisable || print_with_color(:green,"Parameters too small\n")
-solved && realisable && print_with_color(:green,"Success\n")
 
  mod=MPCCmod.addInitialPoint(mod,x0[1:n]) #remet le point initial du MPCC
  nb_eval=[mod.mp.counters.neval_obj,mod.mp.counters.neval_cons,
@@ -89,9 +101,9 @@ Méthode de relaxation avec penalisation des paramètres
 """
 function solve(mod::MPCCmod.MPCC)
  if mod.nb_comp==0
-  return solve(mod,0.1,0.0,0.1,0.0,0.1,0.0,name_relax="ALAS")
+  return solve(mod,0.0,0.0,0.0,0.0,0.0,0.0,name_relax="ALAS")
  else
-  return solve(mod,0.1,0.01,0.1,0.01,0.1,0.01,name_relax="ALAS")
+  return solve(mod,0.1,0.1,0.1,0.1,0.1,0.1,name_relax="ALAS")
  end
 end
 
@@ -154,7 +166,9 @@ function stationary_check(mod::MPCCmod.MPCC,x::Vector)
  b=-NLPModels.grad(mod.mp,x)
 
  if mod.mp.meta.ncon+mod.nb_comp ==0
+
   optimal=norm(b,Inf)<=mod.paramset.precmpcc
+
  else
   if mod.nb_comp>0
    A=[NLPModels.jac(mod.mp,x); NLPModels.jac(mod.G,x); NLPModels.jac(mod.H,x) ]'

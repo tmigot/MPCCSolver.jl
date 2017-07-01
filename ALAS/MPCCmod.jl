@@ -97,6 +97,18 @@ function MPCC(mp::NLPModels.AbstractNLPModel)
 		AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
 end
 
+function MPCC(mp::NLPModels.AbstractNLPModel,algo::AlgoSetmod.AlgoSet)
+
+ G=SimpleNLPModel(x->0, [0.0])
+ H=SimpleNLPModel(x->0, [0.0])
+
+ nb_comp=0
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
+
+ return MPCC(mp,G,H,mp.meta.x0,nb_comp,
+		AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+end
+
 function MPCC(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel;nb_comp::Float64=NaN)
 
  nb_comp=isnan(nb_comp)?length(NLPModels.cons(G,mp.meta.x0)):nb_comp

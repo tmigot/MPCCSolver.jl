@@ -52,26 +52,30 @@ type MPCC_actif
  r::Float64
  s::Float64
  t::Float64
- w::Any #matrice à 2 colonnes et de longueur 2nb_comp -- clairement devrait être des listes ou des ensembles !
- bar_w::Vector # vecteur de longueur 2nb_comp -- clairement devrait être des listes ou des ensembles ! -- UTILE ?
+
+ w::Array{Bool,2} #matrice à 2 colonnes et de longueur 2nb_comp -- sparse
+
  n::Int64 #dans le fond est optionnel si on a nb_comp
  nb_comp::Int64
+
  #ensembles d'indices :
- w1::Any # ensemble des indices (entre 0 et nb_comp) où la contrainte yG>=-r est active
- w2::Any # ensemble des indices (entre 0 et nb_comp) où la contrainte yH>=-r est active
- w3::Any # ensemble des indices (entre 0 et nb_comp) où la contrainte yG<=s+t*theta(yH,r) est active
- w4::Any # ensemble des indices (entre 0 et nb_comp) où la contrainte yH<=s+t*theta(yG,r) est active
- wcomp::Any #ensemble des indices (entre 0 et nb_comp) où la contrainte Phi<=0 est active
- w13c::Any #ensemble des indices où les variables yG sont libres
- w24c::Any #ensemble des indices où les variables yH sont libres
- wc::Any #ensemble des indices des contraintes où yG et yH sont libres
- wcc::Any #ensemble des indices des contraintes où yG et yH sont fixés
- wnew::Any #dernières contraintes ajoutés
+ w1::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yG>=-r est active
+ w2::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yH>=-r est active
+ w3::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yG<=s+t*theta(yH,r) est active
+ w4::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yH<=s+t*theta(yG,r) est active
+ wcomp::Array{Int64,1} #ensemble des indices (entre 0 et nb_comp) où la contrainte Phi<=0 est active
+ w13c::Array{Int64,1} #ensemble des indices où les variables yG sont libres
+ w24c::Array{Int64,1} #ensemble des indices où les variables yH sont libres
+ wc::Array{Int64,1} #ensemble des indices des contraintes où yG et yH sont libres
+ wcc::Array{Int64,1} #ensemble des indices des contraintes où yG et yH sont fixés
+
+
+ wnew::Array{Bool,2} #dernières contraintes ajoutés
 
  #paramètres pour le calcul de la direction de descente
  beta::Float64 #paramètre pour gradient conjugué
  Hess::Array{Float64,2} #inverse matrice hessienne approximée
- #Hd::Vector #produit inverse matrice hessienne et gradient
+ #Hd::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
 
  paramset::ParamSetmod.ParamSet
  direction::Function #fonction qui calcul la direction de descente
@@ -87,44 +91,45 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
   xk=nlp.meta.x0[1:n]
   ygk=nlp.meta.x0[n+1:n+nb_comp]
   yhk=nlp.meta.x0[n+nb_comp+1:n+2*nb_comp]
-  w=sparse(zeros(2*nb_comp,2))
+
+  w=zeros(Bool,2*nb_comp,2)
 
   for l=1:nb_comp
    if ygk[l]==nlp.meta.lvar[n+l]
-    w[l,1]=1;
+    w[l,1]=true;
    elseif ygk[l]==Relaxation.psi(yhk[l],r,s,t)
-    w[l+nb_comp,1]=1;
+    w[l+nb_comp,1]=true;
    end
    if yhk[l]==nlp.meta.lvar[n+l+nb_comp]
-    w[l,2]=1;
+    w[l,2]=true;
    elseif yhk[l]==Relaxation.psi(ygk[l],r,s,t)
-    w[l+nb_comp,2]=1;
+    w[l+nb_comp,2]=true;
    end
   end
 
  return MPCC_actif(nlp,r,s,t,w,paramset,direction,linesearch)
 end
 
-function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Any,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
+function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Array{Bool,2},paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
 
- bar_w=find(x->x==0,w[:,1]+w[:,2])
  nb_comp=Int(size(w,1)/2)
  n=length(nlp.meta.x0)-2*nb_comp
- w1=find(x->x>0,w[1:nb_comp,1])
- w2=find(x->x>0,w[1:nb_comp,2])
- w3=find(x->x>0,w[nb_comp+1:2*nb_comp,1])
- w4=find(x->x>0,w[nb_comp+1:2*nb_comp,2])
- wcomp=find(x->x>=1,w[nb_comp+1:2*nb_comp,1]+w[nb_comp+1:2*nb_comp,2])
- w13c=find(x->x==0,w[1:nb_comp,1]+w[nb_comp+1:2*nb_comp,1])
- w24c=find(x->x==0,w[1:nb_comp,2]+w[nb_comp+1:2*nb_comp,2]) 
- wc=find(x->x==0, w[1:nb_comp,1]+w[1:nb_comp,2]+w[nb_comp+1:2*nb_comp,1]+w[nb_comp+1:2*nb_comp,2])
- wcc=find(x->x==2, w[1:nb_comp,1]+w[1:nb_comp,2]+w[nb_comp+1:2*nb_comp,1]+w[nb_comp+1:2*nb_comp,2])
- wnew=[]
+ w1=find(w[1:nb_comp,1])
+ w2=find(w[1:nb_comp,2])
+ w3=find(w[nb_comp+1:2*nb_comp,1])
+ w4=find(w[nb_comp+1:2*nb_comp,2])
+ wcomp=find(w[nb_comp+1:2*nb_comp,1] | w[nb_comp+1:2*nb_comp,2])
+ w13c=find(!w[1:nb_comp,1] & !w[nb_comp+1:2*nb_comp,1])
+ w24c=find(!w[1:nb_comp,2] & !w[nb_comp+1:2*nb_comp,2])
+ wc=find(!w[1:nb_comp,1] & !w[1:nb_comp,2] & !w[nb_comp+1:2*nb_comp,1] & !w[nb_comp+1:2*nb_comp,2])
+ wcc=find(x->x==2, (w[1:nb_comp,1] | w[nb_comp+1:2*nb_comp,1]) & (w[1:nb_comp,2] | w[nb_comp+1:2*nb_comp,2]))
+
+ wnew=zeros(Bool,0,0)
 
  beta=0.0
  Hess=eye(n+2*nb_comp)
 
- return MPCC_actif(nlp,r,s,t,w,bar_w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,beta,Hess,paramset,direction,linesearch)
+ return MPCC_actif(nlp,r,s,t,w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,beta,Hess,paramset,direction,linesearch)
 end
 
 """
@@ -133,23 +138,22 @@ Methodes pour le MPCC_actif
 #Mise à jour des composantes liés à w
 function updatew(ma::MPCC_actif)
 
- ma.bar_w=find(x->x==0,ma.w[:,1]+ma.w[:,2])
- ma.w1=find(x->x>0,ma.w[1:ma.nb_comp,1])
- ma.w2=find(x->x>0,ma.w[1:ma.nb_comp,2])
- ma.w3=find(x->x>0,ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
- ma.w4=find(x->x>0,ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcomp=find(x->x>=1,ma.w[ma.nb_comp+1:2*ma.nb_comp,1]+ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.w13c=find(x->x==0,ma.w[1:ma.nb_comp,1]+ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
- ma.w24c=find(x->x==0,ma.w[1:ma.nb_comp,2]+ma.w[ma.nb_comp+1:2*ma.nb_comp,2]) 
- ma.wc=find(x->x==0, ma.w[1:ma.nb_comp,1]+ma.w[1:ma.nb_comp,2]+ma.w[ma.nb_comp+1:2*ma.nb_comp,1]+ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcc=find(x->x==2, ma.w[1:ma.nb_comp,1]+ma.w[1:ma.nb_comp,2]+ma.w[ma.nb_comp+1:2*ma.nb_comp,1]+ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.w1=find(ma.w[1:ma.nb_comp,1])
+ ma.w2=find(ma.w[1:ma.nb_comp,2])
+ ma.w3=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
+ ma.w4=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wcomp=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1] | ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.w13c=find(!ma.w[1:ma.nb_comp,1] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
+ ma.w24c=find(!ma.w[1:ma.nb_comp,2] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wc=find(!ma.w[1:ma.nb_comp,1] & !ma.w[1:ma.nb_comp,2] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,1] & !ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] | ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) & (ma.w[1:ma.nb_comp,2] | ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
  return ma
 end
 
 #Mise à jour de w
-function setw(ma::MPCC_actif, w::Any)
+function setw(ma::MPCC_actif, w::Array{Bool,2})
 
- ma.wnew=max(w-ma.w,zeros(2*ma.nb_comp,2))
+ ma.wnew=w & !ma.w
  ma.w=w
  return updatew(ma)
 end
@@ -443,14 +447,14 @@ wmax        : ensemble des contraintes qui viennent d'être ajouté
 
 output : MPCC_actif (avec les ensembles de contraintes actives mis à jour
 """
-function RelaxationRule(ma::ActifMPCCmod.MPCC_actif,xj::Vector,lg::Vector,lh::Vector,lphi::Vector,wmax::Any)
+function RelaxationRule(ma::ActifMPCCmod.MPCC_actif,xj::Vector,lg::Vector,lh::Vector,lphi::Vector,wmax::Array{Bool,2})
 
   copy_wmax=copy(wmax)
 
   # Relaxation de l'ensemble d'activation : désactive toutes les contraintes négatives
-  ma.w[find(x -> x<0,[lg;lphi;lh;lphi])]=zeros(length(find(x -> x<0,[lg;lphi;lh;lphi])))
+  ma.w[find(x -> x<0,[lg;lphi;lh;lphi])]=zeros(Bool,length(find(x -> x<0,[lg;lphi;lh;lphi])))
   # Règle d'anti-cyclage : on enlève pas une contrainte qui vient d'être ajouté.
-  ma.w[find(x->x==1.0,copy_wmax)]=ones(length(find(x->x==1.0,copy_wmax)))
+  ma.w[find(x->x==1.0,copy_wmax)]=ones(Bool,length(find(x->x==1.0,copy_wmax)))
 
  return ActifMPCCmod.updatew(ma)
 end
@@ -486,11 +490,11 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
    #update of the active set
    if alpha11==alpha
-    w_save[i,1]=1
+    w_save[i,1]=true
    end
    if alpha12==alpha
-    w_save[i+ma.nb_comp,2]=1
-    w_save[i,2]=1
+    w_save[i+ma.nb_comp,2]=true
+    w_save[i,2]=true
    end
 
   elseif bloque
@@ -515,11 +519,11 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
    #on met à jour les contraintes
    if alpha21==alpha
-    w_save[i,2]=1
+    w_save[i,2]=true
    end
    if alpha22==alpha
-    w_save[i+ma.nb_comp,1]=1
-    w_save[i,1]=1
+    w_save[i+ma.nb_comp,1]=true
+    w_save[i,1]=true
    end
   elseif bloque
    alpha=0.0
@@ -543,21 +547,21 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
   end
 
    if alphac[1]==alpha
-    w_save[i+ma.nb_comp,1]=1
+    w_save[i+ma.nb_comp,1]=true
    end
    if alphac[2]==alpha
-    w_save[i+ma.nb_comp,2]=1
+    w_save[i+ma.nb_comp,2]=true
    end
    if alphac11==alpha
-    w_save[i,1]=1
+    w_save[i,1]=true
    end
    if alphac21==alpha
-    w_save[i,2]=1
+    w_save[i,2]=true
    end
 
  end #fin boucle for ma.wc
 
- return alpha,w_save,w_save-ma.w
+ return alpha,w_save,w_save & !ma.w
 end
 
 """

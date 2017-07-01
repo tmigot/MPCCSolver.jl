@@ -239,6 +239,7 @@ end
 
 function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
                               hd::Any,beta::Float64)
+
     H=ActifMPCCmod.hess(ma,xj)
 
     Δ = ones(g)
@@ -249,10 +250,11 @@ function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
     catch
         Δ, V = eig(H + eye(H))
     end
+
     ϵ2 =  1.0e-8 
     Γ = 1.0 ./ max(abs(Δ),ϵ2)
-    
     d = - (V * diagm(Γ) * V') * (g)
+
     return d
 end
 

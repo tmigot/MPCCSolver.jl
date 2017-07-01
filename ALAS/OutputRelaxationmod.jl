@@ -59,7 +59,7 @@ end
 function UpdateOR(or::OutputRelaxation,xk::Vector,stat::Int64,r::Float64,s::Float64,t::Float64,prec::Float64,realisabilite::Float64,output,obj::Float64)
  if stat==0
   or.solved=0
-  or.solve_message="Success"
+  or.solve_message="?"
  else #stat !=0
   or.solved=-1
   or.solve_message="Fail"
@@ -77,6 +77,11 @@ function UpdateOR(or::OutputRelaxation,xk::Vector,stat::Int64,r::Float64,s::Floa
  return or
 end
 
+function UpdateFinalOR(or::OutputRelaxation,mess::String)
+ or.solve_message=mess
+ return or
+end
+
 function Print(or::OutputRelaxation,n::Int64,verbose::Int64)
  if verbose>0
   println("")
@@ -89,9 +94,9 @@ function Print(or::OutputRelaxation,n::Int64,verbose::Int64)
 
   for r in or.rtab
    if n<=4
-    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
    else
-    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
    end
    OutputALASmod.Print(or.inner_output_alas[j],n,verbose)
    j+=1
