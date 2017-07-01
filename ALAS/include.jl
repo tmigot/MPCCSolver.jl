@@ -1,12 +1,5 @@
 #fist we check if all package are installed:
-package_check=false
-
-if package_check
-#JuMP
-#NLPModels
-#CUTEst
-#Pkg.add("BenchmarkProfiles")
-end
+#include("installer.jl")
 
 #include file
 include("../ALAS/OutputLSmod.jl")
@@ -25,4 +18,4 @@ include("../ALAS/UnconstrainedMPCCActif.jl")
 include("../ALAS/MPCCmod.jl")
 include("../ALAS/ALASMPCCmod.jl")
 include("../ALAS/MPCCsolve.jl")
-#include("../ALAS/MPCC2DPlot.jl")
+include("../ALAS/MPCC2DPlot.jl")
