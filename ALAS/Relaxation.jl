@@ -60,8 +60,10 @@ end
 dphi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (nb_comp,nb_comp)
 """
 function dphi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
+
  dg=(yh-psi(yg,r,s,t))-dpsi(yg,r,s,t).*(yg-psi(yh,r,s,t))
  dh=(yg-psi(yh,r,s,t))-dpsi(yh,r,s,t).*(yh-psi(yg,r,s,t))
+
  return [dg;dh]
 end
 

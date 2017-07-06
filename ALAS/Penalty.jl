@@ -72,7 +72,7 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
 
   if nb_comp>0
    G_eq=NLPModels.jtprod(G,x,rho_eqg.*err_eq_g)+NLPModels.jtprod(H,x,rho_eqh.*err_eq_h)
-   return vec([(G_eq+G_in_lv+G_in_uv+G_in_lc+G_in_uc)' -rho_eqg.*err_eq_g -rho_eqh.*err_eq_h])
+   return vec([(G_eq+G_in_lv+G_in_uv+G_in_lc+G_in_uc)' (-rho_eqg.*err_eq_g)' (-rho_eqh.*err_eq_h)'])
   else
    return G_in_lv+G_in_uv+G_in_lc+G_in_uc
   end
@@ -108,7 +108,8 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
   elseif nb_comp>0
    HCG=hess(G, x, obj_weight=1.0, y=err_eq_g)+(diagm(rho_eqg)*NLPModels.jac(G,x))'*NLPModels.jac(G,x)
    HCH=hess(H, x, obj_weight=1.0, y=err_eq_h)+(diagm(rho_eqh)*NLPModels.jac(H,x))'*NLPModels.jac(H,x)
-   return tril([diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv)+HCG+HCH zeros(n,n);zeros(2*nb_comp,n) diagm([rho_eqg;rho_eqh])])
+
+   return tril([diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv)+HCG+HCH zeros(n,2*nb_comp);zeros(2*nb_comp,n) diagm([rho_eqg;rho_eqh])])
   elseif mp.meta.ncon!=0
    ilc=find(x->x>0,err_in_lc);rho_ineq_lcons[ilc]=zeros(length(ilc))
    iuc=find(x->x>0,err_in_uc);rho_ineq_ucons[iuc]=zeros(length(iuc))

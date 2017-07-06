@@ -143,10 +143,10 @@ function updatew(ma::MPCC_actif)
  ma.w3=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
  ma.w4=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
  ma.wcomp=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.w13c=find(.!ma.w[1:ma.nb_comp,1] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
- ma.w24c=find(.!ma.w[1:ma.nb_comp,2] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wc=find(.!ma.w[1:ma.nb_comp,1] & .!ma.w[1:ma.nb_comp,2] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1] & .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) & (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
+ ma.w13c=find(.!ma.w[1:ma.nb_comp,1] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
+ ma.w24c=find(.!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wc=find(.!ma.w[1:ma.nb_comp,1] .& .!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
+ ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) .& (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
  return ma
 end
 
@@ -203,10 +203,20 @@ end
 Renvoie la direction d réduite
 """
 function redd(ma::MPCC_actif,d::Vector)
- df=zeros(ma.n+length(ma.w13c)+length(ma.w24c))
- df[1:ma.n]=d[1:ma.n]
- df[ma.n+1:ma.n+length(ma.w13c)]=d[ma.w13c+ma.n]
- df[ma.n+length(ma.w13c)+1:ma.n+length(ma.w13c)+length(ma.w24c)]=d[ma.w24c+ma.nb_comp+ma.n]
+
+  df=zeros(ma.n+length(ma.w13c)+length(ma.w24c))
+  df[1:ma.n]=d[1:ma.n]
+  df[ma.n+1:ma.n+length(ma.w13c)]=d[ma.w13c+ma.n]
+  df[ma.n+length(ma.w13c)+1:ma.n+length(ma.w13c)+length(ma.w24c)]=d[ma.w24c+ma.nb_comp+ma.n]
+
+ return df
+end
+
+function redd(ma::MPCC_actif,d::Vector,w::Array{Int64,1})
+
+  df=zeros(length(w))
+  df[1:length(w)]=d[w]
+
  return df
 end
 
@@ -278,8 +288,9 @@ function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
  if isempty(ma.w1) && isempty(ma.w3)
   gradg=zeros(length(ma.w13c))
  elseif !isempty(ma.w13c)
-  gradg=zeros(length(ma.w13c))
-  gradg[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
+  tmp=zeros(ma.nb_comp)
+  tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
+  gradg=redd(ma,tmp,ma.w13c)
  else #ma.w13c est vide
   gradg=Float64[]
  end
@@ -288,8 +299,9 @@ function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
  if isempty(ma.w2) && isempty(ma.w4)
   gradh=zeros(length(ma.w24c))
  elseif !isempty(ma.w24c)
-  gradh=zeros(length(ma.w24c))
-  gradh[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
+  tmp=zeros(ma.nb_comp)
+  tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
+  gradh=redd(ma,tmp,ma.w24c)
  else
   gradh=Float64[]
  end
@@ -329,7 +341,7 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  nred=length(x)
- nnb=ma.n+ma.nb_comp
+ nnb=ma.n+ma.nb_comp;nnbt=ma.n+2*ma.nb_comp;
  #construction du vecteur gradient de taille n+2nb_comp
  gradf=NLPModels.grad(ma.nlp,xf)
 
@@ -345,12 +357,20 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
   hessg=zeros(length(ma.w13c),nred)
   dpsi=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
   ddpsi=Relaxation.ddpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
-  deriv=hcat(H[ma.n+ma.w3,1:ma.n],H[ma.n+ma.w3,ma.n+ma.w13c],H[ma.n+ma.w3,nnb+ma.w24c])
-  deriv[ma.w3,ma.n+ma.w3]=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t).*deriv[ma.w3,ma.n+ma.w3]
-  comprule=diag(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv
+  w3r=zeros(Int64,length(ma.w3)) #liste des indices dans les variables actives (w13c)
+  for i=1:length(ma.w3)
+   w3r[i]=findfirst(x->x==ma.w3[i],ma.w13c)
+  end
 
-  hessg[ma.w3]=deriv
-  Hred[ma.n+ma.w13c,1:nred]=Hred[ma.n+ma.w13c,1:nred]+hessg
+  #TOUT A REVOIR ICI
+  #deriv=hcat(H[ma.n+ma.w3,1:ma.n],H[ma.n+ma.w3,ma.n+ma.w13c],H[ma.n+ma.w3,nnb+ma.w24c])
+
+  #deriv[1:length(ma.w3),ma.n+w3r]=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t).*deriv[1:length(ma.w3),ma.n+w3r]
+
+  #comprule=diagm(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv #Trop bizarre qu'on utilise pas ça...
+  #hessg[w3r,1:nred]=deriv
+
+  Hred[ma.n+1:ma.n+length(ma.w13c),1:nred]=Hred[ma.n+1:ma.n+length(ma.w13c),1:nred]
  else #ma.w13c est vide
   hessg=[]
  end
@@ -361,12 +381,21 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
   hessh=zeros(length(ma.w24c),nred)
   dpsi=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
   ddpsi=Relaxation.ddpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
-  deriv=hcat(H[nnb+ma.w4,1:ma.n],H[nnb+ma.w4,ma.n+ma.w13c],H[nnb+ma.w4,nnb+ma.w24c])
-  deriv[ma.w4,nnb+ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*deriv[ma.w4,ma.n+ma.nb_comp+ma.w4]
-  comprule=diag(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv
 
-  hessh[ma.w4]=deriv
-  Hred[nnb+ma.w24c,1:nred]=Hred[nnb+ma.w24c,1:nred]+hessh
+  w4r=zeros(Int64,length(ma.w4)) #liste des indices dans les variables actives (w24c)
+  for i=1:length(ma.w4)
+   w4r[i]=findfirst(x->x==ma.w4[i],ma.w24c)
+  end
+#TOUT A REVOIR ICI
+  #deriv=hcat(H[nnb+ma.w4,1:ma.n],H[nnb+ma.w4,ma.n+ma.w13c],H[nnb+ma.w4,nnb+ma.w24c])
+  #deriv[ma.w4,nnb+ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*deriv[ma.w4,ma.n+ma.nb_comp+ma.w4]
+  #deriv[1:length(ma.w4),ma.n+length(ma.w13c)+w4r]=Relaxation.dpsi(xf[ma.w4+nnb],ma.r,ma.s,ma.t).*deriv[1:length(ma.w4),ma.n+length(ma.w13c)+w4r]
+
+  #comprule=diagm(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv #Trop bizarre qu'on utilise pas ça...
+
+  #hessh[w4r,1:nred]=deriv
+
+  Hred[ma.n+1+length(ma.w13c):ma.n+length(ma.w13c)+length(ma.w24c),1:nred]=Hred[ma.n+1+length(ma.w13c):ma.n+length(ma.w13c)+length(ma.w24c),1:nred]
  else #ma.w24c est vide
   hessh=[]
  end
@@ -388,33 +417,8 @@ calcul la valeur des multiplicateurs de Lagrange pour la contrainte de compléme
 """
 function LSQComputationMultiplier(ma::MPCC_actif,gradpen::Vector,xj::Vector)
 
- gx,gy=Relaxation.dphi(xj[ma.n+1:ma.n+ma.nb_comp],xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
-
-#point initial
-# l_init=ones(3*ma.nb_comp)
-# w1c=find(x->x==0,ma.w[1:ma.nb_comp,1])
-# l_init[w1c]==zeros(size(w1c))
-# w2c=find(x->x==0,ma.w[1:ma.nb_comp,2])
-# l_init[ma.nb_comp+w2c]==zeros(size(w2c))
-# wcompc=find(x->x==0,ma.w[ma.nb_comp+1:2*ma.nb_comp,1]+ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
-# l_init[2*ma.nb_comp+wcompc]=zeros(size(wcompc))
-
- # calcul moindre carrés
-# lsqobjg(lg,lphi)=[gradpen[ma.w1+ma.n]-lg[ma.w1];gradpen[ma.wcomp+ma.n]+lphi[ma.wcomp].*collect(gx)[ma.wcomp]]
-# lsqobjh(lh,lphi)=[gradpen[ma.w2+ma.n+ma.nb_comp]-lh[ma.w2];gradpen[ma.wcomp+ma.n+ma.nb_comp]+lphi[ma.wcomp].*collect(gy)[ma.wcomp]]
-# lsqobj(lg,lh,lphi)=[lsqobjg(lg,lphi);lsqobjh(lh,lphi)]
-#on attend en entrée un vecteur l de taille 3nb_comp
-# lsqobj(l)=lsqobj(l[1:ma.nb_comp],l[ma.nb_comp+1:2*ma.nb_comp],l[2*ma.nb_comp+1:3*ma.nb_comp])
-# Pas nécessaire : on utilise la formule de pseudo-inverse.
-# lambda_pb = NLPModels.ADNLPModel(l->0.5*norm(lsqobj(l))^2, l_init)
-# model_lsq = NLPModels.NLPtoMPB(lambda_pb, Ipopt.IpoptSolver(print_level=0))
-# MathProgBase.optimize!(model_lsq)
-# stat = MathProgBase.status(model_lsq)
-# if stat == :Optimal
-#  lk = MathProgBase.getsolution(model_lsq)
-# else
-#  println("Error LSQComputationMultiplier ",stat)
-# end
+ dg=Relaxation.dphi(xj[ma.n+1:ma.n+ma.nb_comp],xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
+ gx=dg[1:ma.nb_comp];gy=dg[ma.nb_comp+1:2*ma.nb_comp]
 
  #matrices des contraintes actives : (lg,lh,lphi)'*A=b
  nw1=length(ma.w1)
@@ -476,11 +480,14 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
  #les indices où la première composante est libre
  for i in ma.w13c
+  wr13=findfirst(x->x==i,ma.w13c) #l'indice relatif dans les variables libre
+  iw13c=ma.n+wr13
+
   bloque=(i in ma.w2) && (i in ma.w4)
-  if !(i in ma.w24c) && !bloque && d[i+ma.n]<0
+  if !(i in ma.w24c) && !bloque && d[iw13c]<0
    #on prend le plus petit entre x+alpha*dx>=-r et s+tTheta(x+alpha*dx-s)>=-r
-   alpha11=(ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n]
-   alpha12=(Relaxation.invpsi(ma.nlp.meta.lvar[ma.n+i],ma.r,ma.s,ma.t)-x[i+ma.n])/d[i+ma.n]
+   alpha11=(ma.nlp.meta.lvar[iw13c]-x[iw13c])/d[iw13c]
+   alpha12=(Relaxation.invpsi(ma.nlp.meta.lvar[iw13c],ma.r,ma.s,ma.t)-x[iw13c])/d[iw13c]
 
    alphag=AlphaChoix(alpha,alpha11,alpha12)
    if alphag<=alpha
@@ -505,11 +512,14 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
  #c'est un copie coller d'au dessus => exporter dans une fonction
  #les indices où la deuxième composante est libre
  for i in ma.w24c
+  wr24=findfirst(x->x==i,ma.w24c) #l'indice relatif dans les variables libre
+  iw24c=ma.n+length(ma.w13c)+wr24
+
   bloque=(i in ma.w1) && (i in ma.w3)
-  if !(i in ma.w13c) && !bloque && d[i+length(ma.w13c)+ma.n]<0
+  if !(i in ma.w13c) && !bloque && d[iw24c]<0
    #on prend le plus petit entre y+alpha*dy>=-r et s+tTheta(y+alpha*dy-s)>=-r
-   alpha21=(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
-   alpha22=(Relaxation.invpsi(ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i],ma.r,ma.s,ma.t)-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n]
+   alpha21=(ma.nlp.meta.lvar[iw24c]-x[iw24c])/d[iw24c]
+   alpha22=(Relaxation.invpsi(ma.nlp.meta.lvar[iw24c],ma.r,ma.s,ma.t)-x[iw24c])/d[iw24c]
 
    alphah=AlphaChoix(alpha,alpha21,alpha22)
    if alphah<=alpha
@@ -533,11 +543,18 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
  #enfin les indices où les deux sont libres
  for i in ma.wc
   #yG-psi(yH)=0 ou yH-psi(yG)=0
-  alphac=Relaxation.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
+  wr1=findfirst(x->x==i,ma.w13c) #l'indice relatif dans les variables libre
+  wr2=findfirst(x->x==i,ma.w24c) #l'indice relatif dans les variables libre
+  iwr1=wr1+ma.n;iwr2=wr2+length(ma.w13c)+ma.n;
+
+  #alphac=Relaxation.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
+  alphac=Relaxation.AlphaThetaMax(x[iwr1],d[iwr1],x[iwr2],d[iwr2],ma.r,ma.s,ma.t)
   #yG-tb=0
-  alphac11=d[i+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
+  #alphac11=d[i+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
+  alphac11=d[iwr1]<0 ? (ma.nlp.meta.lvar[iwr1]-x[iwr1])/d[iwr1] : Inf
   #yH-tb=0
-  alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
+  #alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
+  alphac21=d[iwr2]<0 ? (ma.nlp.meta.lvar[iwr2]-x[iwr2])/d[iwr2] : Inf  
 
   alphagh=AlphaChoix(alpha,alphac[1],alphac[2],alphac11,alphac21)
 
@@ -561,7 +578,7 @@ function PasMaxComp(ma::MPCC_actif,x::Vector,d::Vector)
 
  end #fin boucle for ma.wc
 
- return alpha,w_save,Array(w_save & .!ma.w)
+ return alpha,w_save,Array(w_save .& .!ma.w)
 end
 
 """

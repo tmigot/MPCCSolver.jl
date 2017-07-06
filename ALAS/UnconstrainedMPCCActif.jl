@@ -90,7 +90,7 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  else
   wnew = zeros(Bool,0,0) #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
- if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan.(sol)
+ if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan.(sol) || true in isnan(ht)
   output=1
  end
  small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit

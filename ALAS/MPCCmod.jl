@@ -129,6 +129,7 @@ end
 Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ; lvar<=x ; x<=uvar ; lvar<=c(x) ; c(x)<=uvar
 """
 function viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
+
  c=NLPModels.cons(mod.mp,x)
  if mod.nb_comp>0
   G=NLPModels.cons(mod.G,x)

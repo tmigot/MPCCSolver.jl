@@ -28,7 +28,7 @@ function AlgoSet()
   #scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
   scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->1
 
- return AlgoSet(Penalty.Quadratic,DDirection.NwtdirectionLDLt,LineSearch.ArmijoWolfe,scaling_dual)
+ return AlgoSet(Penalty.Quadratic,DDirection.NwtdirectionSpectral,LineSearch.ArmijoWolfe,scaling_dual)
 end
 
 function AlgoSet(penalty::Function,direction::Function, linesearch::Function)

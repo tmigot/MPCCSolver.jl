@@ -384,7 +384,7 @@ function NwtdirectionLDLt(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
     Δ, Q = eig(D)
 
     ϵ2 =  1.0e-8
-    Γ = max.(abs(Δ),ϵ2)
+    Γ = max.(abs.(Δ),ϵ2)
 
     # Ad = P'*L*Q*Δ*Q'*L'*Pd =    -g
     # replace Δ by Γ to ensure positive definiteness

@@ -15,7 +15,6 @@ using OutputRelaxationmod
 using Ipopt
 using NLPModels
 using MathProgBase
-#using PyPlot ??
 
 """
 Methode de relaxation pour resoudre :
@@ -62,7 +61,8 @@ j=0
 
   solved=true in isnan(xk)?false:solved
   realisable=real<=mod.paramset.precmpcc
-  optimal=stationary_check(mod,xk[1:n])
+
+  optimal=!isnan(f) && !(true in isnan.(xk)) && stationary_check(mod,xk[1:n])
   param=(t+r+s)>pmin
 
   j+=1
@@ -177,9 +177,14 @@ function stationary_check(mod::MPCCmod.MPCC,x::Vector)
   else
    A=NLPModels.jac(mod.mp,x)'
   end
+
+ if !(true in isnan.(A) || true in isnan.(b))
   l=pinv(full(A))*b #pinv not defined for sparse matrix
   optimal=maximum(max.(A*l-b,0))<=mod.paramset.precmpcc
-
+ else
+  @printf("Evaluation error: NaN in the derivative")
+  optimal=false
+ end
 #Checker les signes des multiplicateurs est virtuellement impossible...
 
  end

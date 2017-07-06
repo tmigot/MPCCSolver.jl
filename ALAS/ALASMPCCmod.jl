@@ -464,7 +464,7 @@ function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
                           usg::Vector,ush::Vector,
                           uxl::Vector,uxu::Vector,
                           ucl::Vector,ucu::Vector,
-                          pen_nlp::NLPModels.AbstractNLPModel;gradpen::Vector=[],objpen::Float64=NaN)
+                          pen_nlp::NLPModels.AbstractNLPModel;gradpen::Vector=[],objpen::Float64=zeros(0))
  n=length(alas.mod.mp.meta.x0)
 
  penf(x,yg,yh)=NLPModels.obj(alas.mod.mp,x)+Penaltygen(alas,x,yg,yh,rho,usg,ush,uxl,uxu,ucl,ucu)
@@ -484,7 +484,7 @@ function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
  pen_nlp.fg=x->gfpenf(x)
  pen_nlp.H=x->Hpenf(x)
 
- if isnan(objpen)
+ if isempty(objpen)
   return pen_nlp
  else
   f,g=gfpenf(xj)
