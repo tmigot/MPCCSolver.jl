@@ -15,7 +15,7 @@ problems_boundconstrained = CUTEst.select(contype="bounds")
 problems_quadconstrained = CUTEst.select(contype="quadratic")
 problems_genconstrained = CUTEst.select(contype="general")
 #problems_linconstrained[50] NaN ?
-nlp = CUTEstModel("MAXLIKA")
+nlp = CUTEstModel(problems_linconstrained[1])
 print(nlp)
 
 #déclare le mpcc :
