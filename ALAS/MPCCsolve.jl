@@ -71,7 +71,7 @@ j=0
 if mod.paramset.verbose != 0.0
  realisable || print_with_color(:green,"Infeasible solution: (comp,cons)=($(MPCCmod.viol_comp(mod,xk)),$(MPCCmod.viol_cons(mod,xk)))\n" )
  solved || print_with_color(:green,"Subproblem failure. NaN in the solution ? $(true in isnan(xk)). Stationary ? $(realisable && optimal)\n")
- param || realisable || print_with_color(:green,"Parameters too small\n")
+ param || realisable || print_with_color(:green,"Parameters too small\n") 
  solved && realisable && optimal && print_with_color(:green,"Success\n")
 end
 

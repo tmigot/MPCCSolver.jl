@@ -44,6 +44,11 @@ end
  return 0.5*(Pen_eq+Pen_in_lv+Pen_in_uv+Pen_in_lc+Pen_in_uc)
 end
 
+function Quadratic(mp::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,x::Vector,yg::Vector,
+                   yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,f::Float64,rho_update::Float64)
+ return rho_update*f
+end
+
 function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
                    H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
                    x::Vector,yg::Vector,yh::Vector,
@@ -76,6 +81,17 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
   else
    return G_in_lv+G_in_uv+G_in_lc+G_in_uc
   end
+end
+
+function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
+                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
+                   x::Vector,yg::Vector,yh::Vector,
+                   rho::Vector,
+                   usg::Vector,ush::Vector,
+                   uxl::Vector,uxu::Vector,
+                   ucl::Vector,ucu::Vector,
+                   g::Vector,rho_update::Float64)
+ return rho_update*g
 end
 
 function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
@@ -120,6 +136,17 @@ function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
   else
    return tril(diagm(rho_ineq_lvar.*lv)+diagm(rho_ineq_uvar.*uv))
   end
+end
+
+function Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
+                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
+                   x::Vector,yg::Vector,yh::Vector,
+                   rho::Vector,
+                   usg::Vector,ush::Vector,
+                   uxl::Vector,uxu::Vector,
+                   ucl::Vector,ucu::Vector,
+                   Hess::Array{Float64,2},rho_update::Float64)
+ return rho_update*Hess
 end
 
 """
@@ -173,7 +200,7 @@ function Lagrangian(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel
 
   if nb_comp>0
    G_eq=NLPModels.jtprod(G,x,rho_eqg.*err_eq_g+usg)+NLPModels.jtprod(H,x,rho_eqh.*err_eq_h+ush)
-   return vec([(G_eq+G_in_lv+G_in_uv+G_in_lc+G_in_uc)' -rho_eqg.*err_eq_g -rho_eqh.*err_eq_h])
+   return vec([(G_eq+G_in_lv+G_in_uv+G_in_lc+G_in_uc)' (-rho_eqg.*err_eq_g)' (-rho_eqh.*err_eq_h)'])
   else
    return G_in_lv+G_in_uv+G_in_lc+G_in_uc
   end

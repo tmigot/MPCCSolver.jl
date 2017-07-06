@@ -153,7 +153,7 @@ end
 #Mise à jour de w
 function setw(ma::MPCC_actif, w::Array{Bool,2})
 
- ma.wnew=w & .!ma.w
+ ma.wnew=w .& .!ma.w
  ma.w=w
  return updatew(ma)
 end
@@ -285,22 +285,28 @@ function grad(ma::MPCC_actif,x::Vector,gradf::Vector)
 
  gradg=Array{Float64}
  # Conditionnelles pour gérer le cas où w1 et w3 est vide
- if isempty(ma.w1) && isempty(ma.w3)
+ #if isempty(ma.w1) && isempty(ma.w3)
+ if isempty(ma.w4)
   gradg=zeros(length(ma.w13c))
- elseif !isempty(ma.w13c)
+ #elseif !isempty(ma.w13c) #certaines variables sont fixés
+ elseif !isempty(ma.w4) #certaines variables sont fixés
   tmp=zeros(ma.nb_comp)
-  tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
+  #tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
+  tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
   gradg=redd(ma,tmp,ma.w13c)
  else #ma.w13c est vide
   gradg=Float64[]
  end
 
  gradh=Array{Float64,1}
- if isempty(ma.w2) && isempty(ma.w4)
+ #if isempty(ma.w2) && isempty(ma.w4)
+ if isempty(ma.w3)
   gradh=zeros(length(ma.w24c))
- elseif !isempty(ma.w24c)
+ #elseif !isempty(ma.w24c)
+ elseif !isempty(ma.w3)
   tmp=zeros(ma.nb_comp)
-  tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
+  #tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
+  tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
   gradh=redd(ma,tmp,ma.w24c)
  else
   gradh=Float64[]
@@ -350,59 +356,35 @@ function hess(ma::MPCC_actif,x::Vector,H::Array{Float64,2})
              hcat(H[ma.n+ma.w13c,1:ma.n],H[ma.n+ma.w13c,ma.n+ma.w13c],H[ma.n+ma.w13c,nnb+ma.w24c]),
              hcat(H[nnb+ma.w24c,1:ma.n],H[nnb+ma.w24c,ma.n+ma.w13c],H[nnb+ma.w24c,ma.n+ma.nb_comp+ma.w24c]))
 
- # Conditionnelles pour gérer le cas où w1 et w3 est vide
- if isempty(ma.w1) && isempty(ma.w3)
-  hessg=zeros(length(ma.w13c),nred)
- elseif !isempty(ma.w13c)
-  hessg=zeros(length(ma.w13c),nred)
-  dpsi=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
-  ddpsi=Relaxation.ddpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t)
-  w3r=zeros(Int64,length(ma.w3)) #liste des indices dans les variables actives (w13c)
-  for i=1:length(ma.w3)
-   w3r[i]=findfirst(x->x==ma.w3[i],ma.w13c)
-  end
+ if isempty(ma.w4)
+  hessg=sparse(zeros(length(ma.w13c),nred))
+ else
+  hessg=sparse(zeros(length(ma.w13c),nred))
 
-  #TOUT A REVOIR ICI
-  #deriv=hcat(H[ma.n+ma.w3,1:ma.n],H[ma.n+ma.w3,ma.n+ma.w13c],H[ma.n+ma.w3,nnb+ma.w24c])
-
-  #deriv[1:length(ma.w3),ma.n+w3r]=Relaxation.dpsi(xf[ma.w3+nnb],ma.r,ma.s,ma.t).*deriv[1:length(ma.w3),ma.n+w3r]
-
-  #comprule=diagm(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv #Trop bizarre qu'on utilise pas ça...
-  #hessg[w3r,1:nred]=deriv
-
-  Hred[ma.n+1:ma.n+length(ma.w13c),1:nred]=Hred[ma.n+1:ma.n+length(ma.w13c),1:nred]
- else #ma.w13c est vide
-  hessg=[]
- end
-
- if isempty(ma.w2) && isempty(ma.w4)
-  hessh=zeros(length(ma.w24c),nred)
- elseif !isempty(ma.w24c)
-  hessh=zeros(length(ma.w24c),nred)
-  dpsi=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
-  ddpsi=Relaxation.ddpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
-
-  w4r=zeros(Int64,length(ma.w4)) #liste des indices dans les variables actives (w24c)
+  w4r=zeros(Int64,length(ma.w4))
   for i=1:length(ma.w4)
-   w4r[i]=findfirst(x->x==ma.w4[i],ma.w24c)
+   w4r[i]=findfirst(x->x==ma.w4[i],ma.w13c)
   end
-#TOUT A REVOIR ICI
-  #deriv=hcat(H[nnb+ma.w4,1:ma.n],H[nnb+ma.w4,ma.n+ma.w13c],H[nnb+ma.w4,nnb+ma.w24c])
-  #deriv[ma.w4,nnb+ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*deriv[ma.w4,ma.n+ma.nb_comp+ma.w4]
-  #deriv[1:length(ma.w4),ma.n+length(ma.w13c)+w4r]=Relaxation.dpsi(xf[ma.w4+nnb],ma.r,ma.s,ma.t).*deriv[1:length(ma.w4),ma.n+length(ma.w13c)+w4r]
+  hessg=diagm(Relaxation.ddpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
+  hessg+=diagm(Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t))*H[ma.w4+ma.nb_comp+ma.n,ma.w4+ma.nb_comp+ma.n]
 
-  #comprule=diagm(ddpsi.*gradf[ma.w3+ma.n])+dpsi.*deriv #Trop bizarre qu'on utilise pas ça...
-
-  #hessh[w4r,1:nred]=deriv
-
-  Hred[ma.n+1+length(ma.w13c):ma.n+length(ma.w13c)+length(ma.w24c),1:nred]=Hred[ma.n+1+length(ma.w13c):ma.n+length(ma.w13c)+length(ma.w24c),1:nred]
- else #ma.w24c est vide
-  hessh=[]
+  Hred[ma.n+w4r,ma.n+w4r]+=hessg
  end
 
-# sym_test=norm(Hred'-Hred)/norm(Hred'+Hred)
-# !isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(Hred'+Hred))
-# sym_test<1e-10 || println("Non symetric matrix hess: ",sym_test)
+ if isempty(ma.w3)
+  hessh=sparse(zeros(length(ma.w24c),nred))
+ else
+  hessh=sparse(zeros(length(ma.w24c),nred))
+
+  w3r=zeros(Int64,length(ma.w3))
+  for i=1:length(ma.w3)
+   w3r[i]=findfirst(x->x==ma.w3[i],ma.w24c)
+  end
+  hessh=diagm(Relaxation.ddpsi(xf[ma.w3+ma.nb_comp+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
+  hessh+=diagm(Relaxation.dpsi(xf[ma.w3+ma.nb_comp+ma.n],ma.r,ma.s,ma.t))*H[ma.w3+ma.n,ma.w3+ma.n]
+
+  Hred[ma.n+length(ma.w13c)+w3r,ma.n+length(ma.w13c)+w3r]+=hessh
+ end
 
  return Hred
 end
@@ -595,7 +577,6 @@ function AlphaChoix(alpha::Float64,alpha1::Float64,alpha2::Float64,alpha3::Float
  a=alpha1,alpha2,alpha3,alpha4
  a=a[find(x->x>=prec,collect(a))]
  if isempty(a)
-  println(alpha1,alpha2,alpha3,alpha4)
   a=max(alpha1,alpha2,alpha3,alpha4)
  end
 

@@ -101,9 +101,12 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  pen_mpcc=CreatePenaltyNLP(alas,xj,rho,usg,ush,uxl,uxu,ucl,ucu)
 
  #initialise notre problème pénalisé avec des contraintes actives w
- ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,alas.mod.nb_comp,alas.mod.paramset,alas.mod.algoset.direction,alas.mod.algoset.linesearch)
+ ma=ActifMPCCmod.MPCC_actif(pen_mpcc,alas.r,alas.s,alas.t,
+                            alas.mod.nb_comp,alas.mod.paramset,
+                            alas.mod.algoset.direction,
+                            alas.mod.algoset.linesearch)
 
- # S2 : Major Loop Activation de contrainte
+# S2 : Major Loop Activation de contrainte
  #initialisation
  k=0
  xjk=xj
@@ -118,7 +121,10 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  feas=MPCCmod.viol_contrainte_norm(alas.mod,xjk)
  feasible=feas<=alas.prec
  dual_feas=norm(gradpen[1:n],Inf)
- multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,alas.prec,alas.mod.paramset.precmpcc,norm(rho,Inf),dual_feas)
+ multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,
+                                          lg,lh,lphi,alas.prec,
+                                          alas.mod.paramset.precmpcc,
+                                          norm(rho,Inf),dual_feas)
  dual_feasible=dual_feas/multi_norm<=alas.prec
 
  oa=OutputALASmod.OutputALAS(xjk,dj,feas,dual_feas,rho,ht)
@@ -132,12 +138,14 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
   while l<l_max && !dual_feasible && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
-
+   verbose && print_with_color(:blue, "Max ité Unc. Min. l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$feas |L'|=$dual_feas Arm=$Armijosuccess small_step=$small_step rho=$(norm(rho,Inf))  \n")
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
    xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen,ht)
 
-   feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl);feasible=feas<=alas.prec
-   dual_feas=norm(gradpen[1:n],Inf);dual_feasible=dual_feas<=alas.prec
+   feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl);
+   feasible=feas<=alas.prec
+   dual_feas=norm(gradpen[1:n],Inf);
+   dual_feasible=dual_feas<=alas.mod.algoset.unconstrained_stopping(alas.prec,rho)
 
    OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols,ht)
 
@@ -147,6 +155,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
   #On met à jour rho si ça n'a pas été:
   if (l==l_max || dual_feasible) && (feas>obj_viol*feask && !feasible)
+   verbose && print_with_color(:red, "Max ité Unc. Min. l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$feas |L'|=$dual_feas Arm=$Armijosuccess small_step=$small_step rho=$(norm(rho,Inf))  \n")
    rho=RhoUpdate(alas,rho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)))
    #met à jour la fonction objectif après la mise à jour de rho
    ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen)
@@ -159,8 +168,8 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   #Mise à jour des paramètres de la pénalité Lagrangienne (uxl,uxu,ucl,ucu)
   uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,rho,xjk,uxl,uxu,ucl,ucu,usg,ush)
   #met à jour la fonction objectif après la mise à jour des multiplicateurs
-
-  temp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen)
+  temp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjk,usg,ush,uxl,uxu,ucl,ucu,
+                                   ma.nlp,objpen=ht,gradpen=gradpen)
 
   #Mise à jour des multiplicateurs de la complémentarité
   if alas.mod.nb_comp>0
@@ -172,7 +181,8 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   feasible=feas<=alas.prec
   dual_feasible=dual_feas/multi_norm<=alas.prec
 
-  if l_negative && (!Armijosuccess || small_step) #si on bloque mais qu'un multiplicateur est <0 on continue
+  #si on bloque mais qu'un multiplicateur est <0 on continue
+  if l_negative && (!Armijosuccess || small_step) 
    Armijosuccess=true
    small_step=false
   end
@@ -183,7 +193,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   end
 
   k+=1
-  verbose && k>=k_max && print_with_color(:red, "Max itération Lagrangien augmenté\n")
+  verbose && k>=k_max && print_with_color(:red, "Max ité. Lagrangien \n")
  end
 
 #Traitement finale :
@@ -487,7 +497,7 @@ function UpdatePenaltyNLP(alas::ALASMPCCmod.ALASMPCC,
  if isempty(objpen)
   return pen_nlp
  else
-  f,g=gfpenf(xj)
+   f,g=gfpenf(xj)
   return pen_nlp,f,g
  end
 end

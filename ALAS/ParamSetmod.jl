@@ -39,23 +39,23 @@ end
 #Constructeur par défaut
 #nbc est le nombre de contraintes du problème
 function ParamSet(nbc::Int64)
- precmpcc=1e-4
+ precmpcc=1e-3
 
  tb=(r,s,t)->-r
  prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
  rho_restart=false
  paramin=sqrt(eps(Float64))
 
- ite_max_alas=200
- ite_max_viol=10
+ ite_max_alas=50
+ ite_max_viol=20
  rho_init=1*ones(nbc)
- rho_update=1.4 #2.0 bien pour Newton, trop grand sinon.
- rho_max=rho_update*1/precmpcc #le grand max est 1/eps(Float64)
+ rho_update=1.5 #2.0 bien pour Newton, trop grand sinon.
+ rho_max=1.5*1/precmpcc #le grand max est 1/eps(Float64)
  goal_viol=0.5
 
- ite_max_armijo=200
+ ite_max_armijo=300
  tau_armijo=0.4 #0.4
- armijo_update=0.5 #0.9
+ armijo_update=0.9 #0.9
  tau_wolfe=0.9
  wolfe_update=5.0
 

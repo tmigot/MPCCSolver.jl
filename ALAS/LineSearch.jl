@@ -15,7 +15,7 @@ using ActifMPCCmod
 Armijo : Backtracking line search
          1D Minimization
 """
-function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,gradft::Any,stepmax::Float64,slope::Float64;
+function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,gradft::Any,stepmax::Float64,slope::Float64,old_alpha::Float64;
                 verbose :: Bool=false, kwargs...)
 
  good_grad=false
@@ -32,7 +32,7 @@ function Armijo(ma::ActifMPCCmod.MPCC_actif,xj::Any,d::Any,hg::Any,gradft::Any,s
   ht=ActifMPCCmod.obj(ma,xj+step*d)
   nbk+=1
  end
- step=step/scale
+ step=step
 
  return step,good_grad,ht,nbk,nbW
 end
