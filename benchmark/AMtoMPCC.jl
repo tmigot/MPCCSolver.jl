@@ -27,13 +27,13 @@ function AMtoMPCC(AM::AmplModel)
 #doublon de la contrainte de positivité...
 nlp=SimpleNLPModel(x->obj(AM,x),AMnlp.meta.x0,
                    lvar=AM.meta.lvar,uvar=AM.meta.uvar,
-                   c=x->c(x)[nc],lcon=AM.meta.lcon[nc],
+                   c=x->cons(AM,x)[nc],lcon=AM.meta.lcon[nc],
                    ucon=AM.meta.ucon[nc],g=x->grad(AM,x),
                    H=(x;y=zeros(ncon),obj_weight=1.0)->hess(AM,x;y=maj2(y),obj_weight=obj_weight),
                    J=x->jac(AM,x)[nc,1:nvar],
                    Jtp=(x,v)->jac(AM,x)[nc,1:nvar]'*v)
 
-G=SimpleNLPModel(()->(),AM.meta.x0,c=x->c(x)[ncc],
+G=SimpleNLPModel(()->(),AM.meta.x0,c=x->cons(AM,x)[ncc],
                    lcon=AM.meta.lcon[ncc],
                    ucon=AM.meta.ucon[ncc],J=x->jac(AM,x)[ncc,1:nvar],
                    Jtp=(x,v)->jac(AM,x)[ncc,1:nvar]'*v,
