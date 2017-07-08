@@ -59,7 +59,7 @@ j=0
   s=s*sigma_s
   t=t*sigma_t
 
-  solved=true in isnan(xk)?false:solved
+  solved=true in isnan.(xk)?false:solved
   realisable=real<=mod.paramset.precmpcc
 
   optimal=!isnan(f) && !(true in isnan.(xk)) && stationary_check(mod,xk[1:n])
@@ -77,6 +77,8 @@ end
 
 if solved && optimal && realisable
  or=OutputRelaxationmod.UpdateFinalOR(or,"Success")
+elseif optimal && realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Success (with sub-pb failure)")
 elseif !realisable
  or=OutputRelaxationmod.UpdateFinalOR(or,"Infeasible")
 elseif realisable && !optimal

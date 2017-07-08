@@ -110,7 +110,7 @@ Donne la norme 2 de la violation des contraintes avec slack
 
 note : devrait appeler viol_contrainte
 """
-function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector;tnorm::Real=Inf)
+function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector;tnorm::Real=2)
  return norm(viol_contrainte(mod,x,yg,yh),tnorm)
 end
 
@@ -153,19 +153,25 @@ function viol_comp(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
 
  n=length(mod.mp.meta.x0)
  x=length(x)==n?x:x[1:n]
- return mod.nb_comp>0?norm(NLPModels.cons(mod.G,x).*NLPModels.cons(mod.H,x),tnorm):0
+ G=NLPModels.cons(mod.G,x)
+ H=NLPModels.cons(mod.H,x)
+
+ return mod.nb_comp>0?norm(G.*H./(G+H+1),tnorm):0
 end
 
 """
 Donne la norme de la violation des contraintes \"classiques\"
 """
 function viol_cons(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
- feas=0.0
+
  n=length(mod.mp.meta.x0)
  x=length(x)==n?x:x[1:n]
+ feas=norm([max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0)],tnorm)
+
  if mod.mp.meta.ncon !=0
   c=NLPModels.cons(mod.mp,x)
-  feas=max(maximum(mod.mp.meta.lcon-c),maximum(c-mod.mp.meta.ucon))
+  #feas=max(max(maximum(mod.mp.meta.lcon-c),maximum(c-mod.mp.meta.ucon)),feas)
+  feas=max(norm([max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)],tnorm),feas)
  end
 
  return feas

@@ -251,7 +251,7 @@ function NwtdirectionSpectral(ma::ActifMPCCmod.MPCC_actif,g::Vector,xj::Vector,
     end
 
     ϵ2 =  1.0e-8 
-    Γ = 1.0 ./ max(abs.(Δ),ϵ2)
+    Γ = 1.0 ./ max.(abs.(Δ),ϵ2)
     d = - (V * diagm(Γ) * V') * (g)
 
     return d

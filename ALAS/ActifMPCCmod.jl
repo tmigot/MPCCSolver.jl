@@ -73,6 +73,7 @@ type MPCC_actif
  wnew::Array{Bool,2} #dernières contraintes ajoutés
 
  #paramètres pour le calcul de la direction de descente
+ crho::Float64 #constant such that : ||c(x)||_2 \approx crho*rho
  beta::Float64 #paramètre pour gradient conjugué
  Hess::Array{Float64,2} #inverse matrice hessienne approximée
  #Hd::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
@@ -126,10 +127,11 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
 
  wnew=zeros(Bool,0,0)
 
+ crho=1.0
  beta=0.0
  Hess=eye(n+2*nb_comp)
 
- return MPCC_actif(nlp,r,s,t,w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,beta,Hess,paramset,direction,linesearch)
+ return MPCC_actif(nlp,r,s,t,w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,crho,beta,Hess,paramset,direction,linesearch)
 end
 
 """
@@ -160,6 +162,11 @@ end
 
 function setbeta(ma::MPCC_actif,b::Float64)
  ma.beta=b
+ return ma
+end
+
+function setcrho(ma::MPCC_actif,crho::Float64)
+ ma.crho=crho
  return ma
 end
 

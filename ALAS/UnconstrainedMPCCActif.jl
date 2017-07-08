@@ -54,9 +54,8 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  #Calcul du pas maximum (peut être infinie!)
  stepmax,wmax,wnew = ActifMPCCmod.PasMax(ma,xj,d)
 
- #hg=ActifMPCCmod.obj(ma,xj)
+ step,good_grad,ht,nbarmijo,nbwolfe,gradft=ma.linesearch(ma,xj,d,hg,stepmax,scale*slope,step)
 
- step,good_grad,ht,nbarmijo,nbwolfe=ma.linesearch(ma,xj,d,hg,gradft,stepmax,scale*slope,step)
  step*=scale
 
  ols=OutputLSmod.OutputLS(stepmax,step,slope,beta,nbarmijo,nbwolfe)
@@ -66,10 +65,9 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  sol = ActifMPCCmod.evalx(ma,xjp)
  dsol = ActifMPCCmod.evald(ma,d)
 
- #good_grad || (gradft=ActifMPCCmod.grad(ma,xjp))
  gradpen=NLPModels.grad(ma.nlp,sol)
- gradft=ActifMPCCmod.grad(ma,xjp,gradpen)
-
+ good_grad || (gradft=ActifMPCCmod.grad(ma,xjp,gradpen))
+ 
  s=xjp-xj
  y=gradft-gradf
 
@@ -84,6 +82,8 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
   scale=1.0
  end
 
+ small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit
+
  #si alpha=pas maximum alors on met w à jour.
  if stepmax == step
   ActifMPCCmod.setw(ma,wmax)
@@ -92,8 +92,10 @@ function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
  end
  if nbarmijo >= ma.paramset.ite_max_armijo || true in isnan.(sol) || true in isnan(ht)
   output=1
+ elseif nbwolfe==ma.paramset.ite_max_wolfe
+  output=2;
+  xjp=xj
  end
- small_step=norm(xjp-xj,Inf)<=eps(Float64)?true:false #on fait un pas trop petit
 
  return sol,ma.w,dsol,step,wnew,output,small_step,ols,gradpen,ht 
 end

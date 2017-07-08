@@ -29,6 +29,7 @@ type ParamSet
  ite_max_armijo::Int64 #nombre maximum d'itération pour la recherche linéaire >= 0
  tau_armijo::Float64 #paramètre pour critère d'Armijo doit être entre (0,0.5)
  armijo_update::Float64 #step=step_0*(1/2)^m
+ ite_max_wolfe::Int64
  tau_wolfe::Float64 #entre (tau_armijo,1)
  wolfe_update::Float64
 
@@ -45,23 +46,25 @@ function ParamSet(nbc::Int64)
  prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
  rho_restart=false
  paramin=sqrt(eps(Float64))
+ #paramin=0.1
 
- ite_max_alas=50
- ite_max_viol=20
+ ite_max_alas=100
+ ite_max_viol=10
  rho_init=1*ones(nbc)
  rho_update=1.5 #2.0 bien pour Newton, trop grand sinon.
- rho_max=1.5*1/precmpcc #le grand max est 1/eps(Float64)
+ rho_max=1/precmpcc #le grand max est 1/eps(Float64)
  goal_viol=0.5
 
  ite_max_armijo=300
- tau_armijo=0.4 #0.4
+ tau_armijo=0.1 #0.4
  armijo_update=0.9 #0.9
- tau_wolfe=0.9
+ ite_max_wolfe=10
+ tau_wolfe=0.6
  wolfe_update=5.0
 
  verbose=1.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
 
- return ParamSet(precmpcc,tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,tau_wolfe,wolfe_update,verbose)
+ return ParamSet(precmpcc,tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,ite_max_wolfe,tau_wolfe,wolfe_update,verbose)
 end
 
 #end of module
