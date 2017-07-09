@@ -47,11 +47,6 @@ type ALASMPCC
  rho_init::Vector #nombre >= 0
 end
 
-function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64)
- rho_init=mod.paramset.rho_init
- return ALASMPCC(mod,r,s,t,prec,rho_init)
-end
-
 function ALASMPCC(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float64, prec::Float64, rho::Vector)
 
  rho_init=rho
@@ -146,14 +141,13 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
    dual_feas=norm(gradpen[1:n],Inf);
    dual_feasible=dual_feas<=alas.mod.algoset.unconstrained_stopping(alas.prec,rho)
 
-   OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols,ht)
+   OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols,ht,n)
 
    Armijosuccess=(outputArmijo==0)
    if outputArmijo==2
     @show "Unbounded subproblem"
     return xj,EndingTest(alas,Armijosuccess,small_step,feas,dual_feas,k),rho,oa
    end
-   verbose && print_with_color(:blue, "Unc. Min. l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$feas |L'|=$dual_feas Arm=$Armijosuccess small_step=$small_step rho=$(norm(rho,Inf)) f(x)=$ht  \n")
    l+=1
   end
 
@@ -197,6 +191,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   #Relaxation rule si on a fait un pas de Armijo-Wolfe et si un multiplicateur est du mauvais signe
   if k!=0 && (dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(gradpen_prec,dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
    ActifMPCCmod.RelaxationRule(ma,xjk,lg,lh,lphi,wnew)
+   verbose && print_with_color(:yellow, "Active set: $(ma.wcc) \n")
   end
 
   k+=1

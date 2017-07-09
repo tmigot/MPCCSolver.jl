@@ -14,7 +14,7 @@ type ParamSet
  # l'oracle de choix de epsilon
  prec_oracle::Function #dépend des trois paramètres (r,s,t)
  # la mise à jour des paramètres
- rho_restart::Bool #vrai si on remet rho à rho_init à chaque itération
+ rho_restart::Function #
  paramin::Float64 #valeur minimal pour les paramères (r,s,t)
 
  #paramètres algorithmiques pour l'activation de contraintes
@@ -44,7 +44,7 @@ function ParamSet(nbc::Int64)
 
  tb=(r,s,t)->-r
  prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
- rho_restart=false
+ rho_restart(r,s,t,prec,rho)=rho
  paramin=sqrt(eps(Float64))
  #paramin=0.1
 
@@ -62,7 +62,7 @@ function ParamSet(nbc::Int64)
  tau_wolfe=0.6
  wolfe_update=5.0
 
- verbose=1.0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
+ verbose=0 #0 quiet, 1 relaxation, 2 relaxation+activation, 3 relaxation+activation+linesearch
 
  return ParamSet(precmpcc,tb,prec_oracle,rho_restart,paramin,ite_max_alas,ite_max_viol,rho_init,rho_update,rho_max,goal_viol,ite_max_armijo,tau_armijo,armijo_update,ite_max_wolfe,tau_wolfe,wolfe_update,verbose)
 end

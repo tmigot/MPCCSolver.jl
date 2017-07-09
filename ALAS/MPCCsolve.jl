@@ -51,6 +51,7 @@ j=0
 
   real=MPCCmod.viol_contrainte_norm(mod,xk[1:n])
   f=NLPModels.obj(mod.mp,xk[1:n])
+
   or=OutputRelaxationmod.UpdateOR(or,xk[1:n],0,r,s,t,mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc),real,output,f)
 
   mod=MPCCmod.addInitialPoint(mod,xk[1:n]) #met à jour le MPCC avec le nouveau point
@@ -149,11 +150,7 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
 
  prec=mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc) #Il faut réflechir un peu plus sur des alternatives
 
- if mod.paramset.rho_restart
-  alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec) #recommence rho à chaque itération
- else
-  alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
- end
+ alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
 
  xk,stat,rho,oa = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
 

@@ -30,6 +30,12 @@ function OutputRelaxation(x0::Vector,realisabilite::Float64,obj::Float64)
  stab=[]
  ttab=[]
  prectab=[]
+
+   if length(x0)<=4
+    print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(x0) f(xj)=$(obj) \|c(xj)\|=$(realisabilite)\n\n")
+   else
+    print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- f(xj)=$(obj) \|c(xj)\|=$(realisabilite)\n\n")
+   end
  
  return OutputRelaxation(solved,solve_message,xtab,inner_output,rtab,stab,ttab,prectab,[realisabilite],[obj])
 end
@@ -53,6 +59,8 @@ function UpdateOR(or::OutputRelaxation,xk::Vector,stat::Int64,r::Float64,s::Floa
  or.realisabilite=[or.realisabilite;realisabilite]
  or.objtab=[or.objtab;obj]
  
+Print(or,length(xk),1,j=length(or.rtab))
+
  return or
 end
 
@@ -82,24 +90,25 @@ function UpdateFinalOR(or::OutputRelaxation,mess::String)
  return or
 end
 
-function Print(or::OutputRelaxation,n::Int64,verbose::Int64)
+function Print(or::OutputRelaxation,n::Int64,verbose::Int64;j::Int64=0)
  if verbose>0
   println("")
-  j=1
-  if n<=4
-   print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(or.xtab[1:n,j]) f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
-  else
-   print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
-  end
-
-  for r in or.rtab
+  if j==0
    if n<=4
-    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(or.xtab[1:n,j]) f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
    else
-    print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- f(xj)=$(or.objtab[j]) \|c(xj)\|=$(or.realisabilite[j])\n\n")
    end
-   OutputALASmod.Print(or.inner_output_alas[j],n,verbose)
-   j+=1
+  else
+   while j<= length(or.rtab)
+    if n<=4
+     print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n xj=$(or.xtab[1:n,j+1]) f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    else
+     print_with_color(:green, "j: $j (r,s,t)=($(or.rtab[j]),$(or.stab[j]),$(or.ttab[j])) eps=$(or.prectab[j]) \n f(xj)=$(or.objtab[j+1]) \|c(xj)\|=$(or.realisabilite[j+1])\n\n")
+    end
+    OutputALASmod.Print(or.inner_output_alas[j],n,verbose)
+    j+=1
+   end
   end
  end
 

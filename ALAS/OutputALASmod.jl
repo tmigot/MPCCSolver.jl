@@ -25,7 +25,7 @@ function OutputALAS(x0::Vector,dj::Vector,feas::Float64,dualfeas::Float64,rho::V
 end
 
 #Mise à jour
-function Update(oa::OutputALAS,xk::Vector,rho::Vector,feas::Float64,dualfeas::Float64,dj::Vector,step::Float64,outputls::OutputLSmod.OutputLS,ht::Float64)
+function Update(oa::OutputALAS,xk::Vector,rho::Vector,feas::Float64,dualfeas::Float64,dj::Vector,step::Float64,outputls::OutputLSmod.OutputLS,ht::Float64,n::Int64)
 
  oa.realisabilite=[oa.realisabilite;feas]
  oa.dualrealisabilite=[oa.dualrealisabilite;dualfeas]
@@ -36,27 +36,30 @@ function Update(oa::OutputALAS,xk::Vector,rho::Vector,feas::Float64,dualfeas::Fl
  oa.dtab=[oa.dtab dj]
  oa.inner_output_linesearch=[oa.inner_output_linesearch;outputls]
 
+Print(oa,n,2,j=length(oa.steptab))
+
  return oa
 end
 
 #Print
-function Print(oa::OutputALAS,n::Int64,verbose::Int64)
+function Print(oa::OutputALAS,n::Int64,verbose::Int64;j::Int64=1)
  if verbose>1
-  j=1
   nb_comp=Int64(0.5*(length(oa.xtab)/length(oa.realisabilite)-n))
-  for step in oa.steptab
+  while j <= length(oa.steptab)
    #println("k :",j," xjk=",oa.xtab[1:n,j+1]," sg=",oa.xtab[n+1:n+nb_comp,j+1]," sh=",oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1],"\n\|c(xjk)\|=",oa.realisabilite[j+1]," JL(xjk)=",oa.dualrealisabilite[j+1]," rho= ",oa.rhotab[j+1]," \nalpha=",oa.steptab[j]," d=",oa.dtab[1:n+2*nb_comp,j+1])
    if n<=4
     if nb_comp>0
-     print_with_color(:white, "k: $j xjk=$(oa.xtab[1:n,j+1]) sg=$(oa.xtab[n+1:n+nb_comp,j+1]) sh=$(oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n\n")
+     #print_with_color(:blue, "	k: $j xjk=$(oa.xtab[1:n,j+1]) sg=$(oa.xtab[n+1:n+nb_comp,j+1]) sh=$(oa.xtab[n+nb_comp+1:n+2*nb_comp,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n")
+     print_with_color(:blue, "	k: $j \|xjk\|=$(norm(oa.xtab[1:n,j+1],Inf)) \|c(xjk)\|=$(oa.realisabilite[j+1]) L'(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) \|d\|=$(norm(oa.dtab[1:n+2*nb_comp,j+1],Inf)) fpen=$(oa.obj[j]) \n")
     else     
-     print_with_color(:white, "k: $j xjk=$(oa.xtab[1:n,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n\n")
+     print_with_color(:blue, "	k: $j xjk=$(oa.xtab[1:n,j+1]) \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=$(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n")
     end
    else
     if nb_comp>0
-     print_with_color(:white, "k: $j xjk=[$(oa.xtab[1,j+1])..$(oa.xtab[n,j+1])] sg=[$(oa.xtab[n+1,j+1])..$(oa.xtab[n+nb_comp,j+1])] sh=[$(oa.xtab[n+nb_comp+1,j+1])..$(oa.xtab[n+2*nb_comp,j+1])] \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n\n")
+     #print_with_color(:blue, "	k: $j xjk=[$(oa.xtab[1,j+1])..$(oa.xtab[n,j+1])] sg=[$(oa.xtab[n+1,j+1])..$(oa.xtab[n+nb_comp,j+1])] sh=[$(oa.xtab[n+nb_comp+1,j+1])..$(oa.xtab[n+2*nb_comp,j+1])] \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n")
+     print_with_color(:blue, "	k: $j \|xjk\|=$(norm(oa.xtab[1:n,j+1],Inf)) \|c(xjk)\|=$(oa.realisabilite[j+1]) L'(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) \|d\|=$(norm(oa.dtab[1:n+2*nb_comp,j+1],Inf)) fpen=$(oa.obj[j]) \n")
     else     
-     print_with_color(:white, "k: $j xjk=[$(oa.xtab[1,j+1])..$(oa.xtab[n,j+1])] \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n\n")
+     print_with_color(:blue, "	k: $j xjk=[$(oa.xtab[1,j+1])..$(oa.xtab[n,j+1])] \n\|c(xjk)\|=$(oa.realisabilite[j+1]) JL(xjk)=$(oa.dualrealisabilite[j+1]) rho=$(oa.rhotab[j+1]) \nalpha=$(oa.steptab[j]) d=(oa.dtab[1:n+2*nb_comp,j+1]) fpen=$(oa.obj[j]) \n")
     end
    end
    OutputLSmod.Print(oa.inner_output_linesearch[j],n,verbose)
