@@ -115,7 +115,8 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
  feas=MPCCmod.viol_contrainte_norm(alas.mod,xjk)
  feasible=feas<=alas.prec
- dual_feas=norm(gradpen[1:n],Inf)
+
+ dual_feas=norm(ActifMPCCmod.grad(ma,xjk,gradpen),Inf)
  multi_norm=alas.mod.algoset.scaling_dual(usg,ush,uxl,uxu,ucl,ucu,
                                           lg,lh,lphi,alas.prec,
                                           alas.mod.paramset.precmpcc,
@@ -132,13 +133,13 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   gradpen_prec=gradpen
 
   #boucle pour augmenter le paramètre de pénalisation tant qu'on a pas baissé suffisament la violation
-  #while l<l_max && !dual_feasible && (l==0 || (k!=0 && feas>obj_viol*feask && !feasible )) && Armijosuccess && !small_step
   while l<l_max && !dual_feasible && Armijosuccess && !small_step
    #Unconstrained Solver modifié pour résoudre le sous-problème avec contraintes de bornes
-   xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen,ht)
+ xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=UnconstrainedMPCCActif.LineSearchSolve(ma,xjkl,dj,step,gradpen,ht)
    feas=MPCCmod.viol_contrainte_norm(alas.mod,xjkl);
    feasible=feas<=alas.prec
-   dual_feas=norm(gradpen[1:n],Inf);
+
+   dual_feas=norm(ActifMPCCmod.grad(ma,xjkl,gradpen),Inf)
    dual_feasible=dual_feas<=alas.mod.algoset.unconstrained_stopping(alas.prec,rho)
 
    OutputALASmod.Update(oa,xjkl,rho,feas,dual_feas,dj,step,ols,ht,n)
@@ -152,7 +153,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   end
 
   #On met à jour rho si ça n'a pas été:
-  if (l==l_max || dual_feasible) && (feas>obj_viol*feask && !feasible)
+  if (l==l_max || small_step || !Armijosuccess || dual_feasible) && (feas>obj_viol*feask && !feasible)
    verbose && print_with_color(:red, "Max ité Unc. Min. l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$feas |L'|=$dual_feas Arm=$Armijosuccess small_step=$small_step rho=$(norm(rho,Inf))  \n")
    rho=RhoUpdate(alas,rho,ma.crho,abs(MPCCmod.viol_contrainte(alas.mod,xjkl)))
    ActifMPCCmod.setcrho(ma,alas.mod.algoset.crho_update(feas,rho)) #on change le problème donc on réinitialise beta
@@ -161,7 +162,8 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
    ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjkl,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen,crho=ma.crho)
    ActifMPCCmod.setbeta(ma,0.0) #on change le problème donc on réinitialise beta
    #ActifMPCCmod.sethess(ma,H) #on change le problème donc on réinitialise Hess
-   dual_feas=norm(gradpen[1:n],Inf);dual_feasible=dual_feas<=alas.prec
+   dual_feas=norm(ActifMPCCmod.grad(ma,xjkl,gradpen),Inf)
+   dual_feasible=dual_feas<=alas.prec
   end
   xjk=xjkl
 
@@ -190,7 +192,11 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
   #Relaxation rule si on a fait un pas de Armijo-Wolfe et si un multiplicateur est du mauvais signe
   if k!=0 && (dot(gradpen,dj)>=alas.mod.paramset.tau_wolfe*dot(gradpen_prec,dj) || step==0.0) && findfirst(x->x<0,[lg;lh;lphi])!=0
+
    ActifMPCCmod.RelaxationRule(ma,xjk,lg,lh,lphi,wnew)
+   if findfirst(x->x<0,[lg;lh;lphi])!=0
+    dual_feasible=false #si on a relaché des contraintes, on force à faire une itération
+   end
    verbose && print_with_color(:yellow, "Active set: $(ma.wcc) \n")
   end
 

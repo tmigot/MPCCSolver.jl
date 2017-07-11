@@ -123,7 +123,7 @@ function MPCC_actif(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Flo
  w13c=find(.!w[1:nb_comp,1] .& .!w[nb_comp+1:2*nb_comp,1])
  w24c=find(.!w[1:nb_comp,2] .& .!w[nb_comp+1:2*nb_comp,2])
  wc=find(.!w[1:nb_comp,1] .& .!w[1:nb_comp,2] .& .!w[nb_comp+1:2*nb_comp,1] .& .!w[nb_comp+1:2*nb_comp,2])
- wcc=find(x->x==2, (w[1:nb_comp,1] .| w[nb_comp+1:2*nb_comp,1]) .& (w[1:nb_comp,2] .| w[nb_comp+1:2*nb_comp,2]))
+ wcc=find((w[1:nb_comp,1] .| w[nb_comp+1:2*nb_comp,1]) .& (w[1:nb_comp,2] .| w[nb_comp+1:2*nb_comp,2]))
 
  wnew=zeros(Bool,0,0)
 
@@ -148,7 +148,7 @@ function updatew(ma::MPCC_actif)
  ma.w13c=find(.!ma.w[1:ma.nb_comp,1] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
  ma.w24c=find(.!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
  ma.wc=find(.!ma.w[1:ma.nb_comp,1] .& .!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
- ma.wcc=find(x->x==2, (ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) .& (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
+ ma.wcc=find((ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) .& (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
  return ma
 end
 

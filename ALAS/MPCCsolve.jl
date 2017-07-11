@@ -36,7 +36,11 @@ function solve(mod::MPCCmod.MPCC,r0::Float64=0.1,sigma_r::Float64=0.01,s0::Float
  param=true
  f=NLPModels.obj(mod.mp,xk)
  or=OutputRelaxationmod.OutputRelaxation(xk,real, f)
- optimal=stationary_check(mod,x0) #reste à checker le signe des multiplicateurs
+ if realisable
+  optimal=stationary_check(mod,x0) #reste à checker le signe des multiplicateurs
+ else
+  optimal=false
+ end
 
 #Major Loop
 j=0
@@ -163,27 +167,41 @@ function solve_subproblem_alas(mod::MPCCmod.MPCC,r::Float64,s::Float64,t::Float6
 end
 
 function stationary_check(mod::MPCCmod.MPCC,x::Vector)
-
+ n=length(x)
+ prec=mod.paramset.precmpcc
  b=-NLPModels.grad(mod.mp,x)
+
+  Il=find(z->norm(z-mod.mp.meta.lvar,Inf)<=prec,x)
+  Iu=find(z->norm(z-mod.mp.meta.uvar,Inf)<=prec,x)
+  jl=zeros(n);jl[Il]=1.0;Jl=diagm(jl);
+  ju=zeros(n);jl[Iu]=1.0;Ju=diagm(ju);
 
  if mod.mp.meta.ncon+mod.nb_comp ==0
 
   optimal=norm(b,Inf)<=mod.paramset.precmpcc
 
  else
+  c=cons(mod.mp,x)
+  Ig=find(z->norm(z-mod.mp.meta.lcon,Inf)<=prec,c)
+  Ih=find(z->norm(z-mod.mp.meta.ucon,Inf)<=prec,c)
+  Jg=NLPModels.jac(mod.mp,x)[Ig,1:n]
+  Jh=NLPModels.jac(mod.mp,x)[Ih,1:n]
+
   if mod.nb_comp>0
-   A=[NLPModels.jac(mod.mp,x); NLPModels.jac(mod.G,x); NLPModels.jac(mod.H,x) ]'
+   IG=find(z->norm(z-mod.G.meta.lcon,Inf)<=prec,NLPModels.cons(mod.G,x))
+   IH=find(z->norm(z-mod.H.meta.lcon,Inf)<=prec,NLPModels.cons(mod.H,x))
+   A=[Jl;Ju;-Jg;Jh; -NLPModels.jac(mod.G,x)[IG,1:n]; -NLPModels.jac(mod.H,x)[IH,1:n] ]'
   else
-   A=NLPModels.jac(mod.mp,x)'
+   A=[Jl;Ju;-Jg;Jh]'
   end
 
- if !(true in isnan.(A) || true in isnan.(b))
-  l=pinv(full(A))*b #pinv not defined for sparse matrix
-  optimal=maximum(max.(A*l-b,0))<=mod.paramset.precmpcc
- else
-  @printf("Evaluation error: NaN in the derivative")
-  optimal=false
- end
+  if !(true in isnan.(A) || true in isnan.(b))
+   l=pinv(full(A))*b #pinv not defined for sparse matrix
+   optimal=0.5*norm(A*l-b,2)^2<=mod.paramset.precmpcc
+  else
+   @printf("Evaluation error: NaN in the derivative")
+   optimal=false
+  end
 #Checker les signes des multiplicateurs est virtuellement impossible...
 
  end

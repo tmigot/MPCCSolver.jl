@@ -46,7 +46,7 @@ function ParamSet(nbc::Int64)
  prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
  rho_restart(r,s,t,prec,rho)=rho
  paramin=sqrt(eps(Float64))
- #paramin=0.1
+ #paramin=1.0
 
  ite_max_alas=100
  ite_max_viol=10
