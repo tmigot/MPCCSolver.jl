@@ -31,7 +31,7 @@ H=MathProgNLPModel(H)
 ex1= MPCCmod.MPCC(ex1,G,H)
 
 ex2=JuMP.Model()
-JuMP.@variable(ex2,x[1:2],start=1.0)
+JuMP.@variable(ex2,x[1:2],start=-1.0)
 JuMP.@NLobjective(ex2,Min,0.5*((x[1]-1)^2+(x[2]-1)^2))
 ex2=MathProgNLPModel(ex2)
 G=JuMP.Model()
