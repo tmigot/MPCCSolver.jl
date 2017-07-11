@@ -14,10 +14,15 @@ function AMtoMPCC(AM::AmplModel)
  #pas optimal comme technique :
  Temp=sparse(zeros(n_cc,nvar))
  for i=1:n_cc
-  Temp[i,ncc[i]]=1.0
+  Temp[i,AM.cvar[ncc[i]]]=1.0
  end
  maj(t)=Temp'*t 
- Temp2=sparse(zeros(ncon,nvar))
+ Temp1=sparse(zeros(n_cc,ncon+n_cc))
+ for i=1:n_cc
+  Temp1[i,ncc[i]]=1.0
+ end
+ maj1(t)=Temp1'*t 
+ Temp2=sparse(zeros(ncon,ncon+n_cc))
  for i=1:ncon
   Temp2[i,nc[i]]=1.0
  end
@@ -36,12 +41,12 @@ nlp=SimpleNLPModel(x->obj(AM,x),AMnlp.meta.x0,
 G=SimpleNLPModel(()->(),AM.meta.x0,c=x->cons(AM,x)[ncc],
                    lcon=AM.meta.lcon[ncc],
                    ucon=AM.meta.ucon[ncc],J=x->jac(AM,x)[ncc,1:nvar],
-                   Jtp=(x,v)->jac(AM,x)[ncc,1:nvar]'*v,
-                   H=(x;y=zeros(n_cc),obj_weight=1.0)->hess(AM,x;y=maj(y),obj_weight=0.0))
+                   Jtp=(x,v)->(jac(AM,x)[ncc,1:nvar])'*v,
+                   H=(x;y=zeros(n_cc),obj_weight=1.0)->hess(AM,x;y=maj1(y),obj_weight=0.0))
 
-H=SimpleNLPModel(()->(),AM.meta.x0,c=x->x[ncc],
-                   lcon=AM.meta.lvar[ncc],
-                   ucon=AM.meta.uvar[ncc],
+H=SimpleNLPModel(()->(),AM.meta.x0,c=x->x[AM.cvar[ncc]],
+                   lcon=AM.meta.lvar[AM.cvar[ncc]],
+                   ucon=AM.meta.uvar[AM.cvar[ncc]],
                    J=x->Temp,Jtp=(x,v)->maj(v),
                    H=(x;y=zeros(n_cc),obj_weight=1.0)->zeros(nvar,nvar))
 
