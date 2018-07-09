@@ -1,0 +1,51 @@
+module AlgoSetmod
+
+using Penalty
+using DDirection
+using LineSearch
+
+"""
+Liste les choix algorithmiques utilisés dans la résolution du MPCC :
+* choix de la fonction de pénalité
+* choix de la direction de descente
+* choix de la recherche linéaire
+"""
+
+type AlgoSet
+ penalty::Function
+ direction::Function
+ linesearch::Function
+
+ # dans ALAS le critère d'arrêt sur le gradient du Lagrangien est donné par :
+ # dual_feasible/scaling_dual<=prec
+ scaling_dual::Function #dépend des multiplicateurs, la précision(r,s,t),
+			#la précision demandé et le gradient du lagrangien
+ unconstrained_stopping::Function
+ crho_update::Function
+end
+
+#Constructeur par défaut
+function AlgoSet()
+
+  #scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
+  scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->1
+  #précision du problème pénalisé "sans contraintes"
+  #unconstrained_stopping=(prec,rho)->max(maximum(1./rho),prec)
+  unconstrained_stopping=(prec,rho)->prec
+
+  crho_update=(feas,rho)->min(feas*maximum(rho),100)
+
+ return AlgoSet(Penalty.Quadratic,DDirection.NwtdirectionSpectral,LineSearch.ArmijoWolfe,scaling_dual,unconstrained_stopping,crho_update)
+end
+
+function AlgoSet(penalty::Function,direction::Function, linesearch::Function)
+
+  scaling_dual=(usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,precrst,prec,rho,dualfeas)->max(norm([usg;ush;uxl;uxu;ucl;ucu;lg;lh;lphi]),1)
+  unconstrained_stopping=(prec,rho)->max(max.(1./rho),prec)
+  crho_update=(feas,rho)->min(feas*maximum(rho),100)
+
+ return AlgoSet(penalty,direction, linesearch,scaling_dual,unconstrained_stopping,crho_update)
+end
+
+#end of module
+end

@@ -1,0 +1,108 @@
+#Modifs à faire dans AmplNLReader:
+# n_cc_ : number of complementarity conditions
+# nlcc_ : number of non-linear complementarity conditions
+# ndcc_ : number of double inequalities
+# nzlb_ : number of complementarity variables with non-zero lower bound
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! aslinterface.cc !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+int asl_n_cc(ASL *asl) {
+  return asl->i.n_cc_;
+}
+
+int *asl_cvar(ASL *asl) {
+  return asl->i.cvar_;
+}
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! asinterface.h !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+int asl_n_cc(   ASL *asl);
+int *asl_cvar(ASL *asl);
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ampl_model.jl !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+type AmplModel <: AbstractNLPModel
+  meta  :: NLPModelMeta;     # Problem metadata.
+  __asl :: Ptr{Void};        # Pointer to internal ASL structure. Do not touch.
+
+  counters :: Counters       # Evaluation counters
+  safe :: Bool               # Always evaluate the objective before the Hessian.
+  cvar :: Array{Int32}       # x[cv(i)] is complementary to the constraints cv(i)
+
+  function AmplModel(stub :: AbstractString; safe :: Bool=false)
+    asl = @compat @asl_call(:asl_init, Ptr{Void}, (Ptr{UInt8},), stub);
+    asl == C_NULL && error("Error allocating ASL structure")
+
+    minimize = @asl_call(:asl_objtype, Int32, (Ptr{Void},), asl) == 0;
+    islp = @asl_call(:asl_islp, Int32, (Ptr{Void},), asl) != 0;
+
+    nlo = @compat Int(@asl_call(:asl_nlo, Int32, (Ptr{Void},), asl));
+
+    nvar = @compat Int(@asl_call(:asl_nvar, Int32, (Ptr{Void},), asl));
+    ncon = @compat Int(@asl_call(:asl_ncon, Int32, (Ptr{Void},), asl));
+
+    x0   = @compat unsafe_wrap(Array, @asl_call(:asl_x0,   Ptr{Float64}, (Ptr{Void},), asl),
+                            (nvar,), false)
+    y0   = @compat unsafe_wrap(Array, @asl_call(:asl_y0,   Ptr{Float64}, (Ptr{Void},), asl),
+                            (ncon,), false)
+
+    lvar = @compat unsafe_wrap(Array, @asl_call(:asl_lvar, Ptr{Float64}, (Ptr{Void},), asl),
+                            (nvar,), false)
+    uvar = @compat unsafe_wrap(Array, @asl_call(:asl_uvar, Ptr{Float64}, (Ptr{Void},), asl),
+                            (nvar,), false)
+
+    nzo = @compat Int(@asl_call(:asl_nzo, Int32, (Ptr{Void},), asl))
+    nbv = @compat Int(@asl_call(:asl_nbv, Int32, (Ptr{Void},), asl))
+    niv = @compat Int(@asl_call(:asl_niv, Int32, (Ptr{Void},), asl))
+    nlvb = @compat Int(@asl_call(:asl_nlvb, Int32, (Ptr{Void},), asl))
+    nlvo = @compat Int(@asl_call(:asl_nlvo, Int32, (Ptr{Void},), asl))
+    nlvc = @compat Int(@asl_call(:asl_nlvc, Int32, (Ptr{Void},), asl))
+    nlvbi = @compat Int(@asl_call(:asl_nlvbi, Int32, (Ptr{Void},), asl))
+    nlvci = @compat Int(@asl_call(:asl_nlvci, Int32, (Ptr{Void},), asl))
+    nlvoi = @compat Int(@asl_call(:asl_nlvoi, Int32, (Ptr{Void},), asl))
+    nwv = @compat Int(@asl_call(:asl_nwv, Int32, (Ptr{Void},), asl))
+    n_cc = @compat Int(@asl_call(:asl_n_cc, Int32, (Ptr{Void},), asl))
+
+    lcon = @compat unsafe_wrap(Array, @asl_call(:asl_lcon, Ptr{Float64}, (Ptr{Void},), asl),
+                            (ncon,), false)
+    ucon = @compat unsafe_wrap(Array, @asl_call(:asl_ucon, Ptr{Float64}, (Ptr{Void},), asl),
+                            (ncon,), false)
+
+    if n_cc>0
+      cvar = @compat unsafe_wrap(Array, @asl_call(:asl_cvar, Ptr{Int32}, (Ptr{Void},), asl),
+                            (ncon,), false)
+    else
+      cvar=[]
+    end
+
+    nlnet = @compat Int(@asl_call(:asl_lnc, Int32, (Ptr{Void},), asl))
+    nnnet = @compat Int(@asl_call(:asl_nlnc, Int32, (Ptr{Void},), asl))
+    nnln = @compat(Int(@asl_call(:asl_nlc,  Int32, (Ptr{Void},), asl))) - nnnet
+    nlin = ncon - nnln - nnnet
+
+    nln  = 1 : nnln
+    nnet = nnln+1 : nnln+nnnet
+    lnet = nnln+nnnet+1 : nnln+nnnet+nlnet
+    lin  = nnln+nnnet+nlnet+1 : ncon
+
+    nnzj = @compat Int(@asl_call(:asl_nnzj, Int32, (Ptr{Void},), asl))
+    nnzh = @compat Int(@asl_call(:asl_nnzh, Int32, (Ptr{Void},), asl))
+
+    meta = NLPModelMeta(nvar, x0=x0, lvar=lvar, uvar=uvar,
+                        nlo=nlo, nnzo=nzo,
+                        ncon=ncon, y0=y0, lcon=lcon, ucon=ucon,
+                        nnzj=nnzj, nnzh=nnzh,
+                        nbv=nbv, niv=niv,
+                        nlvb=nlvb, nlvo=nlvo, nlvc=nlvc,
+                        nlvbi=nlvbi, nlvci=nlvci, nlvoi=nlvoi, nwv=nwv,
+                        lin=lin, nln=nln, nnet=nnet, lnet=lnet,
+                        nlin=nlin, nnln=nnln, nnet=nnet, nlnet=nlnet,
+                        minimize=minimize, islp=islp, name=stub)
+
+    nlp = new(meta, asl, Counters(), safe, cvar)
+
+    finalizer(nlp, amplmodel_finalize)
+    return nlp
+  end
+
+end

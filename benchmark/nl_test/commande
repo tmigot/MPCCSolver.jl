@@ -1,0 +1,3 @@
+include("Documents/Julia/nl_test/nl_test.jl")
+
+include("Documents/Julia/MPCC/tests/run_test.jl")
