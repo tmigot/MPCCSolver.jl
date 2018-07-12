@@ -1,8 +1,7 @@
 module ParamSetmod
 
 """
-Liste les paramètres utilisés dans la résolution du MPCC:
-ParamSet(nbc::Int64)
+Liste les paramètres utilisés dans la résolution du MPCC
 ParamSet(nbc::Int64,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::Float64,t0::Float64,sigma_t::Float64)
 """
 

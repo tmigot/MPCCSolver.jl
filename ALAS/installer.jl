@@ -27,6 +27,7 @@ end
  #using OptimizationProblems
  #Pkg.clone("https://github.com/JuliaSmoothOptimizers/OptimizationProblems.jl.git")
 #end
+#Pkg.clone("https://github.com/JuliaSmoothOptimizers/OptimizationProblems.jl.git")
 
 if Pkg.installed("AmplNLReader") == nothing
  Pkg.clone("https://github.com/JuliaSmoothOptimizers/AmplNLReader.jl.git")

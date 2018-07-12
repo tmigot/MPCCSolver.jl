@@ -1,0 +1,25 @@
+"""
+MPCCSolve(mod::MPCCmod.MPCC)
+"""
+
+module MPCCSolvemod
+
+using MPCCmod
+using SolveRelaxSubProblem
+
+type MPCCSolve
+ mod::MPCCmod.MPCC
+ solve_sub_pb::Function
+ name_relax::::AbstractString
+end
+
+function MPCCSolve(mod::MPCCmod.MPCC)
+
+ solve_sub_pb=SolveRelaxSubProblem.SolveSubproblemAlas
+ name_relax="KS"
+
+ return MPCCSolve(mod,solve_sub_pb,name_relax)
+end
+
+#end of module
+end

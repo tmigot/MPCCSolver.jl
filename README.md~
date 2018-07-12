@@ -10,7 +10,6 @@ Tests NLP OptimizationProblems.jl :
 include("tests/nlp_test.jl")
 
 Tests NLP CUTEr :
-# Pkg.add("CUTEst")
 
 include("tests/cute_test.jl")
 

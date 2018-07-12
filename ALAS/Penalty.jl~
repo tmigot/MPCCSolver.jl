@@ -4,60 +4,7 @@ Package de fonctions de pénalité
 liste des fonctions :
 Quadratic(mp::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,x::Vector,yg::Vector,
                    yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
-Quadratic(mp::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,x::Vector,yg::Vector,
-                   yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector,f::Float64,rho_update::Float64)
-Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   g::Vector)
-Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   g::Vector,rho_update::Float64)
-Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   Hess::Array{Float64,2})
-Quadratic(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   Hess::Array{Float64,2},rho_update::Float64)
-
-
-Lagrangian(mp::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,x::Vector,yg::Vector,
-                   yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
-Lagrangian(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   g::Vector)
-Lagrangian(mp::NLPModels.AbstractNLPModel,G::NLPModels.AbstractNLPModel,
-                   H::NLPModels.AbstractNLPModel,err::Vector,nb_comp::Int64,
-                   x::Vector,yg::Vector,yh::Vector,
-                   rho::Vector,
-                   usg::Vector,ush::Vector,
-                   uxl::Vector,uxu::Vector,
-                   ucl::Vector,ucu::Vector,
-                   Hess::Array{Float64,2})
+Lagrangian(mp::NLPModels.AbstractNLPModel,G::Function,H::Function,nb_comp::Int64,x::Vector,yg::Vector,yh::Vector,rho::Vector,usg::Vector,ush::Vector,uxl::Vector,uxu::Vector,ucl::Vector,ucu::Vector)
 
 fonctions additionnelles :
 RhoDetail(rho::Vector,mp::NLPModels.AbstractNLPModel,nb_comp::Int64)

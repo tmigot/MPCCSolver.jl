@@ -2,14 +2,13 @@
 Package de fonction pour la minimisation ActifMPCC
 
 liste des fonctions :
-LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
+LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
                          xj::Vector,d::Vector,
                          step::Float64,gradpen::Vector,hg::Float64;
                          scaling :: Bool = false)
 """
 
 # - Est-ce qu'on pourrait envisager d'autres techniques que LineSearch, Trust-Region, ou LP-Newton.
-# - Pourquoi il y a un appel a NLPModels ?
 
 module UnconstrainedMPCCActif
 
@@ -19,12 +18,12 @@ using OutputLSmod
 
 """
 Input :
-ma : ActifMPCC
+ma : MPCC_actif
 xj : vecteur initial
 d : direction précédente en version étendue
 """
 
-function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
+function LineSearchSolve(ma::ActifMPCCmod.MPCC_actif,
                          xj::Vector,d::Vector,
                          step::Float64,gradpen::Vector,hg::Float64;
                          scaling :: Bool = false)

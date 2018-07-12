@@ -6,6 +6,7 @@ using LineSearch
 using ScalingDual
 using UnconstrainedStopping
 using CRhoUpdate
+using SolveRelaxSubProblem
 
 """
 AlgoSet()

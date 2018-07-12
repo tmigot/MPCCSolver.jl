@@ -5,7 +5,6 @@ liste des fonctions :
 psi(x::Any,r::Float64,s::Float64,t::Float64)
 invpsi(x::Any,r::Float64,s::Float64,t::Float64)
 dpsi(x::Any,r::Float64,s::Float64,t::Float64)
-ddpsi(x::Any,r::Float64,s::Float64,t::Float64)
 
 phi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
 phi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)

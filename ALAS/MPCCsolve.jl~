@@ -5,8 +5,6 @@
                  r::Float64,s::Float64,t::Float64,
                  rho::Vector)
 -warning_print(realisable::Bool,solved::Bool,param::Bool,optimal::Bool)
--final_message(or::OutputRelaxationmod.OutputRelaxation,
-               solved::Bool,optimal::Bool,realisable::Bool)
 """
 
 module MPCCsolve
@@ -40,7 +38,6 @@ function solve(mod::MPCCmod.MPCC)
  f=MPCCmod.obj(mod,x0)
  or=OutputRelaxationmod.OutputRelaxation(x0,real, f)
 
- #heuristic in case the initial point is the solution
  optimal=realisable && MPCCmod.stationary_check(mod,x0) #reste à checker le signe des multiplicateurs
 
  MPCCsolveinst=MPCCSolvemod.MPCCSolve(mod)
@@ -68,14 +65,26 @@ function solve(mod::MPCCmod.MPCC)
 
   j+=1
  end
- #End Major Loop
+#End Major Loop
 
- mod.paramset.verbose != 0.0 ? warning_print(realisable,solved,param,optimal) : nothing
+if mod.paramset.verbose != 0.0
+ warning_print(realisable,solved,param,optimal)
+end
 
- or=final_message(or,solved::Bool,optimal::Bool,realisable::Bool)
+if solved && optimal && realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Success")
+elseif optimal && realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Success (with sub-pb failure)")
+elseif !realisable
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Infeasible")
+elseif realisable && !optimal
+ or=OutputRelaxationmod.UpdateFinalOR(or,"Feasible, but not optimal")
+else
+ or=OutputRelaxationmod.UpdateFinalOR(or,"autres")
+end
 
- #Traitement final :
- OutputRelaxationmod.Print(or,mod.n,mod.paramset.verbose)
+#Traitement final :
+OutputRelaxationmod.Print(or,mod.n,mod.paramset.verbose)
 
  mod=MPCCmod.addInitialPoint(mod,x0[1:mod.n]) #remet le point initial du MPCC
  nb_eval=[mod.mp.counters.neval_obj,mod.mp.counters.neval_cons,
@@ -106,24 +115,6 @@ function warning_print(realisable::Bool,solved::Bool,param::Bool,optimal::Bool)
 	 param || realisable || print_with_color(:green,"Parameters too small\n") 
 	 solved && realisable && optimal && print_with_color(:green,"Success\n")
  return
-end
-
-function final_message(or::OutputRelaxationmod.OutputRelaxation,
-                       solved::Bool,optimal::Bool,realisable::Bool)
-
- if solved && optimal && realisable
-  or=OutputRelaxationmod.UpdateFinalOR(or,"Success")
- elseif optimal && realisable
-  or=OutputRelaxationmod.UpdateFinalOR(or,"Success (with sub-pb failure)")
- elseif !realisable
-  or=OutputRelaxationmod.UpdateFinalOR(or,"Infeasible")
- elseif realisable && !optimal
-  or=OutputRelaxationmod.UpdateFinalOR(or,"Feasible, but not optimal")
- else
-  or=OutputRelaxationmod.UpdateFinalOR(or,"autres")
- end
-
- return or
 end
 
 #end of module
