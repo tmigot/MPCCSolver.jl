@@ -25,6 +25,8 @@ module SolveRelaxSubProblem
 
 using MPCCmod
 using ALASMPCCmod
+using AlgoSetmod
+using ParamSetmod
 
 using Ipopt
 using MathProgBase
@@ -35,12 +37,12 @@ Methode pour résoudre le sous-problème relaxé :
 """
 function SolveSubproblemAlas(mod::MPCCmod.MPCC,
                              r::Float64,s::Float64,t::Float64,
-                             rho::Vector,name_relax::AbstractString)
+                             rho::Vector,name_relax::AbstractString,paramset::ParamSetmod.ParamSet,algoset::AlgoSetmod.AlgoSet,x0::Vector)
  solved=true
 
- prec=mod.paramset.prec_oracle(r,s,t,mod.paramset.precmpcc) #Il faut réflechir un peu plus sur des alternatives
+ prec=paramset.prec_oracle(r,s,t,paramset.precmpcc) #Il faut réflechir un peu plus sur des alternatives
 
- alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho)
+ alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho,paramset,algoset,x0)
 
  xk,stat,rho,oa = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
 

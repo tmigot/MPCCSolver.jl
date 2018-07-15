@@ -16,7 +16,8 @@ sig_t=0.05
 mpcc=ex1 #ex1, ex2, ex3
 
 #@time xb,fb,orb,nb_eval = MPCCsolve.solve(mpcc,r0,sig_r,s0,sig_s,t0,sig_t)
-@time xb,fb,orb,nb_eval = MPCCsolve.solve(mpcc)
+@time xb,orb,nb_eval = MPCCsolve.solve(mpcc)
+#mpcc.mp.meta.x0
 
 try
  oa=orb.inner_output_alas[1]
@@ -26,4 +27,4 @@ end
 
 nbc=mpcc.nb_comp;n=length(xb)-2*nbc
 
-IterationsPlot2D(1,2,n+1,n+2,orb)
+#IterationsPlot2D(1,2,n+1,n+2,orb)

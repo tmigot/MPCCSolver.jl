@@ -2,8 +2,8 @@ module MPCCmod
 
 using NLPModels
 
-import ParamSetmod
-import AlgoSetmod
+using ParamSetmod
+using AlgoSetmod
 
 """
 Definit le type MPCC :
@@ -36,7 +36,7 @@ viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
 viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector)
 viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
 viol_contrainte(mod::MPCCmod.MPCC,x::Vector)
-viol_comp(mod::MPCCmod.MPCC,x::Vector)
+viol_comp(mod::MPCCmod.MPCC,x::Vector)_ _v'
 viol_cons(mod::MPCCmod.MPCC,x::Vector)
 
 dual_feasibility(mod::MPCC,x::Vector,l::Vector,A::Any)
@@ -51,6 +51,7 @@ stationary_check(mod::MPCC,x::Vector)
 # TO DO List
 #Major :
 # - appel de la hessienne d'un SimpleNLPModel ? NLPModels.hess(mod.H,x)
+# - algoset et paramset devraient passer dans MPCCSolve
 
 type MPCC
 
@@ -58,14 +59,9 @@ type MPCC
  G::NLPModels.AbstractNLPModel
  H::NLPModels.AbstractNLPModel
 
- xj::Vector #itéré courant
-
- nb_comp::Int64
- nbc::Int64
+ nb_comp::Int64 #nb contraintes de complémentarité
+ nbc::Int64 #nb de contraintes (non-linéaire+bornes+complémentarité)
  n::Int64
-
- algoset::AlgoSetmod.AlgoSet
- paramset::ParamSetmod.ParamSet
 
 end
 
@@ -81,7 +77,7 @@ function MPCC(f::Function,x0::Vector,
 
  n=length(mp.meta.x0)
 
- return MPCC(mp,G,H,x0,nb_comp,nbc,n,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,
@@ -90,7 +86,7 @@ function MPCC(mp::NLPModels.AbstractNLPModel,
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
  n=length(mp.meta.x0)
  
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,nbc,n,AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel)
@@ -103,22 +99,7 @@ function MPCC(mp::NLPModels.AbstractNLPModel)
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
  n=length(mp.meta.x0)
 
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,nbc,n,
-		AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
-end
-
-function MPCC(mp::NLPModels.AbstractNLPModel,algo::AlgoSetmod.AlgoSet)
-
- #le plus "petit" SimpleNLPModel
- G=SimpleNLPModel(x->0, [0.0])
- H=SimpleNLPModel(x->0, [0.0])
-
- nb_comp=0
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- n=length(mp.meta.x0)
-
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,nbc,n,
-		AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,
@@ -128,8 +109,7 @@ function MPCC(mp::NLPModels.AbstractNLPModel,
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
  n=length(mp.meta.x0)
 
- return MPCC(mp,G,H,mp.meta.x0,nb_comp,nbc,n,
-	     AlgoSetmod.AlgoSet(),ParamSetmod.ParamSet(nbc))
+ return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
 """
@@ -149,8 +129,8 @@ end
 Jacobienne des contraintes actives à precmpcc près
 """
 
-function jac_actif(mod::MPCC,x::Vector)
-  prec=mod.paramset.precmpcc
+function jac_actif(mod::MPCC,x::Vector,prec)
+
   n=mod.n
 
   Il=find(z->norm(z-mod.mp.meta.lvar,Inf)<=prec,x)
@@ -184,37 +164,6 @@ function jac_actif(mod::MPCC,x::Vector)
 end
 
 """
-Accesseur : modifie le point initial
-"""
-
-function addInitialPoint(mod::MPCC,x0::Vector)
-
- mod.xj=x0
-
- return mod
-end
-
-"""
-Donne la norme 2 de la violation des contraintes avec slack
-
-note : devrait appeler viol_contrainte
-"""
-function viol_contrainte_norm(mod::MPCC,x::Vector,yg::Vector,yh::Vector;tnorm::Real=2)
- return norm(viol_contrainte(mod,x,yg,yh),tnorm)
-end
-
-function viol_contrainte_norm(mod::MPCC,x::Vector;tnorm::Real=2) #x de taille n+2nb_comp
-
- n=mod.n
- if length(x)==n
-  resul=max(viol_comp(mod,x),viol_cons(mod,x))
- else
-  resul=viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp],tnorm=tnorm)
- end
- return resul
-end
-
-"""
 Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ; lvar<=x ; x<=uvar ; lvar<=c(x) ; c(x)<=uvar
 """
 function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
@@ -239,123 +188,41 @@ end
 """
 Donne la norme de la violation de la complémentarité min(G,H)
 """
-function viol_comp(mod::MPCC,x::Vector;tnorm::Real=2)
+function viol_comp(mod::MPCC,x::Vector)
 
  n=mod.n
  x=length(x)==n?x:x[1:n]
+
  G=NLPModels.cons(mod.G,x)
  H=NLPModels.cons(mod.H,x)
 
- return mod.nb_comp>0?norm(G.*H./(G+H+1),tnorm):0
+ return mod.nb_comp>0?G.*H./(G+H+1):[]
 end
 
 """
-Donne la norme de la violation des contraintes \"classiques\"
-"""
-function viol_cons(mod::MPCC,x::Vector;tnorm::Real=2)
-
- n=mod.n
- x=length(x)==n?x:x[1:n]
- feas=norm([max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0)],tnorm)
-
- if mod.mp.meta.ncon !=0
-
-  c=NLPModels.cons(mod.mp,x)
-  feas=max(norm([max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)],tnorm),feas)
-
- end
-
- return feas
-end
-
-"""
-Donne la violation de la réalisabilité dual (norme Infinie)
+Donne la violation de la réalisabilité dual
 """
 function dual_feasibility(mod::MPCC,x::Vector,l::Vector,A::Any) #type général pour matrice ?
 
  b=grad(mod,x)
 
- return optimal=norm(A*l+b,Inf)<=mod.paramset.precmpcc
-end
-"""
-Vérifie les signes de la M-stationarité (l entier)
-"""
-function sign_stationarity_check(mod::MPCC,x::Vector,l::Vector)
-
-  prec=mod.paramset.precmpcc
-
-  Il=find(z->norm(z-mod.mp.meta.lvar,Inf)<=prec,x)
-  Iu=find(z->norm(z-mod.mp.meta.uvar,Inf)<=prec,x)
-
-  IG=[];IH=[];Ig=[];Ih=[];
-
- if mod.mp.meta.ncon+mod.nb_comp >0
-
-  c=cons(mod.mp,x)
-  Ig=find(z->norm(z-mod.mp.meta.lcon,Inf)<=prec,c)
-  Ih=find(z->norm(z-mod.mp.meta.ucon,Inf)<=prec,c)
-
-  if mod.nb_comp>0
-   IG=find(z->norm(z-mod.G.meta.lcon,Inf)<=prec,NLPModels.cons(mod.G,x))
-   IH=find(z->norm(z-mod.H.meta.lcon,Inf)<=prec,NLPModels.cons(mod.H,x))
-  end
- end
-
- #setdiff(∪(Il,Iu),∩(Il,Iu))
- l_pos=max.(l[1:2*n+2*mod.mp.meta.ncon],0)
- I_biactif=∩(IG,IH)
- lG=[2*n+2*mod.mp.meta.ncon+I_biactif]
- lH=[2*n+2*mod.mp.meta.ncon+mod.nb_comp+I_biactif]
- l_cc=min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
-
- return norm([l_pos;l_cc],Inf)<=mod.paramset.precmpcc
+ return A*l+b
 end
 
-"""
-Vérifie les signes de la M-stationarité (l actif)
-"""
-function sign_stationarity_check(mod::MPCC,x::Vector,l::Vector,
-                                 Il::Array{Int64,1},Iu::Array{Int64,1},
-                                 Ig::Array{Int64,1},Ih::Array{Int64,1},
-                                 IG::Array{Int64,1},IH::Array{Int64,1})
-
- nl=length(Il)+length(Iu)+length(Ig)+length(Ih)
- nccG=length(IG)
- nccH=length(IH)
- l_pos=max.(l[1:nl],0)
- I_biactif=∩(IG,IH)
- lG=l[I_biactif+nl]
- lH=l[nl+nccG+I_biactif]
- l_cc=min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
-
- return norm([l_pos;l_cc],Inf)<=mod.paramset.precmpcc
-end
+###################################################################################
+#
+# A DEGAGER
+#
 
 """
-For a given x, compute the multiplier and check the feasibility dual
+Accesseur : modifie le point initial
 """
-function stationary_check(mod::MPCC,x::Vector)
- n=mod.n
- b=-grad(mod,x)
 
- if mod.mp.meta.ncon+mod.nb_comp ==0
+function addInitialPoint(mod::MPCC,x0::Vector)
 
-  optimal=norm(b,Inf)<=mod.paramset.precmpcc
+ mod.xj=x0
 
- else
-  A, Il,Iu,Ig,Ih,IG,IH=jac_actif(mod,x)
-
-  if !(true in isnan.(A) || true in isnan.(b))
-   l=pinv(full(A))*b #pinv not defined for sparse matrix
-   optimal=dual_feasibility(mod,x,l,A)
-   good_sign=sign_stationarity_check(mod,x,l,Il,Iu,Ig,Ih,IG,IH)
-  else
-   @printf("Evaluation error: NaN in the derivative")
-   optimal=false
-  end
- end
-
- return optimal
+ return mod
 end
 
 #end du module

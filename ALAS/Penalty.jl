@@ -66,7 +66,6 @@ ErrDetail(err::Vector,n::Int64,nb_comp::Int64,ncon::Int64)
 module Penalty
 
 using NLPModels
-using ForwardDiff
 
 """
 Fonction de pénalité quadratique
