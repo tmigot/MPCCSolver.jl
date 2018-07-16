@@ -30,14 +30,16 @@ using ParamSetmod
 
 using Ipopt
 using MathProgBase
-using NLPModels #Pour le MPCCtoRelaxNLP
+importall NLPModels #Pour le MPCCtoRelaxNLP
 
 """
 Methode pour résoudre le sous-problème relaxé :
 """
 function SolveSubproblemAlas(mod::MPCCmod.MPCC,
                              r::Float64,s::Float64,t::Float64,
-                             rho::Vector,name_relax::AbstractString,paramset::ParamSetmod.ParamSet,algoset::AlgoSetmod.AlgoSet,x0::Vector)
+                             rho::Vector,name_relax::AbstractString,
+                             paramset::ParamSetmod.ParamSet,
+                             algoset::AlgoSetmod.AlgoSet,x0::Vector)
  solved=true
 
  prec=paramset.prec_oracle(r,s,t,paramset.precmpcc) #Il faut réflechir un peu plus sur des alternatives
@@ -59,24 +61,27 @@ Methode pour résoudre le sous-problème relaxé :
 """
 function SolveSubproblemIpOpt(mod::MPCCmod.MPCC,
                               r::Float64,s::Float64,t::Float64,
-                              rho::Vector,name_relax::AbstractString)
+                              rho::Vector,name_relax::AbstractString,
+                             paramset::ParamSetmod.ParamSet,
+                             algoset::AlgoSetmod.AlgoSet,x0::Vector)
  solved=true
- nlp_relax = MPCCtoRelaxNLP(mod,r,s,t,name_relax)
+ #nlp_relax = MPCCtoRelaxNLP(mod,r,s,t,name_relax) #si nb_comp>0
+ nlp_relax=mod.mp
  output=[]
 
  # resolution du sous-problème avec IpOpt
- model_relax = NLPModels.NLPtoMPB(nlp_relax, IpoptSolver(print_level=0,tol=mod.paramset.precmpcc))
+ model_relax = NLPModels.NLPtoMPB(nlp_relax, IpoptSolver(print_level=0,tol=paramset.precmpcc))
  MathProgBase.optimize!(model_relax)
 
  if MathProgBase.status(model_relax) == :Optimal
   xk = MathProgBase.getsolution(model_relax)
-  solved=false
  else
+  xk=x0
+  solved=false
  end
 
  return xk,solved,rho,output
 end
-
 
 ###
 #
@@ -88,7 +93,7 @@ MPCCtoRelaxNLP(mod::MPCC, t::Float64)
 mod : MPCC
 return : le MPCC en version NL pour un t donné
 """
-function MPCCtoRelaxNLP(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
+function MPCCtoRelaxNLP_dontwork(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
 
  G(x)=NLPModels.cons(mod.G,x)
  H(x)=NLPModels.cons(mod.H,x)
@@ -129,6 +134,62 @@ function MPCCtoRelaxNLP(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, r
  return nlp
 end
 
+"""
+MPCCtoRelaxNLP(mod::MPCC, t::Float64)
+mod : MPCC
+return : le MPCC en version NL pour un t donné
+"""
+function MPCCtoRelaxNLP(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
+
+ x0=mod.mp.meta.x0
+ g(x)=cons(mod.mp,x)
+ g!(x,gx)=MathProgBase.eval_grad_f(mod.mp.mpmodel.eval, gx, x)
+
+ G(x)=NLPModels.cons(mod.G,x)
+ H(x)=NLPModels.cons(mod.H,x)
+
+ nl_constraint(x)=[G(x).*H(x)-t;G(x);H(x)]
+
+ #lcon=[mod.mp.meta.lcon;-Inf*ones(mod.nb_comp);zeros(mod.nb_comp*2)]
+ #ucon=[mod.mp.meta.ucon;zeros(mod.nb_comp);Inf*ones(mod.nb_comp*2)]
+ #y0=[mod.mp.meta.y0;zeros(3*mod.nb_comp)]
+ lcon=mod.mp.meta.lcon
+ ucon=mod.mp.meta.ucon
+ y0=mod.mp.meta.y0
+
+ ncon=length(y0)
+
+ #nlc(x)=[cons(mod.mp,x);nl_constraint(x)]
+ nlc(x) = cons(mod.mp,x)
+ J(x) = jac(mod.mp,x)
+ Jcoord(x) = jac_coord(mod.mp,x)
+ Jp(x,v) = jprod(mod.mp,x,v)
+ Jp!(x,v,Jv) = jprod!(mod.mp,x,v)
+
+ f(x)=MathProgBase.eval_f(mod.mp.mpmodel.eval, x)
+
+ Hx(x;obj_weight=1.0, y=zeros)=hess(mod.mp,x,y)
+ Hcoord(x;obj_weight=1.0, y=zeros)=hess_coord(mod.mp,x,y)
+#-hess(mod.G,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.nb_comp]-hess(mod.H,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.nb_comp])
+  Hp(x, v, obj_weight=1.0, y=zeros) = hprod(mod.mp,x, v, obj_weight=1.0, y=zeros)
+ Hp!(x, v, obj_weight=1.0, y=zeros) = hprod!(mod.mp,x, v, Hv, obj_weight=1.0, y=zeros)
+
+@show typeof(mod.mp)
+ nlp = SimpleNLPModel(f, x0;
+                      lvar = mod.mp.meta.lvar, uvar = mod.mp.meta.uvar, y0 = y0,
+                      lcon = lcon, ucon = ucon,
+                      g!=g!,
+                      fg=mod.mp.fg,fg!=mod.mp.fg!,
+                      H=mod.mp.H,Hcoord=mod.mp.Hcoord,Hp=mod.mp.Hp,Hp!=mod.mp.Hp!,
+                      c=nlc,c!=mod.mp.c!,fc=mod.mp.fc,fc!=mod.mp.fc!,
+                      J=mod.mp.J,Jcoord=mod.mp.Jcoord,
+                      Jp=mod.mp.Jp,Jp!=mod.mp.Jp!,
+                      Jtp=mod.mp.Jtp,Jtp!=mod.mp.Jtp!,
+                      name = "RelaxedNLP"
+                      )
+
+ return nlp
+end
 
 #end of module
 end

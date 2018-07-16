@@ -436,15 +436,15 @@ function LSQComputationMultiplier(ma::ActifMPCC,gradpen::Vector,xj::Vector)
  lk[ma.nb_comp+ma.w2]=l[nw1+1:nw1+nw2]
  lk[2*ma.nb_comp+ma.wcomp]=l[nw1+nw2+1:nw1+nw2+nwcomp]
  
- return lk[1:ma.nb_comp],lk[ma.nb_comp+1:2*ma.nb_comp],lk[2*ma.nb_comp+1:3*ma.nb_comp]
+ return lk
 end
 
 function LSQComputationMultiplierBool(ma::ActifMPCC,gradpen::Vector,xjk::Vector)
 
-   lg,lh,lphi=LSQComputationMultiplier(ma,gradpen,xjk)
-   l_negative=findfirst(x->x<0,[lg;lh;lphi])!=0 #vrai si un multiplicateur est negatif
+   l=LSQComputationMultiplier(ma,gradpen,xjk)
+   l_negative=findfirst(x->x<0,l)!=0 #vrai si un multiplicateur est negatif
 
- return lg,lh,lphi,l_negative
+ return l,l_negative
 end
 
 """
@@ -456,9 +456,10 @@ wmax        : ensemble des contraintes qui viennent d'être ajouté
 
 output : ActifMPCC (avec les ensembles de contraintes actives mis à jour
 """
-function RelaxationRule(ma::ActifMPCCmod.ActifMPCC,xj::Vector,lg::Vector,lh::Vector,lphi::Vector,wmax::Array{Bool,2})
+function RelaxationRule(ma::ActifMPCCmod.ActifMPCC,xj::Vector,l::Vector,wmax::Array{Bool,2})
 
   copy_wmax=copy(wmax)
+  lg=l[1:ma.nb_comp];lh=l[ma.nb_comp+1:2*ma.nb_comp];lphi=l[2*ma.nb_comp+1:3*ma.nb_comp]
 
   # Relaxation de l'ensemble d'activation : désactive toutes les contraintes négatives
   ma.w[find(x -> x<0,[lg;lphi;lh;lphi])]=zeros(Bool,length(find(x -> x<0,[lg;lphi;lh;lphi])))
