@@ -1,15 +1,16 @@
 module StoppingMPCCmod
 
 using MPCCmod
+import MPCCmod.MPCC
 using OutputRelaxationmod
-
 using NLPModels
 
 type StoppingMPCC
 
  #paramètres pour la résolution du MPCC
- #precmpcc::Float64
- #paramin::Float64 #valeur minimal pour les paramères (r,s,t)
+ precmpcc::Float64
+ paramin::Float64 #valeur minimal pour les paramères (r,s,t)
+ prec_oracle::Function
 
  #variables de sorties
  optimal::Bool
@@ -19,39 +20,55 @@ type StoppingMPCC
 
 end
 
-function start(mpccsol,xk,r,s,t)
+function StoppingMPCC(;precmpcc::Float64 = 1e-6,
+                      paramin :: Float64 = 1e-15,
+                      prec_oracle :: Function = x->x,
+                      optimal :: Bool = false,
+                      realisable :: Bool = false,
+                      solved :: Bool = false,
+                      param :: Bool = true)
 
- real=viol_contrainte_norm(mpccsol.mod,xk)
- realisable=real<=mpccsol.paramset.precmpcc
- solved=true
- param=(t+r+s)>mpccsol.paramset.paramin
- f=MPCCmod.obj(mpccsol.mod,xk)
- or=OutputRelaxationmod.OutputRelaxation(xk,real, f)
- #heuristic in case the initial point is the solution
- optimal=realisable && stationary_check(mpccsol.mod,xk,mpccsol.paramset.precmpcc)
- OK=param && !(realisable && solved && optimal)
-
- sts=StoppingMPCC(optimal,realisable,solved,param)
-
- return sts,OK, or
+ return StoppingMPCC(precmpcc,paramin,prec_oracle,optimal,realisable,solved,param)
 end
 
-function stop(mpccsol,xk,r,s,t,output,solved,or,sts)
+function start(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t)
 
-  real=viol_contrainte_norm(mpccsol.mod,xk[1:mpccsol.mod.n])
-  f=MPCCmod.obj(mpccsol.mod,xk[1:mpccsol.mod.n])
+ real=viol_contrainte_norm(mod,xk,tnorm=Inf)
+ realisable=real<=smpcc.precmpcc
+ solved=true
+ param=(t+r+s)>smpcc.paramin
+ f=MPCCmod.obj(mod,xk)
+ or=OutputRelaxationmod.OutputRelaxation(xk,real, f)
+ #heuristic in case the initial point is the solution
+ optimal=realisable && stationary_check(mod,xk,smpcc.precmpcc)
+ OK=param && !(realisable && solved && optimal)
 
-  sts.solved=true in isnan.(xk)?false:solved
-  sts.realisable=real<=mpccsol.paramset.precmpcc
+ smpcc.optimal=optimal
+ smpcc.realisable=realisable
+ smpcc.solved=solved
+ smpcc.param=param
 
- if sts.solved && sts.realisable
-  sts.optimal=!isnan(f) && !(true in isnan.(xk)) && stationary_check(mpccsol.mod,xk[1:mpccsol.mod.n],mpccsol.paramset.precmpcc)
+ return smpcc,OK, or
+end
+
+function stop(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t,output,solved,or)
+
+  real=viol_contrainte_norm(mod,xk[1:mod.n])
+  f=MPCCmod.obj(mod,xk[1:mod.n])
+
+  smpcc.solved=true in isnan.(xk)?false:solved
+  smpcc.realisable=real<=smpcc.precmpcc
+
+ if smpcc.solved && smpcc.realisable
+  smpcc.optimal=!isnan(f) && !(true in isnan.(xk)) && stationary_check(mod,xk[1:mod.n],smpcc.precmpcc)
  end
 
- sts.param=(t+r+s)>mpccsol.paramset.paramin
+ smpcc.param=(t+r+s)>smpcc.paramin
 
- OK=sts.param && !sts.optimal
- or=OutputRelaxationmod.UpdateOR(or,xk[1:mpccsol.mod.n],0,r,s,t,mpccsol.paramset.prec_oracle(r,s,t,mpccsol.paramset.precmpcc),real,output,f)
+ OK=smpcc.param && !smpcc.optimal
+ or=OutputRelaxationmod.UpdateOR(or,xk[1:mod.n],0,r,s,t,
+                                 smpcc.prec_oracle(r,s,t,smpcc.precmpcc),
+                                 real,output,f)
  
  return OK
 end

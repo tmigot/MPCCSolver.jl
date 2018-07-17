@@ -1,5 +1,5 @@
 # A stopping manager for iterative solvers
-export TStoppingPAS, start!, stop
+export TStoppingPAS, start!, stop, ending_test
 
 type TStoppingPAS
     atol :: Float64                  # absolute tolerance
@@ -27,7 +27,7 @@ type TStoppingPAS
     wolfe_step :: Bool
     #Feasibility
     feasibility :: Float64
-    feasibility_residual :: Function # norm(MPCCmod.viol_contrainte(alas.mod,xjk),Inf)
+    feasibility_residual :: Function #norm(MPCCmod.viol_contrainte(alas.mod,xjk),Inf)
     feas :: Bool
     # Stopping properties
     tired::Bool
@@ -107,7 +107,7 @@ function pas_stop!( mod :: MPCCmod.MPCC,
                 x  :: Array{Float64,1},
                             ∇f :: Array{Float64,1},
                  iter :: Int64,
-                 rho :: Float64)
+                 ρ :: Float64)
 
     #counts = nlp.counters
     #calls = [counts.neval_obj,  counts.neval_grad, counts.neval_hess, counts.neval_hprod]
@@ -139,11 +139,46 @@ function pas_stop!( mod :: MPCCmod.MPCC,
     # global user limit diagnostic
     s.tired = (max_iter) | (max_calls) | (max_time)
 
-    OK = !s.tired && !s.l_negative && (s.feas || minimum(rho)==s.rho_max ) && s.optimal
+    OK = !s.tired && !s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal
   #GOOD=!(k<k_max && (alas.spas.l_negative || !((feasible || minimum(rho)==alas.paramset.rho_max*ma.crho ) && dual_feasible)) && Armijosuccess && !small_step)
 
     # return everything. Most users will use only the first four fields, but return
     # the fine grained information nevertheless.
     return s, OK
            #,max_obj_f, max_obj_g, max_obj_H, max_obj_Hv, max_total, max_iter, max_time
+end
+
+function ending_test(spas::TStoppingPAS,
+                     Armijosuccess::Bool,small_step::Bool,
+                     unbounded::Bool)
+
+ stat=0
+ if unbounded
+  print_with_color(:red, "Unbounded Subproblem\n")
+  stat=2
+ else
+  if !Armijosuccess
+   print_with_color(:red, "Failure : Armijo Failure\n")
+   stat=1
+  end
+  if small_step
+   print_with_color(:red, "Failure : too small step\n")
+   #stat=1
+  end
+  if !spas.feas #feas>alas.prec
+   print_with_color(:red, "Failure : Infeasible Solution. norm: $feas\n")
+   #stat=1
+  end
+  if !spas.optimal #dual_feas>alas.prec
+   if spas.tired #k>=alas.paramset.ite_max_alas
+    print_with_color(:red, "Failure : Non-optimal Sol. norm: $dual_feas\n")
+    stat=1
+   else
+    print_with_color(:red, "Inexact : Fritz-John Sol. norm: $dual_feas\n")
+    #stat=0
+   end
+  end
+ end
+
+ return stat
 end

@@ -16,7 +16,8 @@ sig_t=0.05
 mpcc=ex1 #ex1, ex2, ex3
 
 #@time xb,fb,orb,nb_eval = MPCCsolve.solve(mpcc,r0,sig_r,s0,sig_s,t0,sig_t)
-@time xb,orb,nb_eval = MPCCsolve.solve(mpcc)
+#@time xb,orb,nb_eval = MPCCsolve.solve(mpcc)
+@time xb,orb,nb_eval = MPCCSolvemod.solve(mpcc)
 #mpcc.mp.meta.x0
 
 try

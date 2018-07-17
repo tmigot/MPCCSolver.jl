@@ -209,21 +209,5 @@ function dual_feasibility(mod::MPCC,x::Vector,l::Vector,A::Any) #type général 
  return A*l+b
 end
 
-###################################################################################
-#
-# A DEGAGER
-#
-
-"""
-Accesseur : modifie le point initial
-"""
-
-function addInitialPoint(mod::MPCC,x0::Vector)
-
- mod.xj=x0
-
- return mod
-end
-
 #end du module
 end

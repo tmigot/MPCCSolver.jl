@@ -1,17 +1,24 @@
 module ALASMPCCmod
 
-using OutputALASmod
-using ActifMPCCmod
-using MPCCmod
-
-using AlgoSetmod
-using ParamSetmod
-
 using NLPModels
 
+import AlgoSetmod.AlgoSet
+import ParamSetmod.ParamSet
+
+import ActifMPCCmod.ActifMPCC,ActifMPCCmod.grad
+import ActifMPCCmod.LSQComputationMultiplierBool,ActifMPCCmod.RelaxationRule
+import ActifMPCCmod.setbeta, ActifMPCCmod.setcrho #pas sûr que ça reste
+
+import OutputALASmod.OutputALAS, OutputALASmod.Update
+
+import MPCCmod.MPCC, MPCCmod.viol_contrainte
+
 import Stopping.TStopping, Stopping.start!, Stopping.stop
-import Stopping.TStoppingPAS, Stopping.pas_start!, Stopping.pas_rhoupdate!, Stopping.pas_stop!
+import Stopping.TStoppingPAS, Stopping.pas_start!, Stopping.pas_rhoupdate!
+import Stopping.pas_stop!, Stopping.ending_test
+
 import UnconstrainedMPCCActif.LineSearchSolve #ne devrait pas être là
+
 import Relaxation.psi #un peu bizarre ici
 
 """
@@ -26,17 +33,11 @@ liste des méthodes :
 
 
 liste des accesseurs :
-
+-addInitialPoint(alas::ALASMPCC,x0::Vector)
 
 liste des fonctions :
 +solvePAS(alas::ALASMPCC)
 
--EndingTest(alas::ALASMPCC,Armijosuccess::Bool,
-                    small_step::Bool,feas::Float64,
-                    dual_feas::Float64,k::Int64)
--Feasible(alas,x::Vector)
--DualFeasible(alas,gradpen::Vector)
--FeasibilityUpdate(alas,usg,ush,uxl,uxu,ucl,ucu,lg,lh,lphi,rho,dual_feas,feas)
 -SlackComplementarityProjection(alas::ALASMPCC)
 -LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
 -LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
@@ -95,7 +96,9 @@ RhoDetail(alas::ALASMPCC,rho::Vector)
 """
 
 type ALASMPCC
- mod::MPCCmod.MPCC
+
+ mod::MPCC
+
  #paramètres du pb
  r::Float64
  s::Float64
@@ -108,19 +111,23 @@ type ALASMPCC
 
  xj::Vector
 
- paramset::ParamSetmod.ParamSet
- algoset::AlgoSetmod.AlgoSet
+ paramset::ParamSet
+ algoset::AlgoSet
  #function de minimisation
 
  sts::TStopping
  spas::TStoppingPAS
+
 end
 
-function ALASMPCC(mod::MPCCmod.MPCC,
-                  r::Float64,s::Float64,t::Float64,
-                  prec::Float64, rho::Vector,
-                  paramset::ParamSetmod.ParamSet,
-                  algoset::AlgoSetmod.AlgoSet,
+function ALASMPCC(mod::MPCC,
+                  r::Float64,
+                  s::Float64,
+                  t::Float64,
+                  prec::Float64,
+                  rho::Vector,
+                  paramset::ParamSet,
+                  algoset::AlgoSet,
                   x::Vector)
 
  rho_init=rho
@@ -166,8 +173,8 @@ include("working_min.jl")
 #
 ######################
 
-function CheckUpdateRho(alas::ALASMPCC,ma::ActifMPCCmod.ActifMPCC,
-                        xjkl::Vector,rho::Vector,feas::Float64,
+function CheckUpdateRho(alas::ALASMPCC,ma::ActifMPCC,
+                        xjkl::Vector,ρ::Vector,feas::Float64,
                         usg::Vector,ush::Vector,
                         uxl::Vector,uxu::Vector,
                         ucl::Vector,ucu::Vector,
@@ -178,51 +185,39 @@ function CheckUpdateRho(alas::ALASMPCC,ma::ActifMPCCmod.ActifMPCC,
   #if (l==l_max || small_step || !Armijosuccess || dual_feasible) && (feas>obj_viol*feask && !feasible)
   #if feas>obj_viol*feask && !feasible
 
-   rho=RhoUpdate(alas,rho,ma.crho,abs.(MPCCmod.viol_contrainte(alas.mod,xjkl)))
+   ρ=RhoUpdate(alas,ρ,ma.crho,abs.(viol_contrainte(alas.mod,xjkl)))
    #on change le problème donc on réinitialise beta
-   ActifMPCCmod.setcrho(ma,alas.algoset.crho_update(feas,rho))
+   setcrho(ma,alas.algoset.crho_update(feas,ρ))
 
    #met à jour la fonction objectif après la mise à jour de rho
-   ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,rho,xjkl,usg,ush,uxl,uxu,ucl,ucu,ma.nlp,objpen=ht,gradpen=gradpen,crho=ma.crho)
-   ActifMPCCmod.setbeta(ma,0.0) #on change le problème donc on réinitialise beta
+   ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,ρ,xjkl,
+                                      usg,ush,uxl,uxu,ucl,ucu,
+                                      ma.nlp,objpen=ht,
+                                      gradpen=gradpen,crho=ma.crho)
+   setbeta(ma,0.0) #on change le problème donc on réinitialise beta
    #ActifMPCCmod.sethess(ma,H) #on change le problème donc on réinitialise Hess
 
   #end
- return rho,ma,ht,gradpen
+ return ρ,ma,ht,gradpen
 end
 
-
 """
-
+Mise à jour de rho:
+structure de rho :
+2*mod.nb_comp
+length(mod.mp.meta.lvar)
+length(mod.mp.meta.uvar)
+length(mod.mp.meta.lcon)
+length(mod.mp.meta.ucon)
 """
-function EndingTest(alas::ALASMPCC,Armijosuccess::Bool,
-                    small_step::Bool,feas::Float64,
-                    dual_feas::Float64,k::Int64)
+function RhoUpdate(alas::ALASMPCC,ρ::Vector,crho::Float64,err::Vector;l::Int64=0)
 
- stat=0
- if !Armijosuccess
-  print_with_color(:red, "Failure : Armijo Failure\n")
-  stat=1
- end
- if small_step
-  print_with_color(:red, "Failure : too small step\n")
-  #stat=1
- end
- if feas>alas.prec
-  print_with_color(:red, "Failure : Infeasible Solution. norm: $feas\n")
-  #stat=1
- end
- if dual_feas>alas.prec
-  if k>=alas.paramset.ite_max_alas
-   print_with_color(:red, "Failure : Non-optimal Sol. norm: $dual_feas\n")
-   stat=1
-  else
-   print_with_color(:red, "Inexact : Fritz-John Sol. norm: $dual_feas\n")
-   #stat=0
-  end
- end
+ nr = length(ρ)
+ #rho[find(x->x>0,err)]*=alas.rho_update
+ #rho*=alas.mod.paramset.rho_update
+ ρ=min.(ρ*alas.paramset.rho_update,ones(nr)*alas.paramset.rho_max*crho)
 
- return stat
+ return ρ
 end
 
 #######################
@@ -237,19 +232,19 @@ include("projection_init.jl")
 Initialize Lagrange Multipliers of the active constraints
 """
 
-function LagrangeCompInit(alas::ALASMPCC,rho::Vector,xj::Vector)
+function LagrangeCompInit(alas::ALASMPCC,ρ::Vector,xj::Vector)
 
- n=length(alas.mod.mp.meta.x0)
+ n=alas.mod.n
  nb_comp=alas.mod.nb_comp
- rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
+ ρ_eqg,ρ_eqh,ρ_ineq_lvar,ρ_ineq_uvar,ρ_ineq_lcons,ρ_ineq_ucons=RhoDetail(alas.mod,ρ)
  
  psiyg=psi(xj[n+1:n+nb_comp],alas.r,alas.s,alas.t)
  psiyh=psi(xj[n+1+nb_comp:n+2*nb_comp],alas.r,alas.s,alas.t)
  phi=(xj[n+1:n+nb_comp]-psiyh).*(xj[n+1+nb_comp:n+2*nb_comp]-psiyg)
 
  lphi=max.(phi,zeros(nb_comp))
- lg=max.(-rho_eqg.*(xj[n+1:n+nb_comp]-alas.tb),zeros(nb_comp))
- lh=max.(-rho_eqh.*(xj[n+1+nb_comp:n+2*nb_comp]-alas.tb),zeros(nb_comp))
+ lg=max.(-ρ_eqg.*(xj[n+1:n+nb_comp]-alas.tb),zeros(nb_comp))
+ lh=max.(-ρ_eqh.*(xj[n+1+nb_comp:n+2*nb_comp]-alas.tb),zeros(nb_comp))
 
  return [lg;lh;lphi]
 end
@@ -258,25 +253,30 @@ end
 """
 Initialisation des multiplicateurs de Lagrange
 """
-function LagrangeInit(alas::ALASMPCC,rho::Vector,xj::Vector)
+function LagrangeInit(alas::ALASMPCC,ρ::Vector,xj::Vector)
 
-  n=length(alas.mod.mp.meta.x0)
-  rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
+ n=alas.mod.n
+ ρ_eqg,ρ_eqh,ρ_ineq_lvar,ρ_ineq_uvar,ρ_ineq_lcons,ρ_ineq_ucons=RhoDetail(alas.mod,ρ)
 
-  uxl=max.(rho_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
-  uxu=max.(rho_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
-  if alas.mod.mp.meta.ncon!=0
-   c(z)=NLPModels.cons(alas.mod.mp,z)
-   nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
+ uxl=max.(ρ_ineq_lvar.*(alas.mod.mp.meta.lvar-xj[1:n]),zeros(n))
+ uxu=max.(ρ_ineq_uvar.*(xj[1:n]-alas.mod.mp.meta.uvar),zeros(n))
 
-   ucl=max.(rho_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
-   ucu=max.(rho_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
-  else
-   ucl=[];ucu=[];
-  end
+ if alas.mod.mp.meta.ncon!=0
 
-  usg=zeros(alas.mod.nb_comp)
-  ush=zeros(alas.mod.nb_comp)
+  c(z)=NLPModels.cons(alas.mod.mp,z)
+  nc=length(alas.mod.mp.meta.y0) #nombre de contraintes
+
+  ucl=max.(ρ_ineq_lcons.*(alas.mod.mp.meta.lcon-c(xj[1:n])),zeros(nc))
+  ucu=max.(ρ_ineq_ucons.*(c(xj[1:n])-alas.mod.mp.meta.ucon),zeros(nc))
+
+ else
+
+  ucl=[];ucu=[];
+
+ end
+
+ usg=zeros(alas.mod.nb_comp)
+ ush=zeros(alas.mod.nb_comp)
 
  return uxl,uxu,ucl,ucu,usg,ush
 end
@@ -284,28 +284,28 @@ end
 """
 Mise à jour des multiplicateurs de Lagrange
 """
-function LagrangeUpdate(alas::ALASMPCC,rho::Vector,xjk::Vector,
+function LagrangeUpdate(alas::ALASMPCC,ρ::Vector,xjk::Vector,
                         uxl::Vector,uxu::Vector,
                         ucl::Vector,ucu::Vector,
                         usg::Vector,ush::Vector)
 
-  n=length(alas.mod.mp.meta.x0)
-   rho_eqg,rho_eqh,rho_ineq_lvar,rho_ineq_uvar,rho_ineq_lcons,rho_ineq_ucons=RhoDetail(alas,rho)
+ n=alas.mod.n
+ ρ_eqg,ρ_eqh,ρ_ineq_lvar,ρ_ineq_uvar,ρ_ineq_lcons,ρ_ineq_ucons=RhoDetail(alas.mod,ρ)
 
-  uxl=uxl+max.(rho_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
-  uxu=uxu+max.(rho_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
-  if alas.mod.mp.meta.ncon!=0
-   c=NLPModels.cons(alas.mod.mp,xjk[1:n])
-   ucl=ucl+max(rho_ineq_lcons.*(c-alas.mod.mp.meta.ucon),-ucl)
-   ucu=ucu+max(rho_ineq_ucons.*(alas.mod.mp.meta.lcon-c),-ucu)
-  end
+ uxl=uxl+max.(ρ_ineq_lvar.*(xjk[1:n]-alas.mod.mp.meta.uvar),-uxl)
+ uxu=uxu+max.(ρ_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
+ if alas.mod.mp.meta.ncon!=0
+  c=NLPModels.cons(alas.mod.mp,xjk[1:n])
+  ucl=ucl+max(ρ_ineq_lcons.*(c-alas.mod.mp.meta.ucon),-ucl)
+  ucu=ucu+max(ρ_ineq_ucons.*(alas.mod.mp.meta.lcon-c),-ucu)
+ end
 
-  if alas.mod.nb_comp!=0
-   G(x)=NLPModels.cons(alas.mod.G,x)
-   H(x)=NLPModels.cons(alas.mod.H,x)
-   usg=usg+rho_eqg.*(G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
-   ush=ush+rho_eqh.*(H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
-  end
+ if alas.mod.nb_comp!=0
+  G(x)=NLPModels.cons(alas.mod.G,x)
+  H(x)=NLPModels.cons(alas.mod.H,x)
+  usg=usg+ρ_eqg.*(G(xjk[1:n])-xjk[n+1:n+alas.mod.nb_comp])
+  ush=ush+ρ_eqh.*(H(xjk[1:n])-xjk[n+alas.mod.nb_comp+1:n+2*alas.mod.nb_comp])
+ end
 
  return uxl,uxu,ucl,ucu,usg,ush
 end
@@ -319,36 +319,22 @@ end
 include("init_actifmpcc.jl")
 
 """
-Mise à jour de rho:
-structure de rho :
-2*mod.nb_comp
-length(mod.mp.meta.lvar)
-length(mod.mp.meta.uvar)
-length(mod.mp.meta.lcon)
-length(mod.mp.meta.ucon)
-"""
-function RhoUpdate(alas::ALASMPCC,rho::Vector,crho::Float64,err::Vector;l::Int64=0)
- #rho[find(x->x>0,err)]*=alas.rho_update
- #rho*=alas.mod.paramset.rho_update
- rho=min.(rho*alas.paramset.rho_update,ones(length(rho))*alas.paramset.rho_max*crho)
-
- return rho
-end
-
-"""
 Renvoie : rho_eq, rho_ineq_var, rho_ineq_cons
 """
-function RhoDetail(alas::ALASMPCC,rho::Vector)
- nb_ineq_lvar=length(alas.mod.mp.meta.lvar)
- nb_ineq_uvar=length(alas.mod.mp.meta.uvar)
- nb_ineq_lcons=length(alas.mod.mp.meta.lcon)
- nb_ineq_ucons=length(alas.mod.mp.meta.ucon)
- nb_comp=alas.mod.nb_comp
+function RhoDetail(mod::MPCC,ρ::Vector)
 
- return rho[1:nb_comp],rho[nb_comp+1:2*nb_comp],rho[2*nb_comp+1:2*nb_comp+nb_ineq_lvar],
-        rho[2*nb_comp+nb_ineq_lvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar],
-        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons],
-        rho[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+nb_ineq_ucons]
+ nb_ineq_lvar=length(mod.mp.meta.lvar)
+ nb_ineq_uvar=length(mod.mp.meta.uvar)
+ nb_ineq_lcons=length(mod.mp.meta.lcon)
+ nb_ineq_ucons=length(mod.mp.meta.ucon)
+ nb_comp=mod.nb_comp
+
+ return ρ[1:nb_comp],
+        ρ[nb_comp+1:2*nb_comp],
+        ρ[2*nb_comp+1:2*nb_comp+nb_ineq_lvar],
+        ρ[2*nb_comp+nb_ineq_lvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar],
+        ρ[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons],
+        ρ[2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+1:2*nb_comp+nb_ineq_lvar+nb_ineq_uvar+nb_ineq_lcons+nb_ineq_ucons]
 end
 
 #end of module
