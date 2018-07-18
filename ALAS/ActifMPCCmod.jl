@@ -2,7 +2,8 @@ module ActifMPCCmod
 
 import Relaxation
 import ParamSetmod
-import NLPModels
+importall NLPModels
+#NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
 
 """
 Type ActifMPCC : problème MPCC pénalisé avec slack et ensemble des contraintes actives
@@ -46,8 +47,13 @@ PasMax(ma::ActifMPCC,x::Vector,d::Vector)
 #- copie de code dans PasMax
 #- Plutôt que de passer le point courant -> stocker en point initial de mpcc ?
 
-type ActifMPCC
- nlp::NLPModels.AbstractNLPModel # en fait on demande juste une fonction objectif, point initial, contraintes de bornes
+type ActifMPCC <: AbstractNLPModel
+
+ meta :: NLPModelMeta
+ counters :: Counters #ATTENTION : increment! ne marche pas?
+ x0 :: Vector
+
+ nlp :: AbstractNLPModel # en fait on demande juste une fonction objectif, point initial, contraintes de bornes
  r::Float64
  s::Float64
  t::Float64
@@ -89,12 +95,18 @@ type ActifMPCC
  paramset::ParamSetmod.ParamSet
  direction::Function #fonction qui calcul la direction de descente
  linesearch::Function #fonction qui calcul la recherche linéaire
+
 end
 
 """
 Constructeur recommandé pour ActifMPCC
 """
-function ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
+function ActifMPCC(nlp::NLPModels.AbstractNLPModel,
+                   r::Float64,s::Float64,t::Float64,
+                   nb_comp::Int64,
+                   paramset::ParamSetmod.ParamSet,
+                   direction::Function,
+                   linesearch::Function)
 
   n=length(nlp.meta.x0)-2*nb_comp
   xk=nlp.meta.x0[1:n]
@@ -119,7 +131,12 @@ function ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Floa
  return ActifMPCC(nlp,r,s,t,w,paramset,direction,linesearch)
 end
 
-function ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Array{Bool,2},paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
+function ActifMPCC(nlp::NLPModels.AbstractNLPModel,
+                   r::Float64,s::Float64,t::Float64,
+                   w::Array{Bool,2},
+                   paramset::ParamSetmod.ParamSet,
+                   direction::Function,
+                   linesearch::Function)
 
  nb_comp=Int(size(w,1)/2)
  n=length(nlp.meta.x0)-2*nb_comp
@@ -139,7 +156,14 @@ function ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Floa
  beta=0.0
  Hess=eye(n+2*nb_comp)
 
- return ActifMPCC(nlp,r,s,t,w,n,nb_comp,w1,w2,w3,w4,wcomp,w13c,w24c,wc,wcc,wnew,crho,beta,Hess,paramset,direction,linesearch)
+ 
+ meta = nlp.meta
+ x = nlp.meta.x0
+ x0 = [x[1:n];x[n+w13c];x[n+nb_comp+w24c]]
+
+ return ActifMPCC(meta,Counters(),x0,nlp,r,s,t,w,n,nb_comp,w1,w2,w3,w4,
+                  wcomp,w13c,w24c,wc,wcc,wnew,crho,beta,Hess,
+                  paramset,direction,linesearch)
 end
 
 """
@@ -148,6 +172,10 @@ Methodes pour le ActifMPCC
 #Mise à jour des composantes liés à w
 function updatew(ma::ActifMPCC)
 
+ #le vecteur x d'avant (ne dépend pas de ma.w)
+ x = evalx(ma,ma.x0)
+
+ #on actualise avec w
  ma.w1=find(ma.w[1:ma.nb_comp,1])
  ma.w2=find(ma.w[1:ma.nb_comp,2])
  ma.w3=find(ma.w[ma.nb_comp+1:2*ma.nb_comp,1])
@@ -157,6 +185,9 @@ function updatew(ma::ActifMPCC)
  ma.w24c=find(.!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
  ma.wc=find(.!ma.w[1:ma.nb_comp,1] .& .!ma.w[1:ma.nb_comp,2] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,1] .& .!ma.w[ma.nb_comp+1:2*ma.nb_comp,2])
  ma.wcc=find((ma.w[1:ma.nb_comp,1] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,1]) .& (ma.w[1:ma.nb_comp,2] .| ma.w[ma.nb_comp+1:2*ma.nb_comp,2]))
+
+ ma.x0 = [x[1:ma.n];x[ma.n+ma.w13c];x[ma.n+ma.nb_comp+ma.w24c]]
+
  return ma
 end
 
@@ -187,6 +218,8 @@ end
 Renvoie le vecteur x=[x,yg,yh] au complet
 """
 function evalx(ma::ActifMPCC,x::Vector)
+
+ if length(x) != ma.n+2*ma.nb_comp
  #construction du vecteur de taille n+2nb_comp que l'on évalue :
  xf=ma.s*ones(ma.n+2*ma.nb_comp)
  xf[1:ma.n]=x[1:ma.n]
@@ -199,6 +232,9 @@ function evalx(ma::ActifMPCC,x::Vector)
  #on regarde les variables yH fixées :
  xf[ma.w2+ma.n+ma.nb_comp]=ma.nlp.meta.lvar[ma.w2+ma.n+ma.nb_comp]
  xf[ma.w4+ma.n+ma.nb_comp]=Relaxation.psi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
+ else
+ xf = x
+ end
 
  return xf
 end
@@ -239,6 +275,8 @@ end
 Evalue la fonction objectif d'un MPCC actif : x
 """
 function obj(ma::ActifMPCC,x::Vector)
+
+ #increment!(ma, :neval_obj)
 
  if length(x)==ma.n+2*ma.nb_comp
   return NLPModels.obj(ma.nlp,x)
@@ -283,6 +321,8 @@ x est le vecteur réduit
 """
 function grad(ma::ActifMPCC,x::Vector)
 
+ #increment!(ma, :neval_grad)
+
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
@@ -290,6 +330,30 @@ function grad(ma::ActifMPCC,x::Vector)
 
  return length(x)==ma.n+2*ma.nb_comp?gradf:grad(ma,x,gradf)
 end
+
+"""
+Gradient projeté !
+x : longeur n+2nb_comp
+"""
+
+function grad!(ma::ActifMPCC, x::Vector, gx :: Vector)
+ #increment!(nlp, :neval_grad)
+
+ if length(x) == ma.n+2*ma.nb_comp
+  gradf=NLPModels.grad(ma.nlp,x)
+  gx=grad(ma,x,gradf)
+ else
+  gx=grad(ma,x)
+ end
+
+ return gx
+end
+
+"""
+ 
+Fonction qui fait le calcul du gradient
+
+"""
 
 function grad(ma::ActifMPCC,x::Vector,gradf::Vector)
 
@@ -402,6 +466,38 @@ function hess(ma::ActifMPCC,x::Vector,H::Array{Float64,2})
  end
 
  return Hred
+end
+
+"""
+
+Vérifie la violation des contraintes actives
+
+x in n+2nb_comp
+
+"""
+function cons(ma::ActifMPCC,x::Vector)
+
+ #increment!(ma, :neval_cons)
+ x = evalx(ma,x)
+
+ sg = x[ma.n+1:ma.n+ma.nb_comp]
+ sh = x[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp]
+
+ vlg = sg[ma.w1]-ma.nlp.meta.lvar[ma.w1+ma.n]
+ vlh = sh[ma.w2]-ma.nlp.meta.lvar[ma.w2+ma.n]
+ vug = Relaxation.psi(sh[ma.w3],ma.r,ma.s,ma.t)-sg[ma.w3]
+ vuh = Relaxation.psi(sg[ma.w4],ma.r,ma.s,ma.t)-sh[ma.w4]
+
+ return minimum([vlg;vlh;vug;vuh;0.0])==0.0
+end
+
+function cons!(ma::ActifMPCC, x :: Vector, cx :: Bool)
+
+ #increment!(ma, :neval_cons)
+
+ cx = cons(ma,x)
+
+ return cx
 end
 
 """

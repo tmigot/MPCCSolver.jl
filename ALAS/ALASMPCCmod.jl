@@ -6,6 +6,7 @@ import AlgoSetmod.AlgoSet
 import ParamSetmod.ParamSet
 
 import ActifMPCCmod.ActifMPCC,ActifMPCCmod.grad
+import ActifMPCCmod.ActiveCons
 import ActifMPCCmod.LSQComputationMultiplierBool,ActifMPCCmod.RelaxationRule
 import ActifMPCCmod.setbeta, ActifMPCCmod.setcrho #pas sûr que ça reste
 
@@ -214,8 +215,9 @@ function RhoUpdate(alas::ALASMPCC,ρ::Vector,crho::Float64,err::Vector;l::Int64=
 
  nr = length(ρ)
  #rho[find(x->x>0,err)]*=alas.rho_update
- #rho*=alas.mod.paramset.rho_update
- ρ=min.(ρ*alas.paramset.rho_update,ones(nr)*alas.paramset.rho_max*crho)
+ #ρ*=alas.mod.paramset.rho_update
+ #ρ=min.(ρ*alas.paramset.rho_update,ones(nr)*alas.paramset.rho_max*crho)
+ ρ=min.(ρ*alas.paramset.rho_update,ones(nr)*alas.paramset.rho_max)
 
  return ρ
 end
@@ -296,8 +298,8 @@ function LagrangeUpdate(alas::ALASMPCC,ρ::Vector,xjk::Vector,
  uxu=uxu+max.(ρ_ineq_uvar.*(alas.mod.mp.meta.lvar-xjk[1:n]),-uxu)
  if alas.mod.mp.meta.ncon!=0
   c=NLPModels.cons(alas.mod.mp,xjk[1:n])
-  ucl=ucl+max(ρ_ineq_lcons.*(c-alas.mod.mp.meta.ucon),-ucl)
-  ucu=ucu+max(ρ_ineq_ucons.*(alas.mod.mp.meta.lcon-c),-ucu)
+  ucl=ucl+max.(ρ_ineq_lcons.*(c-alas.mod.mp.meta.ucon),-ucl)
+  ucu=ucu+max.(ρ_ineq_ucons.*(alas.mod.mp.meta.lcon-c),-ucu)
  end
 
  if alas.mod.nb_comp!=0

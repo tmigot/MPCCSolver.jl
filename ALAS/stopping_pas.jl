@@ -40,7 +40,7 @@ type TStoppingPAS
                        max_obj_grad :: Int = typemax(Int),
                        max_obj_hess :: Int = typemax(Int),
                        max_obj_hv :: Int = typemax(Int),
-                       max_eval :: Int = 20000,
+                       max_eval :: Int = 100000,
                        max_iter :: Int = 5000,
                        max_time :: Float64 = 600.0, # 10 minutes
                        optimality_residual :: Function = x -> norm(x,Inf),
@@ -139,7 +139,7 @@ function pas_stop!( mod :: MPCCmod.MPCC,
     # global user limit diagnostic
     s.tired = (max_iter) | (max_calls) | (max_time)
 
-    OK = !s.tired && !s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal
+    OK = s.tired || (!s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal)
   #GOOD=!(k<k_max && (alas.spas.l_negative || !((feasible || minimum(rho)==alas.paramset.rho_max*ma.crho ) && dual_feasible)) && Armijosuccess && !small_step)
 
     # return everything. Most users will use only the first four fields, but return
@@ -166,15 +166,15 @@ function ending_test(spas::TStoppingPAS,
    #stat=1
   end
   if !spas.feas #feas>alas.prec
-   print_with_color(:red, "Failure : Infeasible Solution. norm: $feas\n")
+   print_with_color(:red, "Failure : Infeasible Solution. norm: $(spas.feas)\n")
    #stat=1
   end
   if !spas.optimal #dual_feas>alas.prec
    if spas.tired #k>=alas.paramset.ite_max_alas
-    print_with_color(:red, "Failure : Non-optimal Sol. norm: $dual_feas\n")
+    print_with_color(:red, "Failure : Non-optimal Sol. norm: $(spas.optimality)\n")
     stat=1
    else
-    print_with_color(:red, "Inexact : Fritz-John Sol. norm: $dual_feas\n")
+    print_with_color(:red, "Inexact : Fritz-John Sol. norm: $(spas.optimality)\n")
     #stat=0
    end
   end

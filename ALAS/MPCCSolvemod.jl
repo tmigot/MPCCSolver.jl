@@ -4,7 +4,7 @@ MPCCSolve(mod::MPCCmod.MPCC)
 
 module MPCCSolvemod
 
-import MPCCmod.MPCC, MPCCmod.viol_comp,MPCCmod.viol_cons
+import MPCCmod.MPCC, MPCCmod.viol_comp
 
 import SolveRelaxSubProblem.SolveSubproblemAlas
 

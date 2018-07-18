@@ -54,7 +54,7 @@ function ParamSet(nbc::Int64,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::F
  precmpcc=1e-3
 
  tb=(r,s,t)->-r
- prec_oracle=(r,s,t,prec)->max(r,s,t,prec)
+ prec_oracle=(r,s,t,prec)->max(min(r,s,t),prec) #max(r,s,t,prec)
  rho_restart(r,s,t,prec,rho)=rho
  paramin=sqrt(eps(Float64))
  #paramin=1.0
@@ -63,11 +63,11 @@ function ParamSet(nbc::Int64,r0::Float64,sigma_r::Float64,s0::Float64,sigma_s::F
  updaterst=(r,s,t)->(0.1*r,0.1*s,0.05*t)
 
  ite_max_alas=100
- ite_max_viol=5
+ ite_max_viol=20
  rho_init=1*ones(nbc)
  rho_update=1.5 #2.0 bien pour Newton, trop grand sinon.
- rho_max=1/precmpcc #le grand max est 1/eps(Float64)
- goal_viol=0.5
+ rho_max=4000 #1/precmpcc #le grand max est 1/eps(Float64)
+ goal_viol=0.75
 
  ite_max_armijo=100
  tau_armijo=0.1 #0.4

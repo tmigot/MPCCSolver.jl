@@ -18,6 +18,8 @@ type TStopping
     start_time :: Float64            # starting time of the execution of the method
     optimality0 :: Float64           # value of the optimality residual at starting point
     optimality_residual :: Function  # function to compute the optimality residual
+    #active constraints feasible
+    actfeas::Bool
     # Stopping properties
     optimality::Float64
     optimal::Bool
@@ -35,15 +37,12 @@ type TStopping
                        max_iter :: Int = 5000,
                        max_time :: Float64 = 600.0, # 10 minutes
                        optimality_residual :: Function = x -> norm(x,Inf),
-                       optimal::Bool=false,
-                       unbounded::Bool=false,
-                       tired::Bool=false,
                        kwargs...)
         
         return new(atol, rtol, unbounded_threshold,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
-                   max_iter, max_time, NaN, Inf, optimality_residual,NaN,
-                   optimal,unbounded,tired)
+                   max_iter, max_time, NaN, Inf, optimality_residual,false,NaN,
+                   false,false,false)
     end
 end
 
@@ -54,11 +53,17 @@ function start!(nlp :: AbstractNLPModel,
                 s :: TStopping,
                 x₀ :: Array{Float64,1} )
 
-    ∇f₀ = grad(nlp,x₀)
+    #à priori x0 vit dans l'espace actif
+        ∇f₀=grad(nlp,x₀)
+
     s.optimality0 = s.optimality_residual(∇f₀)
     s.start_time  = time()
     s.optimal = (s.optimality0 < s.atol) | (s.optimality0 <( s.rtol * s.optimality0))
-    return s, ∇f₀,s.optimal
+    s.actfeas = cons(nlp,x₀)
+
+    GOOD = s.optimal && s.actfeas
+
+    return s, ∇f₀
 end
 
 function start!(nlp :: AbstractNLPModel,
@@ -69,7 +74,11 @@ function start!(nlp :: AbstractNLPModel,
     s.optimality0 = s.optimality_residual(∇f₀)
     s.start_time  = time()
     s.optimal = (s.optimality0 < s.atol) | (s.optimality0 <( s.rtol * s.optimality0))
-    return s,s.optimal
+    s.actfeas = cons(nlp,x₀)
+
+    GOOD = s.optimal && s.actfeas
+
+    return s, GOOD
 end
 
 function stop(nlp :: AbstractNLPModel,
@@ -77,7 +86,7 @@ function stop(nlp :: AbstractNLPModel,
               iter :: Int,
               x :: Array{Float64,1},
               f :: Float64,
-              ∇f :: Array{Float64,1},
+                         ∇f :: Array{Float64,1},
               )
 
     #counts = nlp.counters
@@ -110,8 +119,10 @@ function stop(nlp :: AbstractNLPModel,
     # global user limit diagnostic
     s.tired = (max_iter) | (max_calls) | (max_time)
 
+    s.actfeas = cons(nlp,x)
+
     # return everything. Most users will use only the first four fields, but return
     # the fine grained information nevertheless.
-    return s.optimal || s.unbounded || s.tired, elapsed_time
+    return (s.optimal && s.actfeas) || s.unbounded || s.tired, elapsed_time
            #,max_obj_f, max_obj_g, max_obj_H, max_obj_Hv, max_total, max_iter, max_time
 end

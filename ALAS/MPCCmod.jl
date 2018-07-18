@@ -37,7 +37,6 @@ viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector)
 viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
 viol_contrainte(mod::MPCCmod.MPCC,x::Vector)
 viol_comp(mod::MPCCmod.MPCC,x::Vector)_ _v'
-viol_cons(mod::MPCCmod.MPCC,x::Vector)
 
 dual_feasibility(mod::MPCC,x::Vector,l::Vector,A::Any)
 sign_stationarity_check(mod::MPCC,x::Vector,l::Vector)

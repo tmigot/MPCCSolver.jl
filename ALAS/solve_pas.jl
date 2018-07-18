@@ -8,6 +8,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  gradpen=Vector(n)
  gradpen_prec=Vector(n)
  xjk=Vector(n+2*alas.mod.nb_comp)
+ xjkl=Vector(n+2*alas.mod.nb_comp)
  lambda=Vector(3*alas.mod.nb_comp)
  dj=zeros(n+2*alas.mod.nb_comp) #doit disparaitre
 
@@ -41,15 +42,12 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  k=0
  step=1.0;Armijosuccess=true;small_step=false #pas besoin ici
  while !GOOD
- 
-  gradpen_prec=gradpen #sert juste pour checker wolfe (doit disparaitre)
 
   #Minization in the working set
-  xjkl,alas,ma,dj,step,wnew,subpb_fail,gradpen,ht,l=WorkingMin(alas,ma,xjk,ρ,
+  xjkl,alas,ma,dj,step,wnew,subpb_fail,gradpen,ht,l=WorkingMinProj(alas,ma,xjk,ρ,
                                                                ht,gradpen,oa,
                                                                wnew,step,dj)
   xjk=xjkl
-  alas.spas.wolfe_step=dot(gradpen,dj)>=alas.paramset.tau_wolfe*dot(gradpen_prec,dj)
 
   #Conditionnelle: met éventuellement rho à jour.
   alas.spas, UPDATE = pas_rhoupdate!(alas.mod,alas.spas,xjk)
@@ -73,7 +71,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
    ∇f=grad(ma,xjk,gradpen)
 
   #Mise à jour des multiplicateurs de la complémentarité
-  if alas.mod.nb_comp>0
+  if alas.mod.nb_comp>0 && alas.spas.wolfe_step
    lambda,alas.spas.l_negative=LSQComputationMultiplierBool(ma,gradpen,xjk)
   end
 
@@ -94,7 +92,8 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   #si on bloque mais qu'un multiplicateur est <0 on continue
   subpb_fail=subpb_fail || alas.spas.l_negative 
   alas.spas,GOOD=pas_stop!(alas.mod,alas.spas,xjk,∇f,k,minimum(ρ))
-  GOOD = alas.sts.unbounded || (GOOD && !subpb_fail)
+
+  GOOD = alas.sts.unbounded || GOOD || subpb_fail
 
  end
  #MAJOR LOOP
