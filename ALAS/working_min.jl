@@ -74,19 +74,20 @@ function WorkingMinProj(alas :: ALASMPCC,
                     step,
                     dj)
 
- n=alas.mod.n
- ∇f=grad(ma,xjk,gradpen)
+ verbose = true
 
- #alas.sts,OK=start!(ma,alas.sts,xjk,∇f)
+ n=alas.mod.n
+
  x_old = ma.x0
- #2) Newton qui rend les 2 derniers itérés
+
   (x,d, f, tmp, iter,
   optimal, tired, status,   ma.counters.neval_obj,
   ma.counters.neval_grad, ma.counters.neval_hess)=Newton(ma,
                                                          x0=ma.x0,
                                                          stp=alas.sts,
-                                     Nwtdirection=NwtdirectionLDLt)
-#NwtdirectionLDLt, NwtdirectionSpectral, CG_HZ
+                                     Nwtdirection=NwtdirectionSpectral)
+
+ #NwtdirectionLDLt, NwtdirectionSpectral, CG_HZ
  if !tired && !alas.sts.actfeas   #backtracking:
    #Calcul du pas maximum:
    step,wmax,wnew = PasMax(ma,x_old,d)
@@ -96,6 +97,8 @@ function WorkingMinProj(alas :: ALASMPCC,
    #We hit a new constraint:
    setw(ma,wmax)
    alas.spas.wolfe_step = false
+
+  verbose && print_with_color(:yellow, "step: $(step) \n")
  elseif !tired
    ma.x0 = x
    xjk = evalx(ma,x)
@@ -107,5 +110,3 @@ function WorkingMinProj(alas :: ALASMPCC,
 
  return xjk,alas,ma,d,step,wnew,subpb_fail,gradpen,ht,iter
 end
-
-#include("tmp.jl")

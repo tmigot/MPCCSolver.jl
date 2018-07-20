@@ -23,10 +23,10 @@ MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64,
 
 module SolveRelaxSubProblem
 
-using MPCCmod
-using ALASMPCCmod
-using AlgoSetmod
-using ParamSetmod
+import MPCCmod.MPCC
+import ALASMPCCmod.ALASMPCC, ALASMPCCmod.solvePAS
+import AlgoSetmod.AlgoSet
+import ParamSetmod.ParamSet
 
 using Ipopt
 using MathProgBase
@@ -35,18 +35,19 @@ importall NLPModels #Pour le MPCCtoRelaxNLP
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function SolveSubproblemAlas(mod::MPCCmod.MPCC,
+function SolveSubproblemAlas(mod::MPCC,
                              r::Float64,s::Float64,t::Float64,
-                             rho::Vector,name_relax::AbstractString,
-                             paramset::ParamSetmod.ParamSet,
-                             algoset::AlgoSetmod.AlgoSet,x0::Vector)
+                             rho::Vector,
+                             name_relax::AbstractString,
+                             paramset::ParamSet,
+                             algoset::AlgoSet,
+                             x0::Vector,
+                             prec:: Float64)
  solved=true
 
- prec=paramset.prec_oracle(r,s,t,paramset.precmpcc) #Il faut réflechir un peu plus sur des alternatives
+ alas = ALASMPCC(mod,r,s,t,prec,rho,paramset,algoset,x0)
 
- alas = ALASMPCCmod.ALASMPCC(mod,r,s,t,prec,rho,paramset,algoset,x0)
-
- xk,stat,rho,oa = ALASMPCCmod.solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
+ xk,stat,rho,oa = solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
 
  if stat != 0
   println("Error solve_subproblem_alas : ",stat)
@@ -59,11 +60,12 @@ end
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function SolveSubproblemIpOpt(mod::MPCCmod.MPCC,
+function SolveSubproblemIpOpt(mod::MPCC,
                               r::Float64,s::Float64,t::Float64,
                               rho::Vector,name_relax::AbstractString,
-                             paramset::ParamSetmod.ParamSet,
-                             algoset::AlgoSetmod.AlgoSet,x0::Vector)
+                             paramset::ParamSet,
+                             algoset::AlgoSet,
+                             x0::Vector,prec:: Float64)
  solved=true
  #nlp_relax = MPCCtoRelaxNLP(mod,r,s,t,name_relax) #si nb_comp>0
  nlp_relax=mod.mp
@@ -93,7 +95,7 @@ MPCCtoRelaxNLP(mod::MPCC, t::Float64)
 mod : MPCC
 return : le MPCC en version NL pour un t donné
 """
-function MPCCtoRelaxNLP_dontwork(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
+function MPCCtoRelaxNLP_dontwork(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
 
  G(x)=NLPModels.cons(mod.G,x)
  H(x)=NLPModels.cons(mod.H,x)
@@ -139,7 +141,7 @@ MPCCtoRelaxNLP(mod::MPCC, t::Float64)
 mod : MPCC
 return : le MPCC en version NL pour un t donné
 """
-function MPCCtoRelaxNLP(mod::MPCCmod.MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
+function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::AbstractString)
 
  x0=mod.mp.meta.x0
  g(x)=cons(mod.mp,x)

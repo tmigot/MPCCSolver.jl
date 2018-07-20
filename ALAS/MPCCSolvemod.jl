@@ -9,7 +9,7 @@ import MPCCmod.MPCC, MPCCmod.viol_comp
 import SolveRelaxSubProblem.SolveSubproblemAlas
 
 import ParamSetmod.ParamSet
-
+import ParamMPCCmod.ParamMPCC
 import AlgoSetmod.AlgoSet
 
 import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.start,StoppingMPCCmod.stop
@@ -17,30 +17,34 @@ import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.start,StoppingMPCCmod.stop
 import OutputRelaxationmod.OutputRelaxation
 import OutputRelaxationmod.Print,OutputRelaxationmod.UpdateFinalOR
 
+
+
+
 type MPCCSolve
 
  mod::MPCC
- solve_sub_pb::Function
  name_relax::AbstractString
 
  xj::Vector #itéré courant
 
  algoset::AlgoSet
  paramset::ParamSet
+ parammpcc :: ParamMPCC
 
 end
 
 function MPCCSolve(mod::MPCC,x::Vector)
 
- solve_sub_pb=SolveSubproblemAlas
+ algoset = AlgoSet()
 
  #solve_sub_pb=SolveRelaxSubProblem.SolveSubproblemIpOpt # ne marche pas (MPCCtoRelaxNLP problème)
  name_relax="KS" #important que avec IpOpt
 
- return MPCCSolve(mod,solve_sub_pb,
+ return MPCCSolve(mod,
                   name_relax,x,
                   AlgoSet(),
-                  ParamSet(mod.nbc))
+                  ParamSet(mod.nbc),
+                  ParamMPCC(mod.nbc))
 end
 
 """

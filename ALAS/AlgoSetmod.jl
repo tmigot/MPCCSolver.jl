@@ -27,9 +27,9 @@ type AlgoSet
  direction::Function
  linesearch::Function
 
- scaling_dual::Function
- unconstrained_stopping::Function
- crho_update::Function
+ scaling_dual::Function #va dans les stopping
+ unconstrained_stopping::Function #à supprimer
+ crho_update::Function #ça sert à quoi déjà ?
 end
 
 #Constructeur par défaut
@@ -41,6 +41,8 @@ function AlgoSet()
   scaling_dual=ScalingDual.NoScaling
   uncons_stopping=UnconstrainedStopping.Prec
   crho_update=CRhoUpdate.MinProd
+  
+
 
  return AlgoSet(penalty,direction,linesearch,
                 scaling_dual,uncons_stopping,crho_update)

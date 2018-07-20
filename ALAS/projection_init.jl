@@ -1,15 +1,14 @@
 function SlackComplementarityProjection(alas::ALASMPCC)
 
  nb_comp=alas.mod.nb_comp
+ n=alas.mod.n
 
  if nb_comp==0
   return alas.xj
  end
 
- #initialisation :
- #x=[alas.mod.xj;alas.mod.G(alas.mod.xj);alas.mod.H(alas.mod.xj)]
+ #Initialisation :
  x=[alas.xj;NLPModels.cons(alas.mod.G,alas.xj);NLPModels.cons(alas.mod.H,alas.xj)]
- n=length(x)-2*nb_comp
 
  #projection sur les contraintes de positivité relaxés : yG>=tb et yH>=tb
  x[n+1:n+nb_comp]=max.(x[n+1:n+nb_comp],ones(nb_comp)*alas.tb)

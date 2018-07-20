@@ -40,11 +40,11 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
 
  #MAJOR LOOP
  k=0
- step=1.0;Armijosuccess=true;small_step=false #pas besoin ici
+ step=1.0;subpb_fail=false #pas besoin ici
  while !GOOD
 
   #Minization in the working set
-  xjkl,alas,ma,dj,step,wnew,subpb_fail,gradpen,ht,l=WorkingMinProj(alas,ma,xjk,ρ,
+  xjkl,alas,ma,dj,step,wnew,subpb_fail,gradpen,ht,l=WorkingMin(alas,ma,xjk,ρ,
                                                                ht,gradpen,oa,
                                                                wnew,step,dj)
   xjk=xjkl
@@ -52,9 +52,9 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   #Conditionnelle: met éventuellement rho à jour.
   alas.spas, UPDATE = pas_rhoupdate!(alas.mod,alas.spas,xjk)
 
-  if UPDATE
+   verbose && print_with_color(:red, "End - Min: l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$(alas.spas.feasibility) |L'|=$(alas.sts.optimality)  ρ=$(norm(ρ,Inf)) prec=$(alas.prec) \n")
 
-   verbose && print_with_color(:red, "Max ité Unc. Min. l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$(alas.spas.feasibility) |L'|=$(alas.sts.optimality) Arm=$Armijosuccess small_step=$small_step ρ=$(norm(ρ,Inf))  \n")
+  if UPDATE
 
    ρ,ma,ht,gradpen = CheckUpdateRho(alas,ma,xjk,ρ,alas.spas.feasibility,
                                     usg,ush,uxl,uxu,
@@ -75,8 +75,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
    lambda,alas.spas.l_negative=LSQComputationMultiplierBool(ma,gradpen,xjk)
   end
 
-  #Relaxation rule si on a fait un pas de Armijo-Wolfe et si un multiplicateur est du mauvais signe
-  #if k!=0 && (alas.spas.wolfe_step || step==0.0) && alas.spas.l_negative
+  #Relaxation rule:
   if (alas.spas.wolfe_step || step==0.0) && alas.spas.l_negative
   
    RelaxationRule(ma,xjk,lambda,wnew)
@@ -90,7 +89,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
   verbose && alas.spas.tired && print_with_color(:red, "Max ité. Lagrangien \n")
 
   #si on bloque mais qu'un multiplicateur est <0 on continue
-  subpb_fail=subpb_fail || alas.spas.l_negative 
+  subpb_fail=subpb_fail && !alas.spas.l_negative 
   alas.spas,GOOD=pas_stop!(alas.mod,alas.spas,xjk,∇f,k,minimum(ρ))
 
   GOOD = alas.sts.unbounded || GOOD || subpb_fail
@@ -101,7 +100,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
  #Traitement finale :
  alas=addInitialPoint(alas,xjk)
 
- stat=ending_test(alas.spas,Armijosuccess,small_step,alas.sts.unbounded)
+ stat=ending_test(alas.spas,subpb_fail,alas.sts.unbounded)
 
  return xjk,stat,ρ,oa
 end

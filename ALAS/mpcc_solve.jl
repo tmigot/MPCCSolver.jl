@@ -10,13 +10,14 @@ end
 function solve(mpccsol::MPCCSolve)
 
  #initialization
- (r,s,t)=mpccsol.paramset.initrst()
- rho=mpccsol.paramset.rho_init
+ (r,s,t)=mpccsol.parammpcc.initrst()
+ rho=mpccsol.parammpcc.rho_init
  xk=mpccsol.xj
 
- smpcc=StoppingMPCC(precmpcc=mpccsol.paramset.precmpcc,
-                    paramin=mpccsol.paramset.paramin,
-                    prec_oracle=mpccsol.paramset.prec_oracle)
+ smpcc=StoppingMPCC(precmpcc=mpccsol.parammpcc.precmpcc,
+                    paramin=mpccsol.parammpcc.paramin,
+                    prec_oracle=mpccsol.parammpcc.prec_oracle)
+
  smpcc,OK,or = start(smpcc,mpccsol.mod,xk,r,s,t)
 
  #Major Loop
@@ -28,7 +29,7 @@ function solve(mpccsol::MPCCSolve)
   #met à jour le MPCC avec le nouveau point:
   mpccsol=addInitialPoint(mpccsol,xk[1:mpccsol.mod.n]) 
 
-  (r,s,t)=mpccsol.paramset.updaterst(r,s,t)
+  (r,s,t)=mpccsol.parammpcc.updaterst(r,s,t)
 
   OK = stop(smpcc,mpccsol.mod,xk,r,s,t,output,solved,or)
 
@@ -38,7 +39,7 @@ function solve(mpccsol::MPCCSolve)
 
 
  #Traitement final :
- mpccsol.paramset.verbose != 0.0 ? warning_print(smpcc) : nothing
+ mpccsol.parammpcc.verbose != 0.0 ? warning_print(smpcc) : nothing
 
  or=final_message(or,smpcc.solved,smpcc.optimal,smpcc.realisable)
 
@@ -61,7 +62,17 @@ Methode pour résoudre le sous-problème relaxé :
 function solve_subproblem(inst::MPCCSolve,
                           r::Float64,s::Float64,t::Float64,
                           rho::Vector)
- return inst.solve_sub_pb(inst.mod,r,s,t,rho,inst.name_relax,inst.paramset,inst.algoset,inst.xj) #renvoie xk,stat
+
+
+ #Il faut réflechir un peu plus sur des alternatives
+ prec=inst.parammpcc.prec_oracle(r,s,t,inst.parammpcc.precmpcc)
+
+ return inst.parammpcc.solve_sub_pb(inst.mod,
+                                    r,s,t,
+                                    rho,
+                                    inst.name_relax,
+                                    inst.paramset,
+                                    inst.algoset,inst.xj,prec) #renvoie xk,stat
 end
 
 """

@@ -2,9 +2,6 @@ module MPCCmod
 
 using NLPModels
 
-using ParamSetmod
-using AlgoSetmod
-
 """
 Definit le type MPCC :
 min_x f(x)
@@ -47,40 +44,47 @@ sign_stationarity_check(mod::MPCC,x::Vector,l::Vector,
 stationary_check(mod::MPCC,x::Vector)
 """
 
-# TO DO List
-#Major :
-# - appel de la hessienne d'un SimpleNLPModel ? NLPModels.hess(mod.H,x)
-# - algoset et paramset devraient passer dans MPCCSolve
-
 type MPCC
 
- mp::NLPModels.AbstractNLPModel
- G::NLPModels.AbstractNLPModel
- H::NLPModels.AbstractNLPModel
+ mp :: NLPModels.AbstractNLPModel
+ G  :: NLPModels.AbstractNLPModel
+ H  :: NLPModels.AbstractNLPModel
 
- nb_comp::Int64 #nb contraintes de complémentarité
- nbc::Int64 #nb de contraintes (non-linéaire+bornes+complémentarité)
- n::Int64
+ nb_comp :: Int64 #nb of complementarity constraints
+ nbc     :: Int64 #nb of constraints (non-linéaire+bornes+complémentarité)
+ n       :: Int64 #dimension of the problem
 
 end
 
+############################################################################
+
 #Constructeurs supplémentaires :
-function MPCC(f::Function,x0::Vector,
-              G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,
+
+############################################################################
+
+function MPCC(f::Function,
+              x0::Vector,
+              G::NLPModels.AbstractNLPModel,
+              H::NLPModels.AbstractNLPModel,
               nb_comp::Int64,
-              lvar::Vector,uvar::Vector,
-              c::Function,lcon::Vector,ucon::Vector)
+              lvar::Vector,
+              uvar::Vector,
+              c::Function,
+              lcon::Vector,
+              ucon::Vector)
 
  mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, c=c, lcon=lcon, ucon=ucon)
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
 
+ nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
  n=length(mp.meta.x0)
 
  return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,
-              G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp)
+              G::NLPModels.AbstractNLPModel,
+              H::NLPModels.AbstractNLPModel,
+              nb_comp::Int64)
 
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
  n=length(mp.meta.x0)
@@ -94,15 +98,13 @@ function MPCC(mp::NLPModels.AbstractNLPModel)
  G=SimpleNLPModel(x->0, [0.0])
  H=SimpleNLPModel(x->0, [0.0])
 
- nb_comp=0
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- n=length(mp.meta.x0)
-
- return MPCC(mp,G,H,nb_comp,nbc,n)
+ return MPCC(mp,G,H,nb_comp=0)
 end
 
 function MPCC(mp::NLPModels.AbstractNLPModel,
-              G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel;nb_comp::Float64=NaN)
+              G::NLPModels.AbstractNLPModel,
+              H::NLPModels.AbstractNLPModel;
+              nb_comp::Float64=NaN) #erreur Int64
 
  nb_comp=isnan(nb_comp)?length(NLPModels.cons(G,mp.meta.x0)):nb_comp
  nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
@@ -111,9 +113,12 @@ function MPCC(mp::NLPModels.AbstractNLPModel,
  return MPCC(mp,G,H,nb_comp,nbc,n)
 end
 
-"""
-Getteur
-"""
+############################################################################
+
+# Getteur
+
+############################################################################
+
 function obj(mod::MPCC,x::Vector)
  return NLPModels.obj(mod.mp,x)
 end
@@ -122,6 +127,10 @@ gradient de la fonction objectif
 """
 function grad(mod::MPCC,x::Vector)
  return NLPModels.grad(mod.mp,x)
+end
+
+function hess(mod::MPCC,x::Vector)
+ return NLPModels.hess(mod.mp,x)
 end
 
 """

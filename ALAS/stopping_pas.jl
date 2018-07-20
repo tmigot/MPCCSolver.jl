@@ -149,7 +149,7 @@ function pas_stop!( mod :: MPCCmod.MPCC,
 end
 
 function ending_test(spas::TStoppingPAS,
-                     Armijosuccess::Bool,small_step::Bool,
+                     sub_pb::Bool,
                      unbounded::Bool)
 
  stat=0
@@ -157,25 +157,21 @@ function ending_test(spas::TStoppingPAS,
   print_with_color(:red, "Unbounded Subproblem\n")
   stat=2
  else
-  if !Armijosuccess
+  if sub_pb
    print_with_color(:red, "Failure : Armijo Failure\n")
-   stat=1
-  end
-  if small_step
-   print_with_color(:red, "Failure : too small step\n")
-   #stat=1
+   stat=-1
   end
   if !spas.feas #feas>alas.prec
    print_with_color(:red, "Failure : Infeasible Solution. norm: $(spas.feas)\n")
-   #stat=1
+   stat=1
   end
   if !spas.optimal #dual_feas>alas.prec
    if spas.tired #k>=alas.paramset.ite_max_alas
     print_with_color(:red, "Failure : Non-optimal Sol. norm: $(spas.optimality)\n")
-    stat=1
+    stat=-2
    else
     print_with_color(:red, "Inexact : Fritz-John Sol. norm: $(spas.optimality)\n")
-    #stat=0
+    stat=1
    end
   end
  end
