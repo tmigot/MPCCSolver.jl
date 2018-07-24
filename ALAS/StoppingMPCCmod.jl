@@ -5,6 +5,8 @@ import MPCCmod.MPCC
 using OutputRelaxationmod
 using NLPModels
 
+import RMPCCmod.RMPCC
+
 type StoppingMPCC
 
  #paramètres pour la résolution du MPCC
@@ -31,14 +33,12 @@ function StoppingMPCC(;precmpcc::Float64 = 1e-6,
  return StoppingMPCC(precmpcc,paramin,prec_oracle,optimal,realisable,solved,param)
 end
 
-function start(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t)
+function stop_start!(smpcc::StoppingMPCC,mod::MPCC,xk::Vector,rmpcc::RMPCC,r,s,t)
 
- real=viol_contrainte_norm(mod,xk,tnorm=Inf)
- realisable=real<=smpcc.precmpcc
+ realisable=rmpcc.norm_feas<=smpcc.precmpcc
  solved=true
  param=(t+r+s)>smpcc.paramin
- f=MPCCmod.obj(mod,xk)
- or=OutputRelaxationmod.OutputRelaxation(xk,real, f)
+
  #heuristic in case the initial point is the solution
  optimal=realisable && stationary_check(mod,xk,smpcc.precmpcc)
  OK=param && !(realisable && solved && optimal)
@@ -48,13 +48,13 @@ function start(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t)
  smpcc.solved=solved
  smpcc.param=param
 
- return smpcc,OK, or
+ return OK
 end
 
-function stop(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t,output,solved,or)
+function stop!(smpcc::StoppingMPCC,mod::MPCC,xk,rmpcc::RMPCC,r,s,t,output,solved)
 
-  real=viol_contrainte_norm(mod,xk[1:mod.n])
-  f=MPCCmod.obj(mod,xk[1:mod.n])
+  real=rmpcc.norm_feas
+  f=rmpcc.fx
 
   smpcc.solved=true in isnan.(xk)?false:solved
   smpcc.realisable=real<=smpcc.precmpcc
@@ -66,9 +66,6 @@ function stop(smpcc::StoppingMPCC,mod::MPCC,xk,r,s,t,output,solved,or)
  smpcc.param=(t+r+s)>smpcc.paramin
 
  OK=smpcc.param && !smpcc.optimal
- or=OutputRelaxationmod.UpdateOR(or,xk[1:mod.n],0,r,s,t,
-                                 smpcc.prec_oracle(r,s,t,smpcc.precmpcc),
-                                 real,output,f)
  
  return OK
 end

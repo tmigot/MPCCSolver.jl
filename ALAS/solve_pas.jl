@@ -71,7 +71,7 @@ function solvePAS(alas::ALASMPCC; verbose::Bool=true)
    ∇f=grad(ma,xjk,gradpen)
 
   #Mise à jour des multiplicateurs de la complémentarité
-  if alas.mod.nb_comp>0 && alas.spas.wolfe_step
+  if alas.mod.nb_comp>0 && (alas.spas.wolfe_step || step==0.0)
    lambda,alas.spas.l_negative=LSQComputationMultiplierBool(ma,gradpen,xjk)
   end
 

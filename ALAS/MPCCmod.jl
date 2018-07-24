@@ -141,10 +141,10 @@ function jac_actif(mod::MPCC,x::Vector,prec)
 
   n=mod.n
 
-  Il=find(z->norm(z-mod.mp.meta.lvar,Inf)<=prec,x)
-  Iu=find(z->norm(z-mod.mp.meta.uvar,Inf)<=prec,x)
+  Il=find(z->z<=prec,abs.(x-mod.mp.meta.lvar))
+  Iu=find(z->z<=prec,abs.(x-mod.mp.meta.uvar))
   jl=zeros(n);jl[Il]=1.0;Jl=diagm(jl);
-  ju=zeros(n);jl[Iu]=1.0;Ju=diagm(ju);
+  ju=zeros(n);ju[Iu]=1.0;Ju=diagm(ju);
 
   IG=[];IH=[];Ig=[];Ih=[];
 
@@ -154,15 +154,16 @@ function jac_actif(mod::MPCC,x::Vector,prec)
 
  else
   c=cons(mod.mp,x)
-  Ig=find(z->norm(z-mod.mp.meta.lcon,Inf)<=prec,c)
-  Ih=find(z->norm(z-mod.mp.meta.ucon,Inf)<=prec,c)
+  Ig=find(z->z<=prec,abs.(c-mod.mp.meta.lcon))
+  Ih=find(z->z<=prec,abs.(c-mod.mp.meta.ucon))
   Jg=NLPModels.jac(mod.mp,x)[Ig,1:n]
   Jh=NLPModels.jac(mod.mp,x)[Ih,1:n]
 
   if mod.nb_comp>0
-   IG=find(z->norm(z-mod.G.meta.lcon,Inf)<=prec,NLPModels.cons(mod.G,x))
-   IH=find(z->norm(z-mod.H.meta.lcon,Inf)<=prec,NLPModels.cons(mod.H,x))
-   A=[Jl;Ju;-Jg;Jh; -NLPModels.jac(mod.G,x)[IG,1:n]; -NLPModels.jac(mod.H,x)[IH,1:n] ]'
+   IG=find(z->z<=prec,abs.(NLPModels.cons(mod.G,x)-mod.G.meta.lcon))
+   IH=find(z->z<=prec,abs.(NLPModels.cons(mod.H,x)-mod.H.meta.lcon))
+
+   A=[Jl;Ju;-Jg;Jh;-NLPModels.jac(mod.G,x)[IG,1:n];-NLPModels.jac(mod.H,x)[IH,1:n]]'
   else
    A=[Jl;Ju;-Jg;Jh]'
   end
@@ -174,6 +175,7 @@ end
 """
 Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ; lvar<=x ; x<=uvar ; lvar<=c(x) ; c(x)<=uvar
 """
+# Pourquoi ça s'appelle pas "cons" ?
 function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
 
  c=NLPModels.cons(mod.mp,x)

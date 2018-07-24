@@ -12,9 +12,11 @@ import ParamSetmod.ParamSet
 import ParamMPCCmod.ParamMPCC
 import AlgoSetmod.AlgoSet
 
-import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.start,StoppingMPCCmod.stop
+import RMPCCmod.RMPCC,RMPCCmod.start!, RMPCCmod.update!
+import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.stop!
+import StoppingMPCCmod.stop_start!
 
-import OutputRelaxationmod.OutputRelaxation
+import OutputRelaxationmod.OutputRelaxation,OutputRelaxationmod.UpdateOR
 import OutputRelaxationmod.Print,OutputRelaxationmod.UpdateFinalOR
 
 
@@ -22,36 +24,36 @@ import OutputRelaxationmod.Print,OutputRelaxationmod.UpdateFinalOR
 
 type MPCCSolve
 
- mod::MPCC
- name_relax::AbstractString
+ mod        :: MPCC
 
- xj::Vector #itéré courant
+ name_relax :: AbstractString
 
- algoset::AlgoSet
- paramset::ParamSet
- parammpcc :: ParamMPCC
+ xj         :: Vector #itéré courant
+
+ algoset    :: AlgoSet
+ paramset   :: ParamSet
+ parammpcc  :: ParamMPCC
 
 end
 
-function MPCCSolve(mod::MPCC,x::Vector)
-
- algoset = AlgoSet()
+function MPCCSolve(mod        :: MPCC,
+                   x          :: Vector;
+                   name_relax :: String    = "KS",
+                   algoset    :: AlgoSet   = AlgoSet(),
+                   paramset   :: ParamSet  = ParamSet(mod.nbc),
+                   parammpcc  :: ParamMPCC = ParamMPCC(mod.nbc))
 
  #solve_sub_pb=SolveRelaxSubProblem.SolveSubproblemIpOpt # ne marche pas (MPCCtoRelaxNLP problème)
- name_relax="KS" #important que avec IpOpt
 
- return MPCCSolve(mod,
-                  name_relax,x,
-                  AlgoSet(),
-                  ParamSet(mod.nbc),
-                  ParamMPCC(mod.nbc))
+ return MPCCSolve(mod,name_relax,x,algoset,paramset,parammpcc)
 end
 
 """
 Accesseur : modifie le point initial
 """
 
-function addInitialPoint(mod::MPCCSolve,x0::Vector)
+function set_x(mod::MPCCSolve,
+               x0::Vector)
 
  mod.xj=x0
 
@@ -60,7 +62,7 @@ end
 
 ###################################################################################
 #
-# MAIN FUNCTION
+# MAIN FUNCTION: solve
 #
 ###################################################################################
 

@@ -1,4 +1,5 @@
 module Stopping
+
 using NLPModels
 using JuMP
 importall MPCCmod
@@ -6,4 +7,5 @@ importall MPCCmod
 include("stopping_unconstrained.jl")
 include("stopping_pas.jl")
 
-end # module
+# end of module
+end

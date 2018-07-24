@@ -30,6 +30,24 @@ H=MathProgNLPModel(H)
 
 ex1= MPCCmod.MPCC(ex1,G,H)
 
+ex1bd=JuMP.Model()
+ux(i)=[Inf;1][i]
+JuMP.@variable(ex1bd,x[i=1:2], upperbound=ux(i),start=1.0)
+JuMP.@NLobjective(ex1bd,Min,x[1]-x[2])
+ex1bd=MathProgNLPModel(ex1bd)
+G=JuMP.Model()
+JuMP.@variable(G,x[1:2],start=1.0)
+JuMP.@constraint(G,x[1]>=0)
+JuMP.@NLobjective(G,Min,0.0)
+G=MathProgNLPModel(G)
+H=JuMP.Model()
+JuMP.@variable(H,x[1:2],start=1.0)
+JuMP.@constraint(H,x[2]>=0)
+JuMP.@NLobjective(H,Min,0.0)
+H=MathProgNLPModel(H)
+
+ex1bd= MPCCmod.MPCC(ex1bd,G,H)
+
 ex2=JuMP.Model()
 JuMP.@variable(ex2,x[1:2],start=-1.0)
 JuMP.@NLobjective(ex2,Min,0.5*((x[1]-1)^2+(x[2]-1)^2))

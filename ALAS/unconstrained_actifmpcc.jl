@@ -1,20 +1,4 @@
-"""
-Package de fonction pour la minimisation ActifMPCC
 
-liste des fonctions :
-LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
-                         xj::Vector,d::Vector,
-                         step::Float64,gradpen::Vector,hg::Float64;
-                         scaling :: Bool = false)
-"""
-
-# - Est-ce qu'on pourrait envisager d'autres techniques que LineSearch, Trust-Region, ou LP-Newton.
-# - Pourquoi il y a un appel a NLPModels ?
-
-module UnconstrainedMPCCActif
-
-using ActifMPCCmod
-using NLPModels
 using OutputLSmod
 
 """
@@ -24,31 +8,30 @@ xj : vecteur initial
 d : direction précédente en version étendue
 """
 
-function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
+function LineSearchSolve(ma::ActifMPCC,
                          xj::Vector,d::Vector,
                          step::Float64,gradpen::Vector,hg::Float64;
                          scaling :: Bool = false)
 
  output=0
- d=ActifMPCCmod.redd(ma,d)
+ d=redd(ma,d)
  scale=1.0
  beta=ma.beta
 
  #xj est un vecteur de taille (n x length(bar_w))
  if length(xj) == (ma.n+2*ma.nb_comp)
-  xj=vcat(xj[ma.wnc],xj[ma.n+ma.w13c],xj[ma.n+ma.nb_comp+ma.w24c])
- elseif length(xj) != (length(ma.wnc)+length(ma.w13c)+length(ma.w24c))
+  xj=vcat(xj[1:ma.n],xj[ma.n+ma.w13c],xj[ma.n+ma.nb_comp+ma.w24c])
+ elseif length(xj) != (ma.n+length(ma.w13c)+length(ma.w24c))
   println("Error dimension : UnconstrainedSolve")
   return
  end
 
  #Choix de la direction :
 
- gradf=ActifMPCCmod.grad(ma,xj,gradpen)
+ gradf=grad(ma,xj,gradpen)
  gradft=Array{Float64,1}
 
  #Calcul d'une direction de descente de taille (n + length(bar_w))
-
  d=ma.direction(ma,gradf,xj,d,beta)
 
  slope = dot(gradf,d)
@@ -59,7 +42,7 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
  end
 
  #Calcul du pas maximum (peut être infinie!)
- stepmax,wmax,wnew = ActifMPCCmod.PasMax(ma,xj,d)
+ stepmax,wmax,wnew = PasMax(ma,xj,d)
 
  step,good_grad,ht,nbarmijo,nbwolfe,gradft=ma.linesearch(ma,xj,d,hg,stepmax,scale*slope,step)
 
@@ -69,11 +52,11 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
 
  xjp=xj+step*d
 
- sol = ActifMPCCmod.evalx(ma,xjp)
- dsol = ActifMPCCmod.evald(ma,d)
+ sol = evalx(ma,xjp)
+ dsol = evald(ma,d)
 
  gradpen=NLPModels.grad(ma.nlp,sol)
- good_grad || (gradft=ActifMPCCmod.grad(ma,xjp,gradpen))
+ good_grad || (gradft=grad(ma,xjp,gradpen))
  
  s=xjp-xj
  y=gradft-gradf
@@ -93,7 +76,7 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
 
  #si alpha=pas maximum alors on met w à jour.
  if stepmax == step
-  ActifMPCCmod.setw(ma,wmax)
+  setw(ma,wmax)
  else
   wnew = zeros(Bool,0,0) #si on a pas pris le stepmax alors aucune contrainte n'est ajouté
  end
@@ -106,7 +89,3 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
 
  return sol,ma.w,dsol,step,wnew,output,small_step,ols,gradpen,ht 
 end
-
-#end of module
-end
-

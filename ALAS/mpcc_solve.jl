@@ -3,35 +3,47 @@
 # MAIN FUNCTION
 #
 ###################################################################################
-function solve(mod::MPCC)
+function solve(mod :: MPCC)
  return solve(MPCCSolve(mod,mod.mp.meta.x0))
 end
 
-function solve(mpccsol::MPCCSolve)
+function solve(mpccsol :: MPCCSolve)
 
- #initialization
- (r,s,t)=mpccsol.parammpcc.initrst()
- rho=mpccsol.parammpcc.rho_init
- xk=mpccsol.xj
+ #Initialization
+ (r,s,t) = mpccsol.parammpcc.initrst()
+ rho = mpccsol.parammpcc.rho_init
+ xk = mpccsol.xj
 
- smpcc=StoppingMPCC(precmpcc=mpccsol.parammpcc.precmpcc,
+ rmpcc = RMPCC(xk)
+ smpcc = StoppingMPCC(precmpcc=mpccsol.parammpcc.precmpcc,
                     paramin=mpccsol.parammpcc.paramin,
                     prec_oracle=mpccsol.parammpcc.prec_oracle)
 
- smpcc,OK,or = start(smpcc,mpccsol.mod,xk,r,s,t)
+ start!(rmpcc,mpccsol.mod,xk)
+ OK = stop_start!(smpcc,mpccsol.mod,xk,rmpcc,r,s,t)
+
+ or=OutputRelaxation(xk,rmpcc.norm_feas, rmpcc.fx)
 
  #Major Loop
  j=0
  while OK
 
+  rho = j == 0 ? mpccsol.parammpcc.rho_restart(r,s,t,rho):rho
+
   xk,solved,rho,output = solve_subproblem(mpccsol,r,s,t,rho)
 
+  update!(rmpcc,mpccsol.mod,xk[1:mpccsol.mod.n])
+
   #met à jour le MPCC avec le nouveau point:
-  mpccsol=addInitialPoint(mpccsol,xk[1:mpccsol.mod.n]) 
+  mpccsol = set_x(mpccsol,xk[1:mpccsol.mod.n]) 
 
-  (r,s,t)=mpccsol.parammpcc.updaterst(r,s,t)
+  (r,s,t) = mpccsol.parammpcc.updaterst(r,s,t)
 
-  OK = stop(smpcc,mpccsol.mod,xk,r,s,t,output,solved,or)
+  OK = stop!(smpcc,mpccsol.mod,xk,rmpcc,r,s,t,output,solved)
+
+  UpdateOR(or,xk[1:mpccsol.mod.n],0,r,s,t,
+              smpcc.prec_oracle(r,s,t,smpcc.precmpcc),
+              rmpcc.norm_feas,output,rmpcc.fx)
 
   j+=1
  end
@@ -39,19 +51,12 @@ function solve(mpccsol::MPCCSolve)
 
 
  #Traitement final :
- mpccsol.parammpcc.verbose != 0.0 ? warning_print(smpcc) : nothing
-
- or=final_message(or,smpcc.solved,smpcc.optimal,smpcc.realisable)
+ or = final!(or,mpccsol.mod,smpcc.solved,smpcc.optimal,smpcc.realisable)
 
  Print(or,mpccsol.mod.n,mpccsol.paramset.verbose)
 
- nb_eval=[mpccsol.mod.mp.counters.neval_obj,mpccsol.mod.mp.counters.neval_cons,
-          mpccsol.mod.mp.counters.neval_grad,mpccsol.mod.mp.counters.neval_hess,
-          mpccsol.mod.G.counters.neval_cons,mpccsol.mod.G.counters.neval_jac,
-          mpccsol.mod.H.counters.neval_cons,mpccsol.mod.H.counters.neval_jac]
-
  # output
- return xk, or, nb_eval
+ return xk, or
 end
 ###################################################################################
 
@@ -76,19 +81,19 @@ function solve_subproblem(inst::MPCCSolve,
 end
 
 """
-Function that prints some warning
+****
 """
-function warning_print(sts::StoppingMPCC,param::Bool)
+function final!(or::OutputRelaxation,
+                       mod :: MPCC,
+                       solved::Bool,
+                       optimal::Bool,
+                       realisable::Bool)
 
-	 sts.realisable || print_with_color(:green,"Infeasible solution: (comp,cons)=($(viol_comp(mod,xk)),$(viol_cons(mod,xk)))\n" )
-	 sts.solved || print_with_color(:green,"Subproblem failure. NaN in the solution ? $(true in isnan(xk)). Stationary ? $(realisable && optimal)\n")
-	 param || sts.realisable || print_with_color(:green,"Parameters too small\n") 
-	 sts.solved && sts.realisable && sts.optimal && print_with_color(:green,"Success\n")
- return
-end
-
-function final_message(or::OutputRelaxation,
-                       solved::Bool,optimal::Bool,realisable::Bool)
+ or.nb_eval = [mod.mp.counters.neval_obj,mod.mp.counters.neval_cons,
+               mod.mp.counters.neval_jac,
+               mod.mp.counters.neval_grad,mod.mp.counters.neval_hess,
+               mod.G.counters.neval_cons,mod.G.counters.neval_jac,
+               mod.H.counters.neval_cons,mod.H.counters.neval_jac]
 
  if solved && optimal && realisable
   or=UpdateFinalOR(or,"Success")

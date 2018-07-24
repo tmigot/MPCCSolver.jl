@@ -1,26 +1,32 @@
 module OutputRelaxationmod
 
 using OutputALASmod
+using RMPCCmod
 
 type OutputRelaxation
 
- solved::Int64 #renvoi 0 si réussi
- solve_message::AbstractString #message de sortie
- xtab::Array #tableau des itérés
- inner_output_alas::Any #en fait une liste de OutputALAS
+ solved            :: Int64 #renvoi 0 si réussi
+ solve_message     :: AbstractString #message de sortie
+ xtab              :: Array #tableau des itérés
+ inner_output_alas :: Any #en fait une liste de OutputALAS
 
- rtab::Array{Float64,1}
- stab::Array{Float64,1}
- ttab::Array{Float64,1}
- prectab::Array{Float64,1}
+ rtab              :: Array{Float64,1}
+ stab              :: Array{Float64,1}
+ ttab              :: Array{Float64,1}
+ prectab           :: Array{Float64,1}
 
- realisabilite::Array{Float64,1}
- objtab::Array{Float64,1}
+ realisabilite     :: Array{Float64,1}
+ objtab            :: Array{Float64,1}
+
+ nb_eval           :: Array{Int64,1}
 
 end
 
 #Initialisation:
-function OutputRelaxation(x0::Vector,realisabilite::Float64,obj::Float64)
+function OutputRelaxation(x0::Vector,
+                          realisabilite::Float64,
+                          obj::Float64)
+
  solved=0
  solve_message="Success"
  xtab=Array{Float64,2}
@@ -30,6 +36,7 @@ function OutputRelaxation(x0::Vector,realisabilite::Float64,obj::Float64)
  stab=[]
  ttab=[]
  prectab=[]
+ nb_eval=zeros(7)
 
    if length(x0)<=4
     print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- xj=$(x0) f(xj)=$(obj) \|c(xj)\|=$(realisabilite)\n\n")
@@ -37,7 +44,9 @@ function OutputRelaxation(x0::Vector,realisabilite::Float64,obj::Float64)
     print_with_color(:green, "j: 0 (r,s,t)=(-,-,-) eps=- f(xj)=$(obj) \|c(xj)\|=$(realisabilite)\n\n")
    end
  
- return OutputRelaxation(solved,solve_message,xtab,inner_output,rtab,stab,ttab,prectab,[realisabilite],[obj])
+ return OutputRelaxation(solved,solve_message,xtab,inner_output,
+                         rtab,stab,ttab,prectab,
+                         [realisabilite],[obj],nb_eval)
 end
 
 #Après une itération :

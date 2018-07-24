@@ -52,6 +52,7 @@ function ArmijoWolfe(ma::ActifMPCCmod.ActifMPCC,xj::AbstractVector,d::AbstractVe
  step=min(stepmax,1.0)
 
  #First try to increase t to satisfy loose Wolfe condition 
+
  xjp=xj+step*d
  ht=ActifMPCCmod.obj(ma,xjp)
 
@@ -71,7 +72,6 @@ function ArmijoWolfe(ma::ActifMPCCmod.ActifMPCC,xj::AbstractVector,d::AbstractVe
 
  #In this case the problem is very likely to be unbounded
  if nbW==ma.paramset.ite_max_wolfe
-@show step stepmax
   return step,good_grad,ht,nbk,nbW,gradft
  end
 

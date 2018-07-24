@@ -49,28 +49,47 @@ ldlt_symm(A0 :: Array{Float64,2}, piv :: Char='r')
 module DDirection
 
 using ActifMPCCmod
+import ActifMPCCmod.ActifMPCC, ActifMPCCmod.grad, ActifMPCCmod.hess
 using Relaxation
 
 
 """
 SteepestDescent : Calcul une direction de descente
 """
-function SteepestDescent(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function SteepestDescent(ma::ActifMPCC,
+                         g::Vector,
+                         xj::Vector,
+                         hd::Any,
+                         beta::Float64)
+
  return -g
 end
 
-function SteepestDescent(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function SteepestDescent(ma::ActifMPCC,
+                         xj::Vector,
+                         beta::Float64,
+                         gradft,
+                         gradf,
+                         y,
+                         d,
+                         step::Float64)
+ 
  return ma
 end
 
 """
 Gradient Conjugué : formule Fletcher and Reeves
 """
-function CGFR(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function CGFR(ma::ActifMPCC,
+              g::Vector,
+              xj::Vector,
+              hd::Any,
+              beta::Float64)
+
  return - g + beta*hd
 end
 
-function CGFR(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGFR(ma::ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula FR
@@ -84,11 +103,23 @@ end
 """
 Gradient Conjugué : Calcul une direction de descente
 """
-function CGPR(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function CGPR(ma::ActifMPCC,
+              g::Vector,
+              xj::Vector,
+              hd::Any,
+              beta::Float64)
+
  return - g + beta*hd
 end
 
-function CGPR(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGPR(ma::ActifMPCC,
+              xj::Vector,
+              beta::Float64,
+              gradft,
+              gradf,
+              y,
+              d,
+              step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula PR
@@ -102,11 +133,23 @@ end
 """
 Gradient Conjugué : Calcul une direction de descente
 """
-function CGHS(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function CGHS(ma::ActifMPCC,
+              g::Vector,
+              xj::Vector,
+              hd::Any,
+              beta::Float64)
+
  return - g + beta*hd
 end
 
-function CGHS(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function CGHS(ma::ActifMPCC,
+              xj::Vector,
+              beta::Float64,
+              gradft,
+              gradf,
+              y,
+              d,
+              step::Float64)  
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula HS
@@ -120,11 +163,23 @@ end
 """
 Gradient Conjugué : Calcul une direction de descente
 """
-function CGHZ(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+function CGHZ(ma::ActifMPCC,
+              g::Vector,
+              xj::Vector,
+              hd::Any,
+              beta::Float64)
+
  return - g + beta*hd
 end
 
-function CGHZ(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
+function CGHZ(ma::ActifMPCC,
+              xj::Vector,
+              beta::Float64,
+              gradft,
+              gradf,
+              y,
+              d,
+              step::Float64) 
 
  if dot(gradft,gradf)<0.2*dot(gradft,gradft) # Powell restart
   #Formula HZ
@@ -141,28 +196,47 @@ end
 Direction de quasi-Newton:
 y=gradft-gradf
 """
-function BFGS(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)  
-    d=-ActifMPCCmod.hess(ma,xj,ma.Hess)*g
+function BFGS(ma::ActifMPCC,
+              g::Vector,
+              xj::Vector,
+              hd::Any,
+              beta::Float64)
+  
+    d = -hess(ma,xj,ma.Hess)*g
+
     return d
 end
 
-function BFGS(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
- #pk=step*dt
- xjl=ActifMPCCmod.evalx(ma,xj)
- xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
- pk=xjl-xjlm
- #différence des gradients en version étendue :
- qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
+function BFGS(ma::ActifMPCC,
+              xj::Vector,
+              beta::Float64,
+              gradft,
+              gradf,
+              y,
+              d,
+              step::Float64) 
+
+ H = copy(ma.Hess)
+
+ if step > 0.0
+  #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+  #pk=step*dt
+  xjl=ActifMPCCmod.evalx(ma,xj)
+  xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+  pk=xjl-xjlm
+
+  #différence des gradients en version étendue :
+  qk=grad(ma,xjl)-grad(ma,xjlm)
  
- #approximation de l'inverse de la hessienne
- n=length(xjl)
- rhok=1/dot(pk,qk)
- #après la première itération on corrige un peu la première approximation:
- if ma.Hess==eye(n)
-  H=(eye(n)-rhok*qk*pk')*(dot(qk,pk)/dot(qk,qk)*eye(n))*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
- else
-  H=(eye(n)-rhok*qk*pk')*ma.Hess*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
+  #approximation de l'inverse de la hessienne
+  n=length(xjl)
+  rhok=1/dot(pk,qk)
+  #après la première itération on corrige un peu la première approximation:
+  if ma.Hess==eye(n)
+   H=(eye(n)-rhok*qk*pk')*(dot(qk,pk)/dot(qk,qk)*eye(n))*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
+  else
+   H=(eye(n)-rhok*qk*pk')*ma.Hess*(eye(n)-rhok*pk*qk')+rhok*pk*pk'
+  end
  end
 
  return ActifMPCCmod.sethess(ma,H)
@@ -175,31 +249,49 @@ y=gradft-gradf
 ici on approxime la hessienne - ce qui permet un traitement numérique sur la diagonale
 en cas d'instabilité numérique quand on divise par dot(pk,qk)
 """
-function invBFGS(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    L,V=eig(ActifMPCCmod.hess(ma,xj,ma.Hess))
+function invBFGS(ma::ActifMPCC,
+                 g::Vector,
+                 xj::Vector,
+                 hd::Any,
+                 beta::Float64)
+
+    L,V=eig(hess(ma,xj,ma.Hess))
     minimum(L)<=0 && println("Non positive definite")
-    H=chol(ActifMPCCmod.hess(ma,xj,ma.Hess))
+    H=chol(hess(ma,xj,ma.Hess))
     d = H\(-g)
 
     return d
 end
 
-function invBFGS(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
- #pk=step*dt
- xjl=ActifMPCCmod.evalx(ma,xj)
- xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
- pk=xjl-xjlm
- #différence des gradients en version étendue :
- qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
- n=length(xjl)
+function invBFGS(ma::ActifMPCC,
+                 xj::Vector,
+                 beta::Float64,
+                 gradft,
+                 gradf,
+                 y,
+                 d,
+                 step::Float64) 
 
- #approximation de la hessienne
- if ma.Hess==eye(n)
-  ma.Hess=(dot(qk,pk)/dot(qk,qk)*eye(n))
-  H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
- else
-  H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+ H = copy(ma.Hess)
+
+ if step > 0.0
+
+  #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+  #pk=step*dt
+  xjl=ActifMPCCmod.evalx(ma,xj)
+  xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+  pk=xjl-xjlm
+  #différence des gradients en version étendue :
+  qk=grad(ma,xjl)-grad(ma,xjlm)
+  n=length(xjl)
+
+  #approximation de la hessienne
+  if ma.Hess==eye(n)
+   ma.Hess=(dot(qk,pk)/dot(qk,qk)*eye(n))
+   H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+  else
+   H=ma.Hess+(1+dot(qk,ma.Hess*qk)/dot(qk,pk))/dot(pk,qk)*(pk*pk')-((pk*qk')*ma.Hess+ma.Hess*(qk*pk'))/dot(qk,pk)
+  end
  end
 
  return ActifMPCCmod.sethess(ma,H)
@@ -209,19 +301,23 @@ end
 Direction de quasi-Newton: DFP
 y=gradft-gradf
 """
-function DFP(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    d = - ActifMPCCmod.hess(ma,xj,ma.Hess)*g
+function DFP(ma::ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+    d = - hess(ma,xj,ma.Hess)*g
     return d
 end
 
-function DFP(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64) 
- #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
- #pk=step*dt
- xjl=ActifMPCCmod.evalx(ma,xj)
- xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
- pk=xjl-xjlm
- #différence des gradients en version étendue :
- qk=ActifMPCCmod.grad(ma,xjl)-ActifMPCCmod.grad(ma,xjlm)
+function DFP(ma::ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)
+
+ H = copy(ma.Hess)
+
+ if step > 0.0 
+  #dt=ActifMPCCmod.ExtddDirection(ma,d,xj,step)
+  #pk=step*dt
+  xjl=ActifMPCCmod.evalx(ma,xj)
+  xjlm=ActifMPCCmod.evalx(ma,xj-step*d)
+  pk=xjl-xjlm
+  #différence des gradients en version étendue :
+  qk=grad(ma,xjl)-grad(ma,xjlm)
 
  #approximation de la hessienne
  #H=(eye(length(pk))-pk*qk'/dot(qk,pk))*ma.Hess*(eye(length(pk))-qk*pk'/dot(qk,pk))+qk*qk'/dot(qk,pk)
@@ -229,8 +325,9 @@ function DFP(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,
  #sym_test<sqrt(eps(Float64)) || println("Non symetric matrix quasiNwt: ",sym_test)
  #!isnan(sym_test) || println("NaN symetric test, norm(H'+H)=",norm(H'+H)," ",norm(H'-H))
 
- #approximation de l'inverse de la hessienne
- H=ma.Hess-ma.Hess*qk*qk'*ma.Hess/dot(qk,ma.Hess*qk)+pk*pk'/dot(pk,qk)
+  #approximation de l'inverse de la hessienne
+  H=ma.Hess-ma.Hess*qk*qk'*ma.Hess/dot(qk,ma.Hess*qk)+pk*pk'/dot(pk,qk)
+ end
 
  return ActifMPCCmod.sethess(ma,H)
 end
@@ -238,10 +335,10 @@ end
 """
 Direction de Newton Spectral:
 """
-function NwtdirectionSpectral(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,
+function NwtdirectionSpectral(ma::ActifMPCC,g::Vector,xj::Vector,
                               hd::Any,beta::Float64)
 
-    H=ActifMPCCmod.hess(ma,xj)
+    H=hess(ma,xj)
 
     Δ = ones(g)
     V = ones(H)
@@ -259,7 +356,7 @@ function NwtdirectionSpectral(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,
     return d
 end
 
-function NwtdirectionSpectral(ma::ActifMPCCmod.ActifMPCC,xj::Vector,
+function NwtdirectionSpectral(ma::ActifMPCC,xj::Vector,
                              beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
@@ -267,8 +364,8 @@ end
 """
 Direction de Newton MA57:
 """
-function NwtdirectionMA57(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
-    H=ActifMPCCmod.hess(ma,xj)
+function NwtdirectionMA57(ma::ActifMPCC,g::Vector,xj::Vector,hd::Any,beta::Float64)
+    H=hess(ma,xj)
 
     M = Ma57
     L = SparseMatrixCSC{Float64,Int32}
@@ -345,15 +442,15 @@ println("test out")
     return d
 end
 
-function NwtdirectionMA57(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
+function NwtdirectionMA57(ma::ActifMPCC,xj::Vector,beta::Float64,gradft,gradf,y,d,step::Float64)  
  return ma
 end
 """
 Direction de Newton 1:
 """
-function NwtdirectionLDLt(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,
+function NwtdirectionLDLt(ma::ActifMPCC,g::Vector,xj::Vector,
                           hd::Any,beta::Float64)
-    H=ActifMPCCmod.hess(ma,xj)
+    H=hess(ma,xj)
 
     L = Array{Float64,2}
     D = Array{Float64,2}
@@ -396,7 +493,7 @@ function NwtdirectionLDLt(ma::ActifMPCCmod.ActifMPCC,g::Vector,xj::Vector,
     return d
 end
 
-function NwtdirectionLDLt(ma::ActifMPCCmod.ActifMPCC,xj::Vector,beta::Float64,
+function NwtdirectionLDLt(ma::ActifMPCC,xj::Vector,beta::Float64,
                           gradft,gradf,y,d,step::Float64)  
  return ma
 end

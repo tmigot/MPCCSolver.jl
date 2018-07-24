@@ -44,9 +44,10 @@ function WorkingMin(alas :: ALASMPCC,
    
   Update(oa,xjk,ρ,alas.spas.feasibility,alas.sts.optimality,dj,step,ols,ht,n)
 
+  small_step = step == 0.0
   subpb_fail=!(Armijosuccess && !small_step)
 
-  OK = OK && !subpb_fail
+  OK = OK || subpb_fail
  end
 
 alas.spas.wolfe_step=dot(gradpen,dj)>=alas.paramset.tau_wolfe*dot(gradpen_prec,dj)
