@@ -1,8 +1,8 @@
 module StoppingMPCCmod
 
 using MPCCmod
-import MPCCmod.MPCC
-using OutputRelaxationmod
+import MPCCmod.MPCC, MPCCmod.dual_feasibility, MPCCmod.grad
+
 using NLPModels
 
 import RMPCCmod.RMPCC
@@ -10,197 +10,107 @@ import RMPCCmod.RMPCC
 type StoppingMPCC
 
  #paramètres pour la résolution du MPCC
- precmpcc::Float64
- paramin::Float64 #valeur minimal pour les paramères (r,s,t)
- prec_oracle::Function
+ precmpcc    :: Float64
+ paramin     :: Float64 #valeur minimal pour les paramères (r,s,t)
+ prec_oracle :: Function
+
+ #variables de l'algos
+ param       :: Bool  # parameters are too small
+ solved      :: Bool # sub_problem solve
 
  #variables de sorties
- optimal::Bool
- realisable::Bool
- solved::Bool
- param::Bool
+ unbounded   :: Bool
+ optimal     :: Bool
+ realisable  :: Bool
 
 end
 
-function StoppingMPCC(;precmpcc::Float64 = 1e-6,
-                      paramin :: Float64 = 1e-15,
+function StoppingMPCC(;precmpcc   :: Float64 = 1e-6,
+                      paramin     :: Float64 = 1e-15,
                       prec_oracle :: Function = x->x,
-                      optimal :: Bool = false,
-                      realisable :: Bool = false,
-                      solved :: Bool = false,
-                      param :: Bool = true)
+                      param       :: Bool = true,
+                      solved      :: Bool = true,
+                      unbounded   :: Bool = false,
+                      optimal     :: Bool = false,
+                      realisable  :: Bool = false)
 
- return StoppingMPCC(precmpcc,paramin,prec_oracle,optimal,realisable,solved,param)
+ return StoppingMPCC(precmpcc,paramin,prec_oracle,param,solved,
+                     unbounded,optimal,realisable)
 end
 
-function stop_start!(smpcc::StoppingMPCC,mod::MPCC,xk::Vector,rmpcc::RMPCC,r,s,t)
+function stop_start!(smpcc :: StoppingMPCC,
+                     mod   :: MPCC,
+                     xk    :: Vector,
+                     rmpcc :: RMPCC,
+                     r     :: Float64,
+                     s     :: Float64,
+                     t     :: Float64)
 
- realisable=rmpcc.norm_feas<=smpcc.precmpcc
- solved=true
- param=(t+r+s)>smpcc.paramin
+ realisable = rmpcc.norm_feas <= smpcc.precmpcc
 
- #heuristic in case the initial point is the solution
- optimal=realisable && stationary_check(mod,xk,smpcc.precmpcc)
- OK=param && !(realisable && solved && optimal)
+ param = (t+r+s) > smpcc.paramin #in case, initial parameters are already too small
 
- smpcc.optimal=optimal
- smpcc.realisable=realisable
- smpcc.solved=solved
- smpcc.param=param
+ optimal = realisable && stationary_check(mod, xk, smpcc.precmpcc)
+ OK = param && !(realisable && optimal)
+
+ smpcc.optimal = optimal
+ smpcc.realisable = realisable
+
+ smpcc.param = param
 
  return OK
 end
 
-function stop!(smpcc::StoppingMPCC,mod::MPCC,xk,rmpcc::RMPCC,r,s,t,output,solved)
+function stop!(smpcc  :: StoppingMPCC,
+               mod    :: MPCC,
+               xk     :: Vector,
+               rmpcc  :: RMPCC,
+               r      :: Float64,
+               s      :: Float64,
+               t      :: Float64,
+               solved :: Bool)
 
-  real=rmpcc.norm_feas
-  f=rmpcc.fx
+  real = rmpcc.norm_feas
+  f = rmpcc.fx
 
-  smpcc.solved=true in isnan.(xk)?false:solved
-  smpcc.realisable=real<=smpcc.precmpcc
+  smpcc.solved = true in isnan.(xk) ? false : solved
+  smpcc.realisable = real <= smpcc.precmpcc
 
  if smpcc.solved && smpcc.realisable
-  smpcc.optimal=!isnan(f) && !(true in isnan.(xk)) && stationary_check(mod,xk[1:mod.n],smpcc.precmpcc)
+  dual_feas = stationary_check(mod, xk[1:mod.n], smpcc.precmpcc)
+  smpcc.optimal = !isnan(f) && !(true in isnan.(xk)) && dual_feas
  end
 
- smpcc.param=(t+r+s)>smpcc.paramin
+ smpcc.param = (t+r+s) > smpcc.paramin
 
- OK=smpcc.param && !smpcc.optimal
+ OK = smpcc.param && !smpcc.optimal
  
  return OK
 end
 
+function final(smpcc :: StoppingMPCC, 
+               rmpcc :: RMPCC)
 
-"""
-Donne la norme 2 de la violation des contraintes avec slack
-
-note : devrait appeler viol_contrainte
-"""
-function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector;tnorm::Real=2)
- return norm(MPCCmod.viol_contrainte(mod,x,yg,yh),tnorm)
-end
-
-function viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2) #x de taille n+2nb_comp
-
- n=mod.n
- if length(x)==n
-  resul=max(viol_comp_norm(mod,x),viol_cons_norm(mod,x))
- else
-  resul=MPCCmod.viol_contrainte_norm(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp],tnorm=tnorm)
- end
- return resul
-end
-
-"""
-Donne la norme de la violation de la complémentarité min(G,H)
-"""
-function viol_comp_norm(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
- return mod.nb_comp>0?norm(MPCCmod.viol_comp(mod,x),tnorm):0
-end
-
-"""
-Donne la norme de la violation des contraintes \"classiques\"
-"""
-function viol_cons_norm(mod::MPCCmod.MPCC,x::Vector;tnorm::Real=2)
-
- n=mod.n
- x=length(x)==n?x:x[1:n]
- feas=norm([max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0)],tnorm)
-
- if mod.mp.meta.ncon !=0
-
-  c=NLPModels.cons(mod.mp,x)
-  feas=max(norm([max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)],tnorm),feas)
-
+ if smpcc.optimal && smpcc.realisable rmpcc.solved =  0 #success
+ elseif smpcc.unbounded rmpcc.solved               = -3 #unbounded
+ elseif !smpcc.realisable rmpcc.solved             = -2 #Infeasible
+ elseif !smpcc.optimal rmpcc.solved                =  1 #Feasible but not optimal
  end
 
- return feas
+ return rmpcc
 end
 
-"""
-Donne la violation de la réalisabilité dual (norme Infinie)
-"""
-function dual_feasibility_norm(mod::MPCCmod.MPCC,x::Vector,l::Vector,A::Any,precmpcc::Float64) #type général pour matrice ?
- return optimal=norm(MPCCmod.dual_feasibility(mod,x,l,A),Inf)<=precmpcc
-end
-"""
-Vérifie les signes de la M-stationarité (l entier)
-"""
-function sign_stationarity_check(mod::MPCCmod.MPCC,x::Vector,l::Vector,precmpcc::Float64)
 
-  Il=find(z->norm(z-mod.mp.meta.lvar,Inf)<=precmpcc,x)
-  Iu=find(z->norm(z-mod.mp.meta.uvar,Inf)<=precmpcc,x)
 
-  IG=[];IH=[];Ig=[];Ih=[];
-
- if mod.mp.meta.ncon+mod.nb_comp >0
-
-  c=cons(mod.mp,x)
-  Ig=find(z->norm(z-mod.mp.meta.lcon,Inf)<=precmpcc,c)
-  Ih=find(z->norm(z-mod.mp.meta.ucon,Inf)<=precmpcc,c)
-
-  if mod.nb_comp>0
-   IG=find(z->norm(z-mod.G.meta.lcon,Inf)<=precmpcc,NLPModels.cons(mod.G,x))
-   IH=find(z->norm(z-mod.H.meta.lcon,Inf)<=precmpcc,NLPModels.cons(mod.H,x))
-  end
- end
-
- #setdiff(∪(Il,Iu),∩(Il,Iu))
- l_pos=max.(l[1:2*n+2*mod.mp.meta.ncon],0)
- I_biactif=∩(IG,IH)
- lG=[2*n+2*mod.mp.meta.ncon+I_biactif]
- lH=[2*n+2*mod.mp.meta.ncon+mod.nb_comp+I_biactif]
- l_cc=min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
-
- return norm([l_pos;l_cc],Inf)<=precmpcc
-end
-
-"""
-Vérifie les signes de la M-stationarité (l actif)
-"""
-function sign_stationarity_check(mod::MPCCmod.MPCC,x::Vector,l::Vector,
-                                 Il::Array{Int64,1},Iu::Array{Int64,1},
-                                 Ig::Array{Int64,1},Ih::Array{Int64,1},
-                                 IG::Array{Int64,1},IH::Array{Int64,1},precmpcc::Float64)
-
- nl=length(Il)+length(Iu)+length(Ig)+length(Ih)
- nccG=length(IG)
- nccH=length(IH)
- l_pos=max.(l[1:nl],0)
- I_biactif=∩(IG,IH)
- lG=l[I_biactif+nl]
- lH=l[nl+nccG+I_biactif]
- l_cc=min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
-
- return norm([l_pos;l_cc],Inf)<=precmpcc
-end
-
-"""
-For a given x, compute the multiplier and check the feasibility dual
-"""
-function stationary_check(mod::MPCCmod.MPCC,x::Vector,precmpcc::Float64)
- n=mod.n
- b=-MPCCmod.grad(mod,x)
-
- if mod.mp.meta.ncon+mod.nb_comp ==0
-
-  optimal=norm(b,Inf)<=precmpcc
-
- else
-  A, Il,Iu,Ig,Ih,IG,IH=MPCCmod.jac_actif(mod,x,precmpcc)
-
-  if !(true in isnan.(A) || true in isnan.(b))
-   l=pinv(full(A))*b #pinv not defined for sparse matrix
-   optimal=dual_feasibility_norm(mod,x,l,A,precmpcc)
-   good_sign=sign_stationarity_check(mod,x,l,Il,Iu,Ig,Ih,IG,IH,precmpcc)
-  else
-   @printf("Evaluation error: NaN in the derivative")
-   optimal=false
-  end
- end
-
- return optimal && good_sign
-end
+###################################################################################
+#
+# Function to verify the dual feasibility
+#
+# stationary_check(mod::MPCC,x::Vector,precmpcc::Float64)
+#
+###################################################################################
+#Tangi18: est-ce que ça devrait être au MPCCmod de faire ça ?
+include("stopping_mpcc_fcts.jl")
 
 
 #end of module

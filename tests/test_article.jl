@@ -15,16 +15,12 @@ sig_t=0.05
 
 mpcc=ex1bd #ex1, ex2, ex3
 
-#@time xb,fb,orb,nb_eval = MPCCsolve.solve(mpcc,r0,sig_r,s0,sig_s,t0,sig_t)
-#@time xb,orb,nb_eval = MPCCsolve.solve(mpcc)
-@time xb,orb = MPCCSolvemod.solve(mpcc)
+@time xb,rmpcc,orb = MPCCSolvemod.solve(mpcc)
 
 try
  oa=orb.inner_output_alas[1]
  @printf("%s	\n",orb.solve_message)
 end
 @show orb.nb_eval
-
-nbc=mpcc.nb_comp;n=length(xb)-2*nbc
-
+"Hiha !"
 #IterationsPlot2D(1,2,n+1,n+2,orb)

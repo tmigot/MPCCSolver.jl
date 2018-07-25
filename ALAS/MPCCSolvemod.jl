@@ -14,10 +14,10 @@ import AlgoSetmod.AlgoSet
 
 import RMPCCmod.RMPCC,RMPCCmod.start!, RMPCCmod.update!
 import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.stop!
-import StoppingMPCCmod.stop_start!
+import StoppingMPCCmod.stop_start!, StoppingMPCCmod.final
 
 import OutputRelaxationmod.OutputRelaxation,OutputRelaxationmod.UpdateOR
-import OutputRelaxationmod.Print,OutputRelaxationmod.UpdateFinalOR
+import OutputRelaxationmod.Print,OutputRelaxationmod.final!
 
 
 
@@ -52,8 +52,8 @@ end
 Accesseur : modifie le point initial
 """
 
-function set_x(mod::MPCCSolve,
-               x0::Vector)
+function set_x(mod :: MPCCSolve,
+               x0  :: Vector)
 
  mod.xj=x0
 
