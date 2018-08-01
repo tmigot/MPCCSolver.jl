@@ -3,12 +3,23 @@ function SlackComplementarityProjection(alas::ALASMPCC)
  nb_comp=alas.mod.nb_comp
  n=alas.mod.n
 
+ x = copy(alas.xj)
+
  if nb_comp==0
-  return alas.xj
+  return x
  end
 
  #Initialisation :
- x=[alas.xj;NLPModels.cons(alas.mod.G,alas.xj);NLPModels.cons(alas.mod.H,alas.xj)]
+ if length(x) == n
+  x = vcat(x,consG(x),consH(x))
+ else
+  x = x
+ end
+
+ #projection sur les contraintes de bornes: l <= x <= u
+ l = alas.mod.mp.meta.lvar
+ u = alas.mod.mp.meta.uvar
+ x[1:n] = x[1:n] + max.(l-x[1:n],0) + max.(x[1:n]-u,0)
 
  #projection sur les contraintes de positivité relaxés : yG>=tb et yH>=tb
  x[n+1:n+nb_comp]=max.(x[n+1:n+nb_comp],ones(nb_comp)*alas.tb)

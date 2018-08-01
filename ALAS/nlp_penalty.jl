@@ -1,11 +1,11 @@
 function CreatePenaltyNLP(alas::ALASMPCC,
                           xj::Vector,ρ::Vector,
-                          usg::Vector,ush::Vector,
-                          uxl::Vector,uxu::Vector,
-                          ucl::Vector,ucu::Vector)
+                          u::Vector)
 
  n=alas.mod.n
  nb_comp=alas.mod.nb_comp
+
+ usg,ush,uxl,uxu,ucl,ucu = RhoDetail(alas.mod,u)
 
  #penf(x,yg,yh)=NLPModels.obj(alas.mod.mp,x)+Penaltygen(alas,x,yg,yh,ρ,usg,ush,uxl,uxu,ucl,ucu)
  penf(x,yg,yh)=obj(alas.mod,x)+Penaltygen(alas,x,yg,yh,ρ,usg,ush,uxl,uxu,ucl,ucu)
@@ -39,9 +39,7 @@ end
 function UpdatePenaltyNLP(alas::ALASMPCC,
                           ρ::Vector,
                           xj::Vector,
-                          usg::Vector,ush::Vector,
-                          uxl::Vector,uxu::Vector,
-                          ucl::Vector,ucu::Vector,
+                          u::Vector,
                           pen_nlp::NLPModels.AbstractNLPModel;
                           gradpen::Vector=[],
                           objpen::Float64=zeros(0),
@@ -50,6 +48,8 @@ function UpdatePenaltyNLP(alas::ALASMPCC,
  n=alas.mod.n
  nnbc = n+alas.mod.nb_comp
  nnbc2 = n+2*alas.mod.nb_comp
+
+ usg,ush,uxl,uxu,ucl,ucu = RhoDetail(alas.mod,u)
 
  penf(x,yg,yh) = NLPModels.obj(alas.mod.mp,x) + Penaltygen(alas,x,yg,yh,ρ,usg,ush,uxl,uxu,ucl,ucu)
  penf(x) = penf(x[1:n],x[n+1:nnbc],x[nnbc+1:nnbc2])

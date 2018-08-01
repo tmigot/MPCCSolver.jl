@@ -52,8 +52,8 @@ phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complément
 """
 function phi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
  n=length(x)-2*nb_comp
- yg=x[n+1:n+mod.nb_comp]
- yh=x[n+mod.nb_comp+1:n+2*mod.nb_comp]
+ yg=x[n+1:n+nb_comp]
+ yh=x[n+nb_comp+1:n+2*nb_comp]
  return phi(yg,yh,r,s,t)
 end
 
@@ -71,10 +71,10 @@ end
 """
 dphi(yg,yh,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en x in n+2nb_comp
 """
-function dphi(x::Any,r::Float64,s::Float64,t::Float64)
+function dphi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
  n=length(x)-2*nb_comp
- yg=x[n+1:n+mod.nb_comp]
- yh=x[n+mod.nb_comp+1:n+2*mod.nb_comp]
+ yg=x[n+1:n+nb_comp]
+ yh=x[n+nb_comp+1:n+2*nb_comp]
  return [zeros(n);dphi(yg,yh,r,s,t)]
 end
 

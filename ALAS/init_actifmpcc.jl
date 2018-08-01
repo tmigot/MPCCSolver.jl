@@ -1,21 +1,16 @@
-function InitializeMPCCActif(alas::ALASMPCC,
-                             xj::Vector,
-                             ρ::Vector,
-                             usg::Vector,
-                             ush::Vector,
-                             uxl::Vector,
-                             uxu::Vector,
-                             ucl::Vector,
-                             ucu::Vector)
+function InitializeSolvePenMPCC(alas    :: ALASMPCC,
+                                penmpcc :: PenMPCC,
+                                rpen    :: RPen,
+                                xj      :: Vector)
 
- #Create an unconstrained penalized NLP with bounds
- pen_mpcc=CreatePenaltyNLP(alas,xj,ρ,usg,ush,uxl,uxu,ucl,ucu)
+ sts    = TStopping(max_iter=alas.paramset.ite_max_viol, atol=alas.prec)
 
  #Create an ActifMPCC
- return ActifMPCC(pen_mpcc,
-                  alas.r,alas.s,alas.t,
-                  alas.mod.nb_comp,
+ return ActifMPCC(penmpcc,
+                  penmpcc.nb_comp,
                   alas.paramset,
                   alas.algoset.direction,
-                  alas.algoset.linesearch)
+                  alas.algoset.linesearch,
+                  sts,
+                  rpen)
 end

@@ -1,9 +1,6 @@
 module StoppingMPCCmod
 
-using MPCCmod
 import MPCCmod.MPCC, MPCCmod.dual_feasibility, MPCCmod.grad
-
-using NLPModels
 
 import RMPCCmod.RMPCC
 

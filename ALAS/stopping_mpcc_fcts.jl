@@ -1,3 +1,5 @@
+import MPCCmod.jac_actif, MPCCmod.consG, MPCCmod.consH
+
 """
 Donne la violation de la réalisabilité dual (norme Infinie)
 """
@@ -31,8 +33,8 @@ function sign_stationarity_check(mod      :: MPCC,
 
   if mod.nb_comp > 0
 
-   IG = find(z->norm(z-mod.G.meta.lcon, Inf) <= precmpcc,NLPModels.cons(mod.G, x))
-   IH = find(z->norm(z-mod.H.meta.lcon, Inf) <= precmpcc,NLPModels.cons(mod.H, x))
+   IG = find(z->norm(z-mod.G.meta.lcon, Inf) <= precmpcc,consG(mod, x))
+   IH = find(z->norm(z-mod.H.meta.lcon, Inf) <= precmpcc,consH(mod, x))
 
   end
  end
@@ -89,7 +91,7 @@ function stationary_check(mod      :: MPCC,
 
  else
 
-  A, Il, Iu, Ig, Ih, IG, IH = MPCCmod.jac_actif(mod, x, precmpcc)
+  A, Il, Iu, Ig, Ih, IG, IH = jac_actif(mod, x, precmpcc)
 
   if !(true in isnan.(A) || true in isnan.(b))
 

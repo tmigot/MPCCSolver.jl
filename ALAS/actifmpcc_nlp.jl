@@ -5,13 +5,8 @@ function obj(ma::ActifMPCC,x::Vector)
 
  #increment!(ma, :neval_obj)
 
-# if length(x)==ma.n+2*ma.nb_comp
-#  return NLPModels.obj(ma.nlp,x)
-# else
-#  return NLPModels.obj(ma.nlp,evalx(ma,x))
-# end
  xf = evalx(ma,x)
- return NLPModels.obj(ma.nlp,xf)
+ return NLPModels.obj(ma.pen.nlp,xf)
 end
 
 """
@@ -25,7 +20,7 @@ function grad(ma::ActifMPCC,x::Vector)
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
  #construction du vecteur gradient de taille n+2nb_comp
- gradf=NLPModels.grad(ma.nlp,xf)
+ gradf=NLPModels.grad(ma.pen.nlp,xf)
 
  return length(x)==ma.n+2*ma.nb_comp?gradf:grad(ma,x,gradf)
 end
@@ -39,7 +34,7 @@ function grad!(ma::ActifMPCC, x::Vector, gx :: Vector)
  #increment!(nlp, :neval_grad)
 
  if length(x) == ma.n+2*ma.nb_comp
-  gradf=NLPModels.grad(ma.nlp,x)
+  gradf=NLPModels.grad(ma.pen.nlp,x)
   gx=grad(ma,x,gradf)
  else
   gx=grad(ma,x)
@@ -55,6 +50,8 @@ Fonction qui fait le calcul du gradient
 """
 
 function grad(ma::ActifMPCC,x::Vector,gradf::Vector)
+
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
 
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
@@ -72,7 +69,7 @@ function grad(ma::ActifMPCC,x::Vector,gradf::Vector)
  elseif !isempty(ma.w4) #certaines variables sont fixés
   tmp=zeros(ma.nb_comp)
   #tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
-  tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
+  tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],r,s,t).*gradf[ma.w4+ma.nb_comp+ma.n]
   gradg=redd(ma,tmp,ma.w13c)
  else #ma.w13c est vide
   gradg=Float64[]
@@ -86,7 +83,7 @@ function grad(ma::ActifMPCC,x::Vector,gradf::Vector)
  elseif !isempty(ma.w3)
   tmp=zeros(ma.nb_comp)
   #tmp[ma.w4]=Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n]
-  tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n]
+  tmp[ma.w3]=Relaxation.dpsi(xf[ma.w3+ma.n+ma.nb_comp],r,s,t).*gradf[ma.w3+ma.n]
   gradh=redd(ma,tmp,ma.w24c)
  else
   gradh=Float64[]
@@ -109,7 +106,7 @@ function hess(ma::ActifMPCC,x::Vector)
  #H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
  #H=H+tril(H,-1)'
 
- H=ma.nlp.H(xf)
+ H=ma.pen.nlp.H(xf)
  H=H+tril(H,-1)'
 
  if ma.nb_comp>0
@@ -124,6 +121,8 @@ A partir de la hessienne complète (ou une approximation) : calcul la hessienne 
 """
 function hess(ma::ActifMPCC,x::Vector,H::Array{Float64,2})
 
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+
  #on calcul xf le vecteur complet
  xf=evalx(ma,x)
 
@@ -134,7 +133,7 @@ function hess(ma::ActifMPCC,x::Vector,H::Array{Float64,2})
  nnbt = ma.n+2*ma.nb_comp
 
  #construction du vecteur gradient de taille n+2nb_comp
- gradf=NLPModels.grad(ma.nlp,xf)
+ gradf=NLPModels.grad(ma.pen.nlp,xf)
 
  #la hessienne des variables du sous-espace (nredxnred)
  Hred=vcat(hcat(H[ma.wnc,ma.wnc],H[ma.wnc,ma.n+ma.w13c],H[ma.wnc,nnb+ma.w24c]),
@@ -151,8 +150,8 @@ function hess(ma::ActifMPCC,x::Vector,H::Array{Float64,2})
    w4r[i]=findfirst(x->x==ma.w4[i],ma.w13c)
   end
 
-  hessg=diagm(Relaxation.ddpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w4+ma.nb_comp+ma.n])
-  hessg+=diagm(Relaxation.dpsi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t))*H[ma.w4+ma.nb_comp+ma.n,ma.w4+ma.nb_comp+ma.n]
+  hessg=diagm(Relaxation.ddpsi(xf[ma.w4+ma.n],r,s,t).*gradf[ma.w4+ma.nb_comp+ma.n])
+  hessg+=diagm(Relaxation.dpsi(xf[ma.w4+ma.n],r,s,t))*H[ma.w4+ma.nb_comp+ma.n,ma.w4+ma.nb_comp+ma.n]
 
   Hred[nc+w4r,nc+w4r]+=hessg
  end
@@ -166,8 +165,8 @@ function hess(ma::ActifMPCC,x::Vector,H::Array{Float64,2})
   for i=1:length(ma.w3)
    w3r[i]=findfirst(x->x==ma.w3[i],ma.w24c)
   end
-  hessh=diagm(Relaxation.ddpsi(xf[ma.w3+ma.nb_comp+ma.n],ma.r,ma.s,ma.t).*gradf[ma.w3+ma.n])
-  hessh+=diagm(Relaxation.dpsi(xf[ma.w3+ma.nb_comp+ma.n],ma.r,ma.s,ma.t))*H[ma.w3+ma.n,ma.w3+ma.n]
+  hessh=diagm(Relaxation.ddpsi(xf[ma.w3+ma.nb_comp+ma.n],r,s,t).*gradf[ma.w3+ma.n])
+  hessh+=diagm(Relaxation.dpsi(xf[ma.w3+ma.nb_comp+ma.n],r,s,t))*H[ma.w3+ma.n,ma.w3+ma.n]
 
   Hred[nc+length(ma.w13c)+w3r,nc+length(ma.w13c)+w3r]+=hessh
  end
@@ -184,19 +183,21 @@ x in n+2nb_comp
 """
 function cons(ma::ActifMPCC,x::Vector)
 
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+
  #increment!(ma, :neval_cons)
  xf = evalx(ma,x)
 
  sg = xf[ma.n+1:ma.n+ma.nb_comp]
  sh = xf[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp]
 
- vlx = xf[ma.wn1]-ma.nlp.meta.lvar[ma.wn1]
- vux = xf[ma.wn2]-ma.nlp.meta.lvar[ma.wn2]
+ vlx = xf[ma.wn1]-ma.pen.nlp.meta.lvar[ma.wn1]
+ vux = xf[ma.wn2]-ma.pen.nlp.meta.uvar[ma.wn2]
 
- vlg = sg[ma.w1]-ma.nlp.meta.lvar[ma.w1+ma.n]
- vlh = sh[ma.w2]-ma.nlp.meta.lvar[ma.w2+ma.n]
- vug = Relaxation.psi(sh[ma.w3],ma.r,ma.s,ma.t)-sg[ma.w3]
- vuh = Relaxation.psi(sg[ma.w4],ma.r,ma.s,ma.t)-sh[ma.w4]
+ vlg = sg[ma.w1]-ma.pen.nlp.meta.lvar[ma.w1+ma.n]
+ vlh = sh[ma.w2]-ma.pen.nlp.meta.lvar[ma.w2+ma.n]
+ vug = Relaxation.psi(sh[ma.w3],r,s,t)-sg[ma.w3]
+ vuh = Relaxation.psi(sg[ma.w4],r,s,t)-sh[ma.w4]
 
  return minimum([vlx;vux;vlg;vlh;vug;vuh;0.0])==0.0
 end

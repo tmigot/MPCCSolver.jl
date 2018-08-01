@@ -1,106 +1,83 @@
 export solvePas
 
-function solvePAS(alas::ALASMPCC; verbose::Bool=true)
+import RPenmod.pen_start!, RPenmod.pen_update!, RPenmod.pen_rho_update!
+import PenMPCCmod.ComputationMultiplierBool
+import PenMPCCmod.jac
 
-#Initialisation paramètres :
- n=alas.mod.n
+function solvePAS(alas    :: ALASMPCC;
+                  verbose :: Bool = true)
 
- gradpen=Vector(n)
- gradpen_prec=Vector(n)
- xjk=Vector(n+2*alas.mod.nb_comp)
- xjkl=Vector(n+2*alas.mod.nb_comp)
- lambda=Vector(3*alas.mod.nb_comp)
- dj=zeros(n+2*alas.mod.nb_comp) #doit disparaitre
+ n       = alas.mod.n
+ nb_comp = alas.mod.nb_comp
 
-# S0 : initialisation du problème avec slack (projection sur _|_ )
- xjk=SlackComplementarityProjection(alas)
+ #SO : Projection of the initial point:
+ xjk = SlackComplementarityProjection(alas)
 
- ρ=alas.rho_init
+ # S0: Initialize the parameters
+ ρ      = alas.rho_init
+ lambda = LagrangeCompInit(alas, ρ, xjk, c = alas.rrelax.feas_cc)
+ u      = LagrangeInit(alas, ρ, xjk, c = alas.rrelax.feas)
+ mult   = vcat(u[2*nb_comp+1:2*nb_comp+2*n],lambda)
 
- #variables globales en sortie du LineSearch
- wnew=zeros(Bool,0,0) #Tangi18: est-ce que ça chevauche le ma.wnew ?
+ # S1 : Initialization of ActifMPCC 
+ pen, rpen = InitializePenMPCC(alas, xjk, ρ, u) #create a new problem and result
+ ma        = InitializeSolvePenMPCC(alas, pen, rpen, xjk)
 
- #Initialisation multiplicateurs de la contrainte de complémentarité
- lambda=LagrangeCompInit(alas,ρ,xjk) #améliorer si nb_comp=0.
- l_negative=findfirst(x->x<0,lambda)!=0
+ # S2 : Initialize Result and Stopping
+ pen_start!(ma.pen, ma.rpen, xjk, lambda = mult)
+ alas.spas, GOOD = pas_start!(alas.mod, alas.spas, xjk, ma.rpen)
 
- # Initialisation multiplicateurs : uxl,uxu,ucl,ucu :
- uxl,uxu,ucl,ucu,usg,ush=LagrangeInit(alas,ρ,xjk)
-
- # S1 : Initialisation du ActifMPCC 
- ma=InitializeMPCCActif(alas,xjk,ρ,usg,ush,uxl,uxu,ucl,ucu)
-
- # S2 : Major Loop Activation de contrainte
- #initialisation
- ht,gradpen=NLPModels.objgrad(ma.nlp,xjk)
- ∇f=grad(ma,xjk,gradpen)
-
- alas.spas,GOOD = pas_start!(alas.mod,alas.spas,xjk,∇f,lambda)
- oa = OutputALAS(xjk,dj,alas.spas.feasibility,alas.spas.optimality,ρ,ht)
+ oa = OutputALAS(xjk, ma.dj, alas.spas.feasibility, 
+                 alas.spas.optimality,ma.pen.ρ, ma.rpen.fx)
 
  #MAJOR LOOP
  k=0
- step=1.0;subpb_fail=false #pas besoin ici
  while !GOOD
 
-  #Minization in the working set
-  xjkl,alas,ma,dj,step,wnew,subpb_fail,gradpen,ht,l=WorkingMin(alas,ma,xjk,ρ,
-                                                               ht,gradpen,oa,
-                                                               wnew,step,dj)
-  xjk=xjkl
+  xjk, ma = solve_subproblem_pen(ma, xjk, oa)
 
+  alas.spas, UPDATE = pas_rhoupdate!(alas.mod, alas.spas, xjk)
+
+  ################ Update Penalty ############################################
   #Conditionnelle: met éventuellement rho à jour.
-  alas.spas, UPDATE = pas_rhoupdate!(alas.mod,alas.spas,xjk)
-
-   verbose && print_with_color(:red, "End - Min: l=$l |x|=$(norm(xjkl,Inf)) |c(x)|=$(alas.spas.feasibility) |L'|=$(alas.sts.optimality)  ρ=$(norm(ρ,Inf)) prec=$(alas.prec) \n")
 
   if UPDATE
 
-   ρ,ma,ht,gradpen = CheckUpdateRho(alas,ma,xjk,ρ,alas.spas.feasibility,
-                                    usg,ush,uxl,uxu,
-                                    ucl,ucu,ht,gradpen,verbose)
+   ma.pen.ρ, ma = CheckUpdateRho(alas, ma, xjk, verbose)
 
   end
 
-  #Mise à jour des paramètres de la pénalité Lagrangienne (uxl,uxu,ucl,ucu)
-  uxl,uxu,ucl,ucu,usg,ush=LagrangeUpdate(alas,ρ,xjk,uxl,uxu,ucl,ucu,usg,ush)
+  #Mise à jour des paramètres de la pénalité Lagrangienne
+  ma.pen.u = LagrangeUpdate(alas,ma.pen.ρ,xjk,ma.pen.u)
 
   #met à jour la fonction objectif après la mise à jour des multiplicateurs
-  ma.nlp,ht,gradpen=UpdatePenaltyNLP(alas,ρ,xjk,usg,ush,uxl,uxu,ucl,ucu,
-                                   ma.nlp,objpen=ht,gradpen=gradpen) 
-   ∇f=grad(ma,xjk,gradpen)
+  ma.pen.nlp, ma.rpen.fx, ma.rpen.gx = UpdatePenaltyNLP(alas, ma.pen.ρ, xjk,
+                                                        ma.pen.u,
+                                                        ma.pen.nlp,
+                                                        objpen=ma.rpen.fx,
+                                                        gradpen=ma.rpen.gx)
 
-  #Mise à jour des multiplicateurs de la complémentarité
-  if alas.mod.nb_comp>0 && (alas.spas.wolfe_step || step==0.0)
-   lambda,alas.spas.l_negative=LSQComputationMultiplierBool(ma,gradpen,xjk)
-  end
+  ma.rpen.lambda, alas.spas.l_negative = LSQComputationMultiplierBool(ma,xjk) 
+  #ne fait pas tout à fait la même chose
+  #rpen.lambda,alas.spas.l_negative = ComputationMultiplierBool(pen,rpen.gx,xjk)
 
-  #Relaxation rule:
-  if (alas.spas.wolfe_step || step==0.0) && alas.spas.l_negative
-  
-   RelaxationRule(ma,xjk,lambda,wnew)
+  pen_rho_update!(ma.pen, ma.rpen, xjk)
+  ############ Fin Update Penalty ############################################
 
-   verbose && print_with_color(:yellow, "Active set: $(ma.wcc) \n")
-
-  end
-  
   k+=1
 
   verbose && alas.spas.tired && print_with_color(:red, "Max ité. Lagrangien \n")
 
-  #si on bloque mais qu'un multiplicateur est <0 on continue
-  subpb_fail=subpb_fail && !alas.spas.l_negative 
-  alas.spas,GOOD=pas_stop!(alas.mod,alas.spas,xjk,∇f,k,minimum(ρ))
-
-  GOOD = alas.sts.unbounded || GOOD || subpb_fail
+  alas.spas,GOOD = pas_stop!(alas.mod,alas.spas,xjk,ma.rpen,k,minimum(ma.pen.ρ)) #k et rho ?
 
  end
  #MAJOR LOOP
 
  #Traitement finale :
- alas=addInitialPoint(alas,xjk)
+ alas = set_x(alas, xjk)
 
- stat=ending_test(alas.spas,subpb_fail,alas.sts.unbounded)
+ stat = ending_test(alas.spas, ma.rpen)
 
- return xjk,stat,ρ,oa
+ return xjk, stat, ma.pen.ρ, oa
 end
+

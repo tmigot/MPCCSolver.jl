@@ -1,7 +1,12 @@
 module ActifMPCCmod
 
 import Relaxation
-import ParamSetmod
+import ParamSetmod.ParamSet
+
+import RPenmod.RPen
+import PenMPCCmod.PenMPCC
+import Stopping.TStopping
+
 importall NLPModels
 #NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
 
@@ -9,8 +14,7 @@ importall NLPModels
 Type ActifMPCC : problème MPCC pénalisé avec slack et ensemble des contraintes actives
 
 liste des constructeurs :
-ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,nb_comp::Int64,paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
-ActifMPCC(nlp::NLPModels.AbstractNLPModel,r::Float64,s::Float64,t::Float64,w::Array{Bool,2},paramset::ParamSetmod.ParamSet,direction::Function,linesearch::Function)
+ActifMPCC(***)
 
 liste des méthodes :
 updatew(ma::ActifMPCC)
@@ -47,73 +51,82 @@ PasMax(ma::ActifMPCC,x::Vector,d::Vector)
 
 type ActifMPCC <: AbstractNLPModel
 
- meta :: NLPModelMeta
- counters :: Counters #ATTENTION : increment! ne marche pas?
- x0 :: Vector
+ meta       :: NLPModelMeta
+ counters   :: Counters #ATTENTION : increment! ne marche pas?
+ x0         :: Vector
 
- nlp :: AbstractNLPModel # en fait on demande juste une fonction objectif, point initial, contraintes de bornes
- r::Float64
- s::Float64
- t::Float64
+ pen        :: PenMPCC
 
- w::Array{Bool,2} # n +2nb_comp x 2 matrix
+ w          :: Array{Bool,2} # n +2nb_comp x 2 matrix
 
- n::Int64 #dans le fond est optionnel si on a nb_comp
- nb_comp::Int64
+ n          :: Int64 #dans le fond est optionnel si on a nb_comp
+ nb_comp    :: Int64
 
  #set of indices:
- wnc :: Array{Int64,1} #indices of free variables in 1,...,n
- wn1::Array{Int64,1} # indices with active lower bounds in 1,...,n
- wn2::Array{Int64,1} # indices with active upper bounds in 1,...,n
+ wnc        :: Array{Int64,1} #indices of free variables in 1,...,n
+ wn1        :: Array{Int64,1} # indices with active lower bounds in 1,...,n
+ wn2        :: Array{Int64,1} # indices with active upper bounds in 1,...,n
 
  #ensembles d'indices complementarity:
- w1::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yG>=-r est active
- w2::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yH>=-r est active
- w3::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yG<=s+t*theta(yH,r) est active
- w4::Array{Int64,1} # ensemble des indices (entre 0 et nb_comp) où la contrainte yH<=s+t*theta(yG,r) est active
- wcomp::Array{Int64,1} #ensemble des indices (entre 0 et nb_comp) où la contrainte Phi<=0 est active
- w13c::Array{Int64,1} #ensemble des indices où les variables yG sont libres
- w24c::Array{Int64,1} #ensemble des indices où les variables yH sont libres
- wc::Array{Int64,1} #ensemble des indices des contraintes où yG et yH sont libres
- wcc::Array{Int64,1} #ensemble des indices des contraintes où yG et yH sont fixés
+ # ensemble des indices (entre 0 et nb_comp) où la contrainte yG>=-r est active
+ w1         :: Array{Int64,1}
+ # ensemble des indices (entre 0 et nb_comp) où la contrainte yH>=-r est active
+ w2         :: Array{Int64,1} 
+ # ensemble des indices (entre 0 et nb_comp) où la contrainte yG<=s+t*theta(yH,r) est active
+ w3         :: Array{Int64,1}
+ # ensemble des indices (entre 0 et nb_comp) où la contrainte yH<=s+t*theta(yG,r) est active
+ w4         :: Array{Int64,1} 
+ #ensemble des indices (entre 0 et nb_comp) où la contrainte Phi<=0 est active
+ wcomp      :: Array{Int64,1}
+ w13c       :: Array{Int64,1} #ensemble des indices où les variables yG sont libres
+ w24c       :: Array{Int64,1} #ensemble des indices où les variables yH sont libres
+ #ensemble des indices des contraintes où yG et yH sont libres
+ wc         :: Array{Int64,1}
+ #ensemble des indices des contraintes où yG et yH sont fixés
+ wcc        :: Array{Int64,1} 
 
 
- wnew::Array{Bool,2} #dernières contraintes ajoutés
+ wnew       :: Array{Bool,2} #dernières contraintes ajoutés
+ dj         :: Vector #previous direction
 
  #paramètres pour le calcul de la direction de descente
- crho::Float64 #constant such that : ||c(x)||_2 \approx crho*rho
- beta::Float64 #paramètre pour gradient conjugué
- Hess::Array{Float64,2} #inverse matrice hessienne approximée
- #Hd::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
+ crho       :: Float64 #constant such that : ||c(x)||_2 \approx crho*rho
+ beta       :: Float64 #paramètre pour gradient conjugué
+ Hess       :: Array{Float64,2} #inverse matrice hessienne approximée
+ #Hd       ::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
 
- paramset::ParamSetmod.ParamSet
- direction::Function #fonction qui calcul la direction de descente
- linesearch::Function #fonction qui calcul la recherche linéaire
+ paramset   :: ParamSet
+ direction  :: Function #fonction qui calcul la direction de descente
+ linesearch :: Function #fonction qui calcul la recherche linéaire
+
+ rpen       :: RPen
+ sts        :: TStopping
 
 end
 
 """
 Constructeur recommandé pour ActifMPCC
 """
-#Tangi18: Pourquoi c'est coupé en 2 ?
-function ActifMPCC(nlp::NLPModels.AbstractNLPModel,
-                   r::Float64,s::Float64,t::Float64,
-                   nb_comp::Int64,
-                   paramset::ParamSetmod.ParamSet,
-                   direction::Function,
-                   linesearch::Function)
+function ActifMPCC(pen        :: PenMPCC,
+                   nb_comp    :: Int64,
+                   paramset   :: ParamSet,
+                   direction  :: Function,
+                   linesearch :: Function,
+                   sts        :: TStopping,
+                   rpen       :: RPen)
 
- nn  = length(nlp.meta.x0) #n + 2nb_comp
- n   = length(nlp.meta.x0)-2*nb_comp
- xk  = nlp.meta.x0[1:n]
- ygk = nlp.meta.x0[n+1:n+nb_comp]
- yhk = nlp.meta.x0[n+nb_comp+1:n+2*nb_comp]
+ nn  = length(pen.nlp.meta.x0) #n + 2nb_comp
+ n   = length(pen.nlp.meta.x0)-2*nb_comp
+ xk  = pen.nlp.meta.x0[1:n]
+ ygk = pen.nlp.meta.x0[n+1:n+nb_comp]
+ yhk = pen.nlp.meta.x0[n+nb_comp+1:n+2*nb_comp]
+
+ r,s,t = pen.r,pen.s,pen.t
 
  w   = zeros(Bool,nn,2)
-
  #active bounds
- w[1:nn,1]= nlp.meta.x0 .== nlp.meta.lvar
- w[1:n,2]= nlp.meta.x0[1:n] .== nlp.meta.uvar[1:n]
+ w[1:nn,1] = pen.nlp.meta.x0      .== pen.nlp.meta.lvar
+ w[1:n,2]  = pen.nlp.meta.x0[1:n] .== pen.nlp.meta.uvar[1:n]
 
   # puis la boucle: est-ce qu'il y a Relaxation.psi vectoriel ?
   #A simplifier
@@ -126,115 +139,110 @@ function ActifMPCC(nlp::NLPModels.AbstractNLPModel,
    end
   end
 
- return ActifMPCC(nlp,r,s,t,nb_comp,n,w,paramset,direction,linesearch)
-end
-
-function ActifMPCC(nlp::NLPModels.AbstractNLPModel,
-                   r::Float64,s::Float64,t::Float64,
-                   nb_comp::Int64, 
-                   n :: Int64,
-                   w::Array{Bool,2},
-                   paramset::ParamSetmod.ParamSet,
-                   direction::Function,
-                   linesearch::Function)
-
-
  wnc = find(.!w[1:n,1] .& .!w[1:n,2])
- wn1=find(w[1:n,1])
- wn2=find(w[1:n,2])
+ wn1 = find(w[1:n,1])
+ wn2 = find(w[1:n,2])
 
- w1=find(w[n+1:n+nb_comp,1])
- w2=find(w[n+1:n+nb_comp,2])
- w3=find(w[n+nb_comp+1:n+2*nb_comp,1])
- w4=find(w[n+nb_comp+1:n+2*nb_comp,2])
+ w1  = find(w[n+1:n+nb_comp,1])
+ w2  = find(w[n+1:n+nb_comp,2])
+ w3  = find(w[n+nb_comp+1:n+2*nb_comp,1])
+ w4  = find(w[n+nb_comp+1:n+2*nb_comp,2])
 
- wcomp=find(w[n+nb_comp+1:n+2*nb_comp,1] .| w[n+nb_comp+1:n+2*nb_comp,2])
- w13c=find(.!w[n+1:n+nb_comp,1] .& .!w[n+nb_comp+1:n+2*nb_comp,1])
- w24c=find(.!w[n+1:n+nb_comp,2] .& .!w[n+nb_comp+1:n+2*nb_comp,2])
- wc=find(.!w[n+1:n+nb_comp,1] .& .!w[n+1:n+nb_comp,2] .& .!w[n+nb_comp+1:n+2*nb_comp,1] .& .!w[n+nb_comp+1:n+2*nb_comp,2])
- wcc=find((w[n+1:n+nb_comp,1] .| w[n+nb_comp+1:n+2*nb_comp,1]) .& (w[n+1:n+nb_comp,2] .| w[n+nb_comp+1:n+2*nb_comp,2]))
+ wcomp = find(w[n+nb_comp+1:n+2*nb_comp,1] .| w[n+nb_comp+1:n+2*nb_comp,2])
+ w13c  = find(.!w[n+1:n+nb_comp,1] .& .!w[n+nb_comp+1:n+2*nb_comp,1])
+ w24c  = find(.!w[n+1:n+nb_comp,2] .& .!w[n+nb_comp+1:n+2*nb_comp,2])
+ wc    = find(.!w[n+1:n+nb_comp,1] .& .!w[n+1:n+nb_comp,2] .& .!w[n+nb_comp+1:n+2*nb_comp,1] .& .!w[n+nb_comp+1:n+2*nb_comp,2])
+ wcc   = find((w[n+1:n+nb_comp,1] .| w[n+nb_comp+1:n+2*nb_comp,1]) .& (w[n+1:n+nb_comp,2] .| w[n+nb_comp+1:n+2*nb_comp,2]))
 
- wnew=zeros(Bool,0,0)
+ wnew = zeros(Bool,0,0)
+ dj = zeros(n+2*nb_comp)
 
- crho=1.0
- beta=0.0
- Hess=eye(n+2*nb_comp)
+ crho = 1.0
+ beta = 0.0
+ Hess = eye(n+2*nb_comp)
 
  
- meta = nlp.meta
- x = nlp.meta.x0
- x0 = [x[1:n];x[n+w13c];x[n+nb_comp+w24c]]
+ meta = pen.nlp.meta
+ x = pen.nlp.meta.x0
+ x0 = vcat(x[1:n], x[n+w13c], x[n+nb_comp+w24c])
 
- return ActifMPCC(meta,Counters(),x0,nlp,r,s,t,w,n,nb_comp,
+ return ActifMPCC(meta,Counters(),x0,pen,w,n,nb_comp,
                   wnc,wn1,wn2,w1,w2,w3,w4,
-                  wcomp,w13c,w24c,wc,wcc,wnew,crho,beta,Hess,
-                  paramset,direction,linesearch)
+                  wcomp,w13c,w24c,wc,wcc,wnew,dj,crho,beta,Hess,
+                  paramset,direction,linesearch,rpen,sts)
 end
 
 """
 Methodes pour le ActifMPCC
 """
 #Mise à jour de w
-function setw(ma::ActifMPCC, w::Array{Bool,2})
+function setw(ma :: ActifMPCC,
+              w  :: Array{Bool,2})
 
- ma.wnew=w .& .!ma.w
- ma.w=w
+ ma.wnew = w .& .!ma.w
+ ma.w = w
 
  return updatew(ma)
 end
 
 #Mise à jour des composantes liés à w
-function updatew(ma::ActifMPCC)
+function updatew(ma :: ActifMPCC)
 
  nb_comp = ma.nb_comp
- n = ma.n
+ n       = ma.n
 
  #le vecteur x d'avant (ne dépend pas de ma.w)
- x = evalx(ma,ma.x0)
+ x = evalx(ma, ma.x0)
 
  #on actualise avec w
  ma.wnc = find(.!ma.w[1:n,1] .& .!ma.w[1:n,2])
- ma.wn1=find(ma.w[1:n,1])
- ma.wn2=find(ma.w[1:n,2])
+ ma.wn1 = find(ma.w[1:n,1])
+ ma.wn2 = find(ma.w[1:n,2])
 
- ma.w1=find(ma.w[n+1:n+nb_comp,1])
- ma.w2=find(ma.w[n+1:n+nb_comp,2])
- ma.w3=find(ma.w[n+nb_comp+1:n+2*nb_comp,1])
- ma.w4=find(ma.w[n+nb_comp+1:n+2*nb_comp,2])
+ ma.w1  = find(ma.w[n+1:n+nb_comp,1])
+ ma.w2  = find(ma.w[n+1:n+nb_comp,2])
+ ma.w3  = find(ma.w[n+nb_comp+1:n+2*nb_comp,1])
+ ma.w4  = find(ma.w[n+nb_comp+1:n+2*nb_comp,2])
 
- ma.wcomp=find(ma.w[n+nb_comp+1:n+2*nb_comp,1] .| ma.w[n+nb_comp+1:n+2*nb_comp,2])
+ ma.wcomp = find(ma.w[n+nb_comp+1:n+2*nb_comp,1] .| ma.w[n+nb_comp+1:n+2*nb_comp,2])
 
- ma.w13c=find(.!ma.w[n+1:n+nb_comp,1] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,1])
- ma.w24c=find(.!ma.w[n+1:n+nb_comp,2] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,2])
+ ma.w13c  = find(.!ma.w[n+1:n+nb_comp,1] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,1])
+ ma.w24c  = find(.!ma.w[n+1:n+nb_comp,2] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,2])
 
- ma.wc=find(.!ma.w[n+1:n+nb_comp,1] .& .!ma.w[n+1:n+nb_comp,2] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,1] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,2])
+ ma.wc = find(.!ma.w[n+1:n+nb_comp,1] .& .!ma.w[n+1:n+nb_comp,2] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,1] .& .!ma.w[n+nb_comp+1:n+2*nb_comp,2])
 
- ma.wcc=find((ma.w[n+1:n+nb_comp,1] .| ma.w[n+nb_comp+1:n+2*nb_comp,1]) .& (ma.w[n+1:n+nb_comp,2] .| ma.w[n+nb_comp+1:n+2*nb_comp,2]))
+ ma.wcc = find((ma.w[n+1:n+nb_comp,1] .| ma.w[n+nb_comp+1:n+2*nb_comp,1]) .& (ma.w[n+1:n+nb_comp,2] .| ma.w[n+nb_comp+1:n+2*nb_comp,2]))
 
- ma.x0 = [x[ma.wnc];x[ma.n+ma.w13c];x[ma.n+ma.nb_comp+ma.w24c]]
+ ma.x0 = vcat(x[ma.wnc], x[ma.n+ma.w13c], x[ma.n+ma.nb_comp+ma.w24c])
 
  return ma
 end
 
-function setbeta(ma::ActifMPCC,b::Float64)
- ma.beta=b
+function setbeta(ma :: ActifMPCC,
+                 b  :: Float64)
+ ma.beta = b
  return ma
 end
 
-function setcrho(ma::ActifMPCC,crho::Float64)
- ma.crho=crho
+function setcrho(ma   :: ActifMPCC,
+                 crho :: Float64)
+ ma.crho = crho
  return ma
 end
 
-function sethess(ma::ActifMPCC,Hess::Array{Float64,2})
- ma.Hess=Hess
+function sethess(ma   :: ActifMPCC,
+                 Hess :: Array{Float64,2})
+ ma.Hess = Hess
  return ma
 end
 
 """
 Renvoie le vecteur x=[x,yg,yh] au complet
 """
-function evalx(ma::ActifMPCC,x::Vector)
+function evalx(ma :: ActifMPCC,
+               x  :: Vector)
+
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
 
  if length(x) != ma.n+2*ma.nb_comp
 
@@ -242,22 +250,22 @@ function evalx(ma::ActifMPCC,x::Vector)
   nw13c = nc+length(ma.w13c)
 
   #construction du vecteur de taille n+2nb_comp que l'on évalue :
-  xf=ma.s*ones(ma.n+2*ma.nb_comp)
-  xf[ma.wnc]=x[1:nc]
-  xf[ma.w13c+ma.n]=x[nc+1:nw13c]
-  xf[ma.w24c+ma.n+ma.nb_comp]=x[nw13c+1:nw13c+length(ma.w24c)]
+  xf = s*ones(ma.n+2*ma.nb_comp)
+  xf[ma.wnc] = x[1:nc]
+  xf[ma.w13c+ma.n] = x[nc+1:nw13c]
+  xf[ma.w24c+ma.n+ma.nb_comp] = x[nw13c+1:nw13c+length(ma.w24c)]
 
   #on regarde les variables x fixées:
-  xf[ma.wn1] = ma.nlp.meta.lvar[ma.wn1]
-  xf[ma.wn2] = ma.nlp.meta.uvar[ma.wn2]
+  xf[ma.wn1] = ma.pen.nlp.meta.lvar[ma.wn1]
+  xf[ma.wn2] = ma.pen.nlp.meta.uvar[ma.wn2]
 
   #on regarde les variables yG fixées :
-  xf[ma.w1+ma.n]=ma.nlp.meta.lvar[ma.w1+ma.n]
-  xf[ma.w3+ma.n]=Relaxation.psi(xf[ma.w3+ma.n+ma.nb_comp],ma.r,ma.s,ma.t)
+  xf[ma.w1+ma.n] = ma.pen.nlp.meta.lvar[ma.w1+ma.n]
+  xf[ma.w3+ma.n] = Relaxation.psi(xf[ma.w3+ma.n+ma.nb_comp], r, s, t)
 
   #on regarde les variables yH fixées :
-  xf[ma.w2+ma.n+ma.nb_comp]=ma.nlp.meta.lvar[ma.w2+ma.n+ma.nb_comp]
-  xf[ma.w4+ma.n+ma.nb_comp]=Relaxation.psi(xf[ma.w4+ma.n],ma.r,ma.s,ma.t)
+  xf[ma.w2+ma.n+ma.nb_comp] = ma.pen.nlp.meta.lvar[ma.w2+ma.n+ma.nb_comp]
+  xf[ma.w4+ma.n+ma.nb_comp] = Relaxation.psi(xf[ma.w4+ma.n], r, s, t)
 
  else
 
@@ -271,15 +279,16 @@ end
 """
 Renvoie la direction d au complet (avec des 0 aux actifs)
 """
-function evald(ma::ActifMPCC,d::Vector)
+function evald(ma :: ActifMPCC,
+               d  :: Vector)
 
  nc = length(ma.wnc)
  nw13c = nc+length(ma.w13c)
 
- df=zeros(ma.n+2*ma.nb_comp)
- df[ma.wnc]=d[1:nc]
- df[ma.w13c+ma.n]=d[nc+1:nw13c]
- df[ma.w24c+ma.nb_comp+ma.n]=d[nw13c+1:nw13c+length(ma.w24c)]
+ df = zeros(ma.n+2*ma.nb_comp)
+ df[ma.wnc] = d[1:nc]
+ df[ma.w13c+ma.n] = d[nc+1:nw13c]
+ df[ma.w24c+ma.nb_comp+ma.n] = d[nw13c+1:nw13c+length(ma.w24c)]
 
  return df
 end
@@ -287,23 +296,26 @@ end
 """
 Renvoie la direction d réduite
 """
-function redd(ma::ActifMPCC,d::Vector)
+function redd(ma :: ActifMPCC,
+              d  :: Vector)
 
  nc = length(ma.wnc)
  nw13c = nc+length(ma.w13c)
 
- df=zeros(nc+length(ma.w13c)+length(ma.w24c))
- df[1:nc]=d[ma.wnc]
- df[nc+1:nw13c]=d[ma.w13c+ma.n]
- df[nw13c+1:nw13c+length(ma.w24c)]=d[ma.w24c+ma.nb_comp+ma.n]
+ df = zeros(nc+length(ma.w13c)+length(ma.w24c))
+ df[1:nc] = d[ma.wnc]
+ df[nc+1:nw13c] = d[ma.w13c+ma.n]
+ df[nw13c+1:nw13c+length(ma.w24c)] = d[ma.w24c+ma.nb_comp+ma.n]
 
  return df
 end
 
-function redd(ma::ActifMPCC,d::Vector,w::Array{Int64,1})
+function redd(ma :: ActifMPCC,
+              d  :: Vector,
+              w  :: Array{Int64,1})
 
-  df=zeros(length(w))
-  df[1:length(w)]=d[w]
+  df = zeros(length(w))
+  df[1:length(w)] = d[w]
 
  return df
 end
@@ -322,14 +334,16 @@ yG+=yG+alpha*dyG --> dyG=(yG+-yG)/alpha
 function ExtddDirection(ma::ActifMPCCmod.ActifMPCC,
                         dr::Vector,xp::Vector,step::Float64)
 @show "ExtddDirection: Est-ce que je sers à quelque chose ?"
+
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+
  d=evald(ma,dr) #evald rempli les trous par des 0
  x=evalx(ma,xp)
 
  d[1:ma.n] = dr[1:ma.n]
 
- psip = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp],ma.r,ma.s,ma.t)
- psi  = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp]-step*d[ma.n+1:ma.n+2*ma.nb_comp],
-                    ma.r,ma.s,ma.t)
+ psip = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp],r,s,t)
+ psi  = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp]-step*d[ma.n+1:ma.n+2*ma.nb_comp],r,s,t)
  #d[ma.w1]=0 #yG fixé
  #d[ma.w2]=0 #yH fixé
 
@@ -359,24 +373,27 @@ include("actifmpcc_nlp.jl")
 #calcul la valeur des multiplicateurs de Lagrange pour la contrainte de complémentarité en utilisant moindre carré
 ############################################################################
 
-function LSQComputationMultiplierBool(ma::ActifMPCC,
-                                      gradpen::Vector,
-                                      xjk::Vector)
+function LSQComputationMultiplierBool(ma  :: ActifMPCC,
+                                      xjk :: Vector)
 
-   l = LSQComputationMultiplier(ma,gradpen,xjk)
+   gradpen = ma.rpen.gx
 
-   l_negative = findfirst(x->x<0,l)!=0
+   l = LSQComputationMultiplier(ma, gradpen, xjk)
 
- return l,l_negative
+   l_negative = findfirst(x->x<0, l) != 0
+
+ return l, l_negative
 end
 
-function LSQComputationMultiplier(ma::ActifMPCC,
-                                  gradpen::Vector,
-                                  xj::Vector)
+function LSQComputationMultiplier(ma      :: ActifMPCC,
+                                  gradpen :: Vector,
+                                  xj      :: Vector)
+
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
 
  dg = Relaxation.dphi(xj[ma.n+1:ma.n+ma.nb_comp],
                       xj[ma.n+ma.nb_comp+1:ma.n+2*ma.nb_comp],
-                      ma.r,ma.s,ma.t)
+                      r, s, t)
 
  gx = dg[1:ma.nb_comp]
  gy = dg[ma.nb_comp+1:2*ma.nb_comp]
@@ -412,6 +429,7 @@ function LSQComputationMultiplier(ma::ActifMPCC,
 
  #compute the multiplier using pseudo-inverse
  l=pinv(A')*b
+ #l=A' \ b
 
  lk = zeros(2*ma.n+3*ma.nb_comp)
  lk[ma.wn1] = l[1:nx1]
@@ -441,9 +459,9 @@ end
 #
 ############################################################################
 
-function RelaxationRule(ma :: ActifMPCC,
-                        xj :: Vector,
-                        l :: Vector,
+function RelaxationRule!(ma   :: ActifMPCC,
+                        xj   :: Vector,
+                        l    :: Vector,
                         wmax :: Array{Bool,2})
 
   copy_wmax = copy(wmax)
@@ -456,12 +474,12 @@ function RelaxationRule(ma :: ActifMPCC,
 
   # Relaxation de l'ensemble d'activation : 
   # désactive toutes les contraintes négatives
-  ll = [llx;lg;lphi;lux;lh;lphi] #pas très catholique comme technique
-  ma.w[find(x -> x<0,ll)] = zeros(Bool,length(find(x -> x<0,ll)))
+  ll = [llx; lg; lphi; lux; lh; lphi] #pas très catholique comme technique
+  ma.w[find(x -> x<0, ll)] = zeros(Bool, length(find(x -> x<0, ll)))
 
   # Règle d'anti-cyclage : 
   # on enlève pas une contrainte qui vient d'être ajouté.
-  ma.w[find(x->x==1.0,copy_wmax)] = ones(Bool,length(find(x->x==1.0,copy_wmax)))
+  ma.w[find(x->x==1.0, copy_wmax)] = ones(Bool,length(find(x->x==1.0, copy_wmax)))
 
  return ActifMPCCmod.updatew(ma)
 end

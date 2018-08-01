@@ -58,9 +58,8 @@ function UpdateOR(or            :: OutputRelaxation,
                   s             :: Float64,
                   t             :: Float64,
                   prec          :: Float64,
-                  realisabilite :: Float64,
-                  outputalas    :: OutputALAS,
-                  obj           :: Float64)
+                  rmpcc         :: RMPCC,
+                  outputalas    :: OutputALAS)
 
  if stat==0
   or.solved=0
@@ -69,6 +68,9 @@ function UpdateOR(or            :: OutputRelaxation,
   or.solved=-1
   or.solve_message="Fail"
  end
+
+ realisabilite = rmpcc.norm_feas
+ obj = rmpcc.fx
 
  or.xtab=[or.xtab xk]
  or.inner_output_alas=[or.inner_output_alas;outputalas]
@@ -83,32 +85,6 @@ function UpdateOR(or            :: OutputRelaxation,
 
  return or
 end
-
-#Tangi18: j'ai l'impression que cette fct ne sert à rien
-#function UpdateOR(or::OutputRelaxation,xk::Vector,stat::Int64,
-#r::Float64,s::Float64,t::Float64,
-#prec::Float64,realisabilite::Float64,output,
-#obj::Float64)
-
-# if stat==0
-#  or.solved=0
-#  or.solve_message="?"
-# else #stat !=0
-#  or.solved=-1
-#  or.solve_message="Fail"
-# end
-
-# or.xtab=[or.xtab xk]
-# or.inner_output_alas=[or.inner_output_alas;output]
-# or.rtab=[or.rtab;r]
-# or.stab=[or.stab;s]
-# or.ttab=[or.ttab;t]
-# or.prectab=[or.prectab;prec]
-# or.realisabilite=[or.realisabilite;realisabilite]
-# or.objtab=[or.objtab;obj]
-# 
-# return or
-#end
 
 function final!(or    :: OutputRelaxation,
                 mod   :: MPCC,

@@ -44,6 +44,8 @@ w_save : l'ensemble des contraintes qui vont devenir actives si choisit alphamax
 """
 function PasMaxComp(ma::ActifMPCC,x::Vector,d::Vector)
 
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+
  #initialisation
  alpha=Inf #pas maximum que l'on peut prendre
  w_save=copy(ma.w[ma.n+1:ma.n+2*ma.nb_comp,1:2]) #double tableau des indices avec les contraintes activent en x+alpha*d
@@ -59,8 +61,8 @@ function PasMaxComp(ma::ActifMPCC,x::Vector,d::Vector)
   bloque=(i in ma.w2) && (i in ma.w4)
   if !(i in ma.w24c) && !bloque && d[rw13c]<0
    #on prend le plus petit entre x+alpha*dx>=-r et s+tTheta(x+alpha*dx-s)>=-r
-   alpha11=(ma.nlp.meta.lvar[iw13c]-x[rw13c])/d[rw13c]
-   alpha12=(Relaxation.invpsi(ma.nlp.meta.lvar[iw13c],ma.r,ma.s,ma.t)-x[rw13c])/d[rw13c]
+   alpha11=(ma.pen.nlp.meta.lvar[iw13c]-x[rw13c])/d[rw13c]
+   alpha12=(Relaxation.invpsi(ma.pen.nlp.meta.lvar[iw13c],r,s,t)-x[rw13c])/d[rw13c]
 
    alphag=AlphaChoix(alpha,alpha11,alpha12)
    if alphag<=alpha
@@ -92,8 +94,8 @@ function PasMaxComp(ma::ActifMPCC,x::Vector,d::Vector)
   bloque=(i in ma.w1) && (i in ma.w3)
   if !(i in ma.w13c) && !bloque && d[rw24c]<0
    #on prend le plus petit entre y+alpha*dy>=-r et s+tTheta(y+alpha*dy-s)>=-r
-   alpha21=(ma.nlp.meta.lvar[iw24c]-x[rw24c])/d[rw24c]
-   alpha22=(Relaxation.invpsi(ma.nlp.meta.lvar[iw24c],ma.r,ma.s,ma.t)-x[rw24c])/d[rw24c]
+   alpha21=(ma.pen.nlp.meta.lvar[iw24c]-x[rw24c])/d[rw24c]
+   alpha22=(Relaxation.invpsi(ma.pen.nlp.meta.lvar[iw24c],r,s,t)-x[rw24c])/d[rw24c]
 
    alphah=AlphaChoix(alpha,alpha21,alpha22)
    if alphah<=alpha
@@ -124,13 +126,13 @@ function PasMaxComp(ma::ActifMPCC,x::Vector,d::Vector)
   rwr1=wr1+nc;rwr2=wr2+length(ma.w13c)+nc;
 
   #alphac=Relaxation.AlphaThetaMax(x[i+ma.n],d[i+ma.n],x[i+length(ma.w13c)+ma.n],d[i+length(ma.w13c)+ma.n],ma.r,ma.s,ma.t)
-  alphac=Relaxation.AlphaThetaMax(x[rwr1],d[rwr1],x[rwr2],d[rwr2],ma.r,ma.s,ma.t)
+  alphac=Relaxation.AlphaThetaMax(x[rwr1],d[rwr1],x[rwr2],d[rwr2],r,s,t)
   #yG-tb=0
-  #alphac11=d[i+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
-  alphac11=d[rwr1]<0 ? (ma.nlp.meta.lvar[rwr1]-x[rwr1])/d[rwr1] : Inf
+  #alphac11=d[i+ma.n]<0 ? (ma.pen.nlp.meta.lvar[ma.n+i]-x[i+ma.n])/d[i+ma.n] : Inf
+  alphac11=d[rwr1]<0 ? (ma.pen.nlp.meta.lvar[rwr1]-x[rwr1])/d[rwr1] : Inf
   #yH-tb=0
-  #alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
-  alphac21=d[rwr2]<0 ? (ma.nlp.meta.lvar[iwr2]-x[rwr2])/d[rwr2] : Inf  
+  #alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.pen.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
+  alphac21=d[rwr2]<0 ? (ma.pen.nlp.meta.lvar[iwr2]-x[rwr2])/d[rwr2] : Inf  
 
   alphagh=AlphaChoix(alpha,alphac[1],alphac[2],alphac11,alphac21)
 
@@ -191,8 +193,8 @@ function PasMaxBound(ma::ActifMPCC,x::Vector,d::Vector)
  alpha = Inf
  w_save=copy(ma.w[1:ma.n,1:2])
 
- l = ma.nlp.meta.lvar[1:ma.n]
- u = ma.nlp.meta.uvar[1:ma.n]
+ l = ma.pen.nlp.meta.lvar[1:ma.n]
+ u = ma.pen.nlp.meta.uvar[1:ma.n]
 
  nc = length(ma.wnc)
  dp0 = find(x->x>0,d[1:nc])

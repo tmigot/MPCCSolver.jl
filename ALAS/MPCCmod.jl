@@ -119,18 +119,24 @@ end
 
 ############################################################################
 
-function obj(mod::MPCC,x::Vector)
- return NLPModels.obj(mod.mp,x)
-end
-"""
-gradient de la fonction objectif
-"""
-function grad(mod::MPCC,x::Vector)
- return NLPModels.grad(mod.mp,x)
+function obj(mod :: MPCC, x :: Vector)
+ return NLPModels.obj(mod.mp, x)
 end
 
-function hess(mod::MPCC,x::Vector)
- return NLPModels.hess(mod.mp,x)
+function grad(mod :: MPCC, x :: Vector)
+ return NLPModels.grad(mod.mp, x)
+end
+
+function hess(mod :: MPCC, x :: Vector)
+ return NLPModels.hess(mod.mp, x)
+end
+
+function consG(mod :: MPCC, x :: Vector)
+ return NLPModels.cons(mod.G, x)
+end
+
+function consH(mod :: MPCC, x :: Vector)
+ return NLPModels.cons(mod.H, x)
 end
 
 """
@@ -207,6 +213,26 @@ function viol_comp(mod::MPCC,x::Vector)
  H=NLPModels.cons(mod.H,x)
 
  return mod.nb_comp>0?G.*H./(G+H+1):[]
+end
+
+function viol_cons(mod   :: MPCC,
+                   x     :: Vector)
+
+ n=mod.n
+
+ x=length(x)==n?x:x[1:n]
+
+ feas_x=vcat(max.(mod.mp.meta.lvar-x,0),max.(x-mod.mp.meta.uvar,0))
+
+ if mod.mp.meta.ncon !=0
+
+  c=cons(mod.mp,x)
+  feas_c=vcat(max.(mod.mp.meta.lcon-c,0),max.(c-mod.mp.meta.ucon,0))
+ else
+  feas_c = []
+ end
+
+ return vcat(feas_x,feas_c)
 end
 
 """

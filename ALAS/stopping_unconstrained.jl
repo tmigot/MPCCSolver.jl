@@ -26,6 +26,9 @@ type TStopping
     #active constraints feasible
     actfeas             :: Bool
 
+    #result
+    wolfe_step          :: Bool
+
     # Stopping properties
     optimality          :: Float64
     optimal             :: Bool
@@ -47,7 +50,7 @@ type TStopping
         
         return new(atol, rtol, unbounded_threshold,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
-                   max_iter, max_time, NaN, Inf, optimality_residual,false,NaN,
+                   max_iter, max_time, NaN, Inf, optimality_residual,false,true,NaN,
                    false,false,false)
     end
 end

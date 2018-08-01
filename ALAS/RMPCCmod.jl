@@ -2,7 +2,7 @@ module RMPCCmod
 
 import MPCCmod.MPCC, MPCCmod.obj, MPCCmod.grad
 import MPCCmod.jac_actif
-import MPCCmod.viol_contrainte, MPCCmod.viol_contrainte_norm,MPCCmod.viol_comp
+import MPCCmod.viol_contrainte, MPCCmod.viol_comp, MPCCmod.viol_cons
 
 import NLPModels.cons
 
@@ -13,6 +13,7 @@ type RMPCC
  gx :: Vector #gradient at x
 
  feas :: Vector #violation of the constraints
+ feas_cc :: Vector #violation of the constraints
  norm_feas :: Float64 # norm of feas
 
  dual_feas :: Vector
@@ -28,6 +29,7 @@ function RMPCC(x              :: Vector;
                fx             :: Float64 = Inf,
                gx             :: Vector  = Float64[],
                feas           :: Vector  = Float64[],
+               feas_cc        :: Vector  = Float64[],
                norm_feas      :: Float64 = Inf,
                dual_feas      :: Vector  = Float64[],
                norm_dual_feas :: Float64 = Inf,
@@ -35,7 +37,7 @@ function RMPCC(x              :: Vector;
                solved         :: Int64   = -1)
 
 
- return RMPCC(x,fx,gx,feas,norm_feas,dual_feas,norm_dual_feas,lambda,solved)
+ return RMPCC(x,fx,gx,feas,feas_cc,norm_feas,dual_feas,norm_dual_feas,lambda,solved)
 end
 
 function start!(rmpcc :: RMPCC,
@@ -43,7 +45,10 @@ function start!(rmpcc :: RMPCC,
                xk :: Vector)
 
  rmpcc.fx = obj(mod,xk)
- rmpcc.norm_feas = viol_contrainte_norm(mod,xk,tnorm=Inf)
+
+ rmpcc.feas = viol_cons(mod,xk)
+ rmpcc.feas_cc = viol_comp(mod,xk)
+ rmpcc.norm_feas = norm(vcat(rmpcc.feas,rmpcc.feas_cc),Inf)
 
  return rmpcc
 end
@@ -126,20 +131,28 @@ function viol_cons_norm(mod   :: MPCC,
                         tnorm :: Real=2)
 
  n=mod.n
-
- x=length(x)==n?x:x[1:n]
-
- feas=norm([max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0)],tnorm)
-
- if mod.mp.meta.ncon !=0
-
-  c=cons(mod.mp,x)
-  feas=max(norm([max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)],tnorm),feas)
-
- end
-
- return feas
+ return norm(viol_cons(mod,x),Inf)
 end
+
+#function viol_cons_norm(mod   :: MPCC,
+#                        x     :: Vector;
+#                        tnorm :: Real=2)
+
+# n=mod.n
+
+# x=length(x)==n?x:x[1:n]
+
+# feas=norm([max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0)],tnorm)
+
+# if mod.mp.meta.ncon !=0
+
+#  c=cons(mod.mp,x)
+#  feas=max(norm([max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)],tnorm),feas)
+
+# end
+
+# return feas
+#end
 
 
 #end of module

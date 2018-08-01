@@ -72,7 +72,7 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
  sol = ActifMPCCmod.evalx(ma,xjp)
  dsol = ActifMPCCmod.evald(ma,d)
 
- gradpen=NLPModels.grad(ma.nlp,sol)
+ gradpen=NLPModels.grad(ma.pen.nlp,sol)
  good_grad || (gradft=ActifMPCCmod.grad(ma,xjp,gradpen))
  
  s=xjp-xj

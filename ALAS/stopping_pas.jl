@@ -1,6 +1,8 @@
 # A stopping manager for iterative solvers
 export TStoppingPAS, start!, stop, ending_test
 
+import RPenmod.RPen
+
 type TStoppingPAS
     atol :: Float64                  # absolute tolerance
     rtol :: Float64                  # relative tolerance
@@ -24,7 +26,7 @@ type TStoppingPAS
     #Sign lambda
     l_negative :: Bool
     negative_test :: Function #findfirst(x->x<0,[lg;lh;lphi])!=0
-    wolfe_step :: Bool
+
     #Feasibility
     feasibility :: Float64
     feasibility_residual :: Function #norm(MPCCmod.viol_contrainte(alas.mod,xjk),Inf)
@@ -52,7 +54,7 @@ type TStoppingPAS
         return new(atol, rtol, goal_viol,rho_max,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
                    max_iter, max_time, NaN, Inf, optimality_residual,false,false,
-                   negative_test,false,NaN,feasibility_residual,false,tired)
+                   negative_test,NaN,feasibility_residual,false,tired)
     end
 end
 
@@ -62,15 +64,14 @@ end
 function pas_start!( mod :: MPCCmod.MPCC,
                  s :: TStoppingPAS,
                 x₀ :: Array{Float64,1},
-                            ∇f :: Array{Float64,1},
-                 l :: Array{Float64,1})
+                    rpen :: RPen)
 
-    s.l_negative=s.negative_test(l)
+    s.l_negative=s.negative_test(rpen.lambda)
 
-    s.feasibility=s.feasibility_residual(MPCCmod.viol_contrainte(mod,x₀))
+    s.feasibility=s.feasibility_residual(rpen.feas)
     s.feas = (s.feasibility < s.atol) | (s.feasibility <( s.rtol * s.feasibility))
 
-    s.optimality = s.optimality_residual(∇f)
+    s.optimality = s.optimality_residual(rpen.dual_feas)
     s.optimal = (s.optimality < s.atol) | (s.optimality <( s.rtol * s.optimality))
 
     s.start_time  = time()
@@ -92,22 +93,12 @@ function pas_rhoupdate!( mod :: MPCCmod.MPCC,
     return s, UPDATE
 end
 
-function pas_relaxation!( mod :: MPCCmod.MPCC,
-                 s :: TStoppingPAS,
-                x₀ :: Array{Float64,1},
-                 l :: Array{Float64,1})
-
-#TO DO
-
-    return s, OK
-end
-
-function pas_stop!( mod :: MPCCmod.MPCC,
-                 s :: TStoppingPAS,
-                x  :: Array{Float64,1},
-                            ∇f :: Array{Float64,1},
-                 iter :: Int64,
-                 ρ :: Float64)
+function pas_stop!(mod :: MPCCmod.MPCC,
+                   s :: TStoppingPAS,
+                   x  :: Array{Float64,1},
+                   rpen :: RPen,
+                   iter :: Int64,
+                   ρ :: Float64)
 
     #counts = nlp.counters
     #calls = [counts.neval_obj,  counts.neval_grad, counts.neval_hess, counts.neval_hprod]
@@ -116,7 +107,7 @@ function pas_stop!( mod :: MPCCmod.MPCC,
     s.feasibility=s.feasibility_residual(MPCCmod.viol_contrainte(mod,x))
     s.feas = (s.feasibility < s.atol) | (s.feasibility <( s.rtol * s.feasibility))
 
-    s.optimality = s.optimality_residual(∇f)
+    s.optimality = s.optimality_residual(rpen.dual_feas)
     s.optimal = (s.optimality < s.atol) | (s.optimality <( s.rtol * s.optimality))
 
 
@@ -139,7 +130,10 @@ function pas_stop!( mod :: MPCCmod.MPCC,
     # global user limit diagnostic
     s.tired = (max_iter) | (max_calls) | (max_time)
 
-    OK = s.tired || (!s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal)
+    #si on bloque mais qu'un multiplicateur est <0 on continue
+    subpb_fail=!rpen.sub_pb_solved && !s.l_negative 
+
+    OK = s.tired || subpb_fail || (!s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal) || rpen.unbounded
   #GOOD=!(k<k_max && (alas.spas.l_negative || !((feasible || minimum(rho)==alas.paramset.rho_max*ma.crho ) && dual_feasible)) && Armijosuccess && !small_step)
 
     # return everything. Most users will use only the first four fields, but return
@@ -149,8 +143,9 @@ function pas_stop!( mod :: MPCCmod.MPCC,
 end
 
 function ending_test(spas::TStoppingPAS,
-                     sub_pb::Bool,
-                     unbounded::Bool)
+                     rpen::RPen)
+
+ sub_pb,unbounded = !rpen.sub_pb_solved,rpen.unbounded
 
  stat=0
  if unbounded

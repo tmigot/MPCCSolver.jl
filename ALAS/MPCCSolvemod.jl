@@ -34,6 +34,9 @@ type MPCCSolve
  paramset   :: ParamSet
  parammpcc  :: ParamMPCC
 
+ rmpcc :: RMPCC
+ smpcc :: StoppingMPCC
+
 end
 
 function MPCCSolve(mod        :: MPCC,
@@ -45,7 +48,12 @@ function MPCCSolve(mod        :: MPCC,
 
  #solve_sub_pb=SolveRelaxSubProblem.SolveSubproblemIpOpt # ne marche pas (MPCCtoRelaxNLP problème)
 
- return MPCCSolve(mod,name_relax,x,algoset,paramset,parammpcc)
+ rmpcc = RMPCC(x)
+ smpcc = StoppingMPCC(precmpcc = parammpcc.precmpcc,
+                      paramin = parammpcc.paramin,
+                      prec_oracle = parammpcc.prec_oracle)
+
+ return MPCCSolve(mod,name_relax,x,algoset,paramset,parammpcc,rmpcc,smpcc)
 end
 
 """
