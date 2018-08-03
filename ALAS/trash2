@@ -35,8 +35,8 @@ function LineSearchSolve(ma::ActifMPCCmod.ActifMPCC,
  beta=ma.beta
 
  #xj est un vecteur de taille (n x length(bar_w))
- if length(xj) == (ma.n+2*ma.nb_comp)
-  xj=vcat(xj[ma.wnc],xj[ma.n+ma.w13c],xj[ma.n+ma.nb_comp+ma.w24c])
+ if length(xj) == (ma.n+2*ma.ncc)
+  xj=vcat(xj[ma.wnc],xj[ma.n+ma.w13c],xj[ma.n+ma.ncc+ma.w24c])
  elseif length(xj) != (length(ma.wnc)+length(ma.w13c)+length(ma.w24c))
   println("Error dimension : UnconstrainedSolve")
   return

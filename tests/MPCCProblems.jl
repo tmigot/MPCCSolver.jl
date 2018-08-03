@@ -28,7 +28,7 @@ JuMP.@constraint(H,x[2]>=0)
 JuMP.@NLobjective(H,Min,0.0)
 H=MathProgNLPModel(H)
 
-ex1= MPCCmod.MPCC(ex1,G,H)
+ex1= MPCCmod.MPCC(ex1,G = G,H = H)
 
 ex1bd=JuMP.Model()
 ux(i)=[Inf;1][i]
@@ -46,7 +46,7 @@ JuMP.@constraint(H,x[2]>=0)
 JuMP.@NLobjective(H,Min,0.0)
 H=MathProgNLPModel(H)
 
-ex1bd= MPCCmod.MPCC(ex1bd,G,H)
+ex1bd= MPCCmod.MPCC(ex1bd,G = G,H = H)
 
 ex2=JuMP.Model()
 JuMP.@variable(ex2,x[1:2],start=-1.0)
@@ -63,7 +63,7 @@ JuMP.@constraint(H,x[2]>=0)
 JuMP.@NLobjective(H,Min,0.0)
 H=MathProgNLPModel(H)
 
-ex2= MPCCmod.MPCC(ex2,G,H)
+ex2= MPCCmod.MPCC(ex2,G = G,H = H)
 
 # Exemple 3 :
 # minimize x1+x2-x3
@@ -88,4 +88,4 @@ JuMP.@constraint(H,x[2]>=0)
 JuMP.@NLobjective(H,Min,0.0)
 H=MathProgNLPModel(H)
 
-ex3= MPCCmod.MPCC(ex3,G,H)
+ex3= MPCCmod.MPCC(ex3,G = G,H = H)

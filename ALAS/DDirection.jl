@@ -56,11 +56,11 @@ using Relaxation
 """
 SteepestDescent : Calcul une direction de descente
 """
-function SteepestDescent(ma::ActifMPCC,
-                         g::Vector,
-                         xj::Vector,
-                         hd::Any,
-                         beta::Float64)
+function SteepestDescent(ma   :: ActifMPCC,
+                         g    :: Vector,
+                         xj   :: Vector,
+                         hd   :: Any,
+                         beta :: Float64)
 
  return -g
 end

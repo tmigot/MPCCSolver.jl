@@ -17,20 +17,20 @@ Liste les choix algorithmiques utilisés dans la résolution du MPCC :
 
 type AlgoSet
 
- penalty::Function
- direction::Function
- linesearch::Function
+ penalty     :: Function
+ direction   :: Function
+ linesearch  :: Function
 
- crho_update::Function #ça sert à quoi déjà ?
+ crho_update :: Function #ça sert à quoi déjà ?
 end
 
 #Constructeur par défaut
-function AlgoSet(;penalty :: Function = Penalty.Quadratic,
-                  direction :: Function = DDirection.SteepestDescent,
-                  linesearch :: Function = LineSearch.ArmijoWolfe,
+function AlgoSet(;penalty     :: Function = Penalty.lagrangian,
+                  direction   :: Function = DDirection.NwtdirectionSpectral,
+                  linesearch  :: Function = LineSearch.armijo_wolfe,
                   crho_update :: Function = CRhoUpdate.MinProd)
 
- return AlgoSet(penalty,direction,linesearch,crho_update)
+ return AlgoSet(penalty, direction, linesearch, crho_update)
 end
 
 #end of module

@@ -5,7 +5,7 @@ sur la réalisabilité dual pendant la pénalisation
 
 
 liste des fonctions :
-SolveSubproblemAlas(mod::MPCCmod.MPCC,
+SolveSubproblemrlx(mod::MPCCmod.MPCC,
                     r::Float64,s::Float64,t::Float64,
                     rho::Vector,name_relax::AbstractString)
 SolveSubproblemIpopt(mod::MPCCmod.MPCC,
@@ -20,54 +20,47 @@ MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64,
 # TO DO List
 #Major :
 # - MPCCtoRelaxNLP : bug à corriger
-# - Ca serait plus économique d'avoir une structure ss-pb pour toute la boucle 
-#   de relaxation plutôt qu'en créer un à chaque fois.
 
-module SolveRelaxSubProblem
+module SolveRelaxSubProblem #est-ce que c'est vraiment un module ?
 
 import MPCCmod.MPCC
 import MPCCmod.consG, MPCCmod.consH
 
-import ALASMPCCmod.ALASMPCC, ALASMPCCmod.solvePAS
-import AlgoSetmod.AlgoSet
-import ParamSetmod.ParamSet
+import RlxMPCCSolvemod.RlxMPCCSolve, RlxMPCCSolvemod.rlx_solve!, RlxMPCCSolvemod.set_x
 
-import RMPCCmod.RMPCC, RMPCCmod.update!
+import RMPCCmod.RMPCC
 import RRelaxmod.relax_start!, RRelaxmod.relax_update!
+import RRelaxmod.cons
+
+import RPenmod.RPen
 
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function SolveSubproblemAlas(mod        :: MPCC,
+############################################################################
+#
+# SolveSubproblemrlx
+#
+############################################################################
+#+ économique comme point initial, mais moins bon ?
+#xk0= length(rlx.xj) == rlx.mod.n ? vcat(x0,consG(rlx.mod,x0),consH(rlx.mod,x0)) : rlx.xj
+
+function solve_subproblem_rlx(rlx       :: RlxMPCCSolve,
                              rmpcc      :: RMPCC,
-                             r          :: Float64,
-                             s          :: Float64,
-                             t          :: Float64,
-                             ρ          :: Vector,
                              name_relax :: AbstractString,
-                             paramset   :: ParamSet,
-                             algoset    :: AlgoSet,
-                             x0         :: Vector,
-                             prec       :: Float64)
+                             x0         :: Vector)
 
-############################################################
- #Initialize/Update the sub-problem
- x0=vcat(x0,consG(mod,x0),consH(mod,x0))
- alas = ALASMPCC(mod,r,s,t,prec,ρ,paramset,algoset,x0)
-
- #initialize rrelax with what we know from rmpcc
- relax_update!(alas.rrelax, mod, r,s,t,alas.tb,x0, 
-               fx = rmpcc.fx, gx = rmpcc.gx, feas = rmpcc.feas)
- relax_start!(alas.rrelax,alas.mod,alas.r,alas.s,alas.t,alas.tb,x0)
-############################################################
+ #update the initial point
+ xk0 = vcat(x0, consG(rlx.mod, x0), consH(rlx.mod, x0))
+ set_x(rlx, xk0)
 
  #solve the sub-problem
- xk,stat,ρ,oa = solvePAS(alas) #lg,lh,lphi,s_xtab dans le output
+ xk, stat, rpen, oa = rlx_solve!(rlx)
 
- #update the result with the output of solve
- update!(rmpcc, mod, xk[1:mod.n])
+ #update rrelax with the output result rpen
+ relax_update!(rlx.rrelax, rlx.mod, rlx.r, rlx.s, rlx.t, rlx.tb, xk, rpen)
 
- return xk,rmpcc,stat==0,ρ,oa
+ return xk[1:rlx.mod.n], rlx, stat==0, oa
 end
 
 using Ipopt
@@ -76,43 +69,42 @@ using MathProgBase
 """
 Methode pour résoudre le sous-problème relaxé :
 """
-function SolveSubproblemIpOpt(mod        :: MPCC,
-                              rmpcc      :: RMPCC,
-                              r          :: Float64,
-                              s          :: Float64,
-                              t          :: Float64,
-                              rho        :: Vector,
-                              name_relax :: AbstractString,
-                              paramset   :: ParamSet,
-                              algoset    :: AlgoSet,
-                              x0         :: Vector,
-                              prec       :: Float64)
- solved=true
- #nlp_relax = MPCCtoRelaxNLP(mod,r,s,t,name_relax) #si nb_comp>0
- nlp_relax=mod.mp
- output=[]
+############################################################################
+#
+# SolveSubproblemIpOpt
+#
+############################################################################
+
+function solve_subproblem_IpOpt(rlx        :: RlxMPCCSolve,
+                                rmpcc      :: RMPCC,
+                                name_relax :: AbstractString,
+                                x0         :: Vector)
+
+ solved = true
+ #nlp_relax = MPCCtoRelaxNLP(rlx.mod,rlx.r,rlx.s,rlx.t,name_relax) #si ncc>0
+ nlp_relax = mod.mp
+ output = []
 
  # resolution du sous-problème avec IpOpt
- model_relax = NLPModels.NLPtoMPB(nlp_relax, IpoptSolver(print_level=0,tol=paramset.precmpcc))
+ model_relax = NLPModels.NLPtoMPB(nlp_relax, IpoptSolver(print_level = 0, tol = rlx.prec))
  MathProgBase.optimize!(model_relax)
 
  if MathProgBase.status(model_relax) == :Optimal
   xk = MathProgBase.getsolution(model_relax)
  else
-  xk=x0
-  solved=false
+  xk = x0
+  solved = false
  end
 
- update!(rmpcc, mod, xk[1:mod.n])
-
- return xk,rmpcc,solved,rho,output
+ return xk, rlx, rmpcc, solved, output
 end
 
-###
+############################################################################
 #
 # !!! Ne marche pas comme ça !!!
 #
-###
+############################################################################
+
 include("mpcc_to_relax_nlp.jl")
 
 #end of module

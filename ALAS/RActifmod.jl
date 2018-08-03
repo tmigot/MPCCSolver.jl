@@ -2,27 +2,28 @@ module RActifmod
 
 import RPenmod.RPen
 
-type RActif #résultat du problème pénalisé
+#résultat du problème pénalisé
+type RActif
 
- x :: Vector
- fx :: Float64 #objective at x
- gx :: Vector #gradient at x
+ x              :: Vector
+ fx             :: Float64 #objective at x
+ gx             :: Vector #gradient at x
 
- feas :: Vector #violation of the constraints
- feas_cc :: Vector #violation of the relaxed constraints
- norm_feas :: Float64 # norm of feas
+ feas           :: Vector #violation of the constraints
+ feas_cc        :: Vector #violation of the relaxed constraints
+ norm_feas      :: Float64 # norm of feas
 
- dual_feas :: Vector
+ dual_feas      :: Vector
  norm_dual_feas :: Float64
 
- lambda :: Vector
+ lambda         :: Vector
 
- wnew :: Array #last added constraints
- step :: Float64 #last step in the sub-problem
- sub_pb_solved :: Bool
- iter :: Int64
+ wnew           :: Array #last added constraints
+ step           :: Float64 #last step in the sub-problem
+ sub_pb_solved  :: Bool
+ iter           :: Int64
 
- solved :: Int64 #code de sortie
+ solved         :: Int64 #code de sortie
 
 end
 
@@ -50,12 +51,12 @@ end
 function actif_start!(ractif  :: RActif,
                       xk      :: Vector,
                       rpen    :: RPen,
-                      nb_comp :: Int64)
+                      ncc     :: Int64)
 
-  n = length(xk) - 2*nb_comp
+  n = length(xk) - 2*ncc
 
   ractif.feas      = rpen.feas[1:2*n]
-  ractif.feas_cc   = rpen.feas[2*n+1:2*n+3*nb_comp]
+  ractif.feas_cc   = rpen.feas[2*n+1:2*n+3*ncc]
   ractif.norm_feas = norm(rpen.feas, Inf)
   ractif.fx        = rpen.fx
   ractif.gx        = rpen.gx

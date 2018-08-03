@@ -8,7 +8,8 @@ MinProd(feas::Float64,rho::Vector)
 """
 module CRhoUpdate
 
-function MinProd(feas::Float64,rho::Vector)
+function MinProd(feas :: Float64, rho :: Vector)
+
  return min(feas*maximum(rho),100)
 end
 

@@ -25,13 +25,13 @@ function sign_stationarity_check(mod      :: MPCC,
 
   IG = [];IH = [];Ig = [];Ih = [];
 
- if mod.mp.meta.ncon+mod.nb_comp > 0
+ if mod.mp.meta.ncon+mod.ncc > 0
 
   c = cons(mod.mp, x)
   Ig = find(z->norm(z-mod.mp.meta.lcon,Inf) <= precmpcc, c)
   Ih = find(z->norm(z-mod.mp.meta.ucon,Inf) <= precmpcc, c)
 
-  if mod.nb_comp > 0
+  if mod.ncc > 0
 
    IG = find(z->norm(z-mod.G.meta.lcon, Inf) <= precmpcc,consG(mod, x))
    IH = find(z->norm(z-mod.H.meta.lcon, Inf) <= precmpcc,consH(mod, x))
@@ -44,7 +44,7 @@ function sign_stationarity_check(mod      :: MPCC,
 
  I_biactif = ∩(IG,IH)
  lG = [2*n+2*mod.mp.meta.ncon+I_biactif]
- lH = [2*n+2*mod.mp.meta.ncon+mod.nb_comp+I_biactif]
+ lH = [2*n+2*mod.mp.meta.ncon+mod.ncc+I_biactif]
  l_cc = min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
 
  return norm([l_pos;l_cc],Inf)<=precmpcc
@@ -85,7 +85,7 @@ function stationary_check(mod      :: MPCC,
  n = mod.n
  b = -grad(mod,x)
 
- if mod.mp.meta.ncon+mod.nb_comp ==0
+ if mod.mp.meta.ncon+mod.ncc ==0
 
   optimal = norm(b,Inf) <= precmpcc
 

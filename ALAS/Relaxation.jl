@@ -8,7 +8,7 @@ dpsi(x::Any,r::Float64,s::Float64,t::Float64)
 ddpsi(x::Any,r::Float64,s::Float64,t::Float64)
 
 phi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
-phi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
+phi(x::Any,ncc::Int64,r::Float64,s::Float64,t::Float64)
 
 dphi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
 dphi(x::Any,r::Float64,s::Float64,t::Float64)
@@ -18,6 +18,7 @@ AlphaThetaMax(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float6
 module Relaxation
 
 using Thetafunc
+import Thetafunc.AlphaThetaMax
 
 """
 psi(x) : colle au notation de l'article pour la méthode des papillons
@@ -42,23 +43,23 @@ function ddpsi(x::Any,r::Float64,s::Float64,t::Float64)
 end
 
 """
-phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (nb_comp,nb_comp)
+phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (ncc,ncc)
 """
 function phi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
  return (yg-psi(yh,r,s,t)).*(yh-psi(yg,r,s,t))
 end
 """
-phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en x in n+2nb_comp
+phi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en x in n+2ncc
 """
-function phi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
- n=length(x)-2*nb_comp
- yg=x[n+1:n+nb_comp]
- yh=x[n+nb_comp+1:n+2*nb_comp]
+function phi(x::Any,ncc::Int64,r::Float64,s::Float64,t::Float64)
+ n=length(x)-2*ncc
+ yg=x[n+1:n+ncc]
+ yh=x[n+ncc+1:n+2*ncc]
  return phi(yg,yh,r,s,t)
 end
 
 """
-dphi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (nb_comp,nb_comp)
+dphi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (ncc,ncc)
 """
 function dphi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
 
@@ -69,12 +70,12 @@ function dphi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
 end
 
 """
-dphi(yg,yh,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en x in n+2nb_comp
+dphi(yg,yh,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en x in n+2ncc
 """
-function dphi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
- n=length(x)-2*nb_comp
- yg=x[n+1:n+nb_comp]
- yh=x[n+nb_comp+1:n+2*nb_comp]
+function dphi(x::Any,ncc::Int64,r::Float64,s::Float64,t::Float64)
+ n=length(x)-2*ncc
+ yg=x[n+1:n+ncc]
+ yh=x[n+ncc+1:n+2*ncc]
  return [zeros(n);dphi(yg,yh,r,s,t)]
 end
 
@@ -88,8 +89,8 @@ In : x float (position en x)
      s float (paramètre)
      t float (paramètre)
 """
-function AlphaThetaMax(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
- return Thetafunc.AlphaThetaMax(x,dx,y,dy,r,s,t)
+function alpha_theta_max(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
+ return AlphaThetaMax(x,dx,y,dy,r,s,t)
 end
 
 #end of module

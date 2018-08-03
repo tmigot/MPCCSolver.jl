@@ -1,0 +1,34 @@
+"""
+Calcul la direction étendue à partir de la direction du sous-domaine
+complète une version étendue de la direction de descente :
+dr : la direction dans le sous-espace actif
+xp : le nouvel itéré
+step : le pas utilisé pour calculé xp
+
+utilise la formule suivante :
+yG+=yG+alpha*dyG --> dyG=(yG+-yG)/alpha
+"""
+#Tangi18: Est-ce que cette fonction sert à quelque chose ?
+function ExtddDirection(ma::ActifMPCCmod.ActifMPCC,
+                        dr::Vector,xp::Vector,step::Float64)
+@show "ExtddDirection: Est-ce que je sers à quelque chose ?"
+
+ r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+
+ d=evald(ma,dr) #evald rempli les trous par des 0
+ x=evalx(ma,xp)
+
+ d[1:ma.n] = dr[1:ma.n]
+
+ psip = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp],r,s,t)
+ psi  = Relaxation.psi(x[ma.n+1:ma.n+2*ma.nb_comp]-step*d[ma.n+1:ma.n+2*ma.nb_comp],r,s,t)
+ #d[ma.w1]=0 #yG fixé
+ #d[ma.w2]=0 #yH fixé
+
+ d[ma.n+ma.w3]=(psip[ma.w3+ma.nb_comp]-psi[ma.w3+ma.nb_comp])/step #yG fixé
+ d[ma.n+ma.nb_comp+ma.w4]=(psip[ma.w4]-psi[ma.w4])/step #yH fixé
+ #d[ma.n+ma.w13c]=dr[ma.n+ma.w13c] #yG est libre
+ #d[ma.n+ma.nb_comp+ma.w24c]=dr[ma.n+ma.nb_comp+ma.w24c] #yG est libre
+
+ return d
+end

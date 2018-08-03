@@ -2,6 +2,7 @@
 export TStoppingPAS, start!, stop, ending_test
 
 import RPenmod.RPen
+import Stopping.TStopping
 
 type TStoppingPAS
     atol :: Float64                  # absolute tolerance
@@ -85,7 +86,7 @@ function pas_rhoupdate!( mod :: MPCCmod.MPCC,
                 x₀ :: Array{Float64,1})
 
     feasibility = s.feasibility
-    s.feasibility=s.feasibility_residual(MPCCmod.viol_contrainte(mod,x₀))
+    s.feasibility = s.feasibility_residual(MPCCmod.viol_contrainte(mod, x₀))
     s.feas = (s.feasibility < s.atol) | (s.feasibility <( s.rtol * s.feasibility))
 
     UPDATE = s.feasibility>s.goal_viol*feasibility && !s.feas
@@ -97,8 +98,10 @@ function pas_stop!(mod :: MPCCmod.MPCC,
                    s :: TStoppingPAS,
                    x  :: Array{Float64,1},
                    rpen :: RPen,
-                   iter :: Int64,
+                   sts :: TStopping,
                    ρ :: Float64)
+
+    iter = rpen.iter
 
     #counts = nlp.counters
     #calls = [counts.neval_obj,  counts.neval_grad, counts.neval_hess, counts.neval_hprod]
@@ -125,6 +128,7 @@ function pas_stop!(mod :: MPCCmod.MPCC,
     elapsed_time = time() - s.start_time
 
     max_iter = iter >= s.max_iter
+
     max_time = elapsed_time > s.max_time
 
     # global user limit diagnostic
@@ -133,7 +137,7 @@ function pas_stop!(mod :: MPCCmod.MPCC,
     #si on bloque mais qu'un multiplicateur est <0 on continue
     subpb_fail=!rpen.sub_pb_solved && !s.l_negative 
 
-    OK = s.tired || subpb_fail || (!s.l_negative && (s.feas || minimum(ρ)==s.rho_max ) && s.optimal) || rpen.unbounded
+    OK = s.tired || subpb_fail || (!s.l_negative && (s.feas || ρ == s.rho_max ) && s.optimal) || sts.unbounded
   #GOOD=!(k<k_max && (alas.spas.l_negative || !((feasible || minimum(rho)==alas.paramset.rho_max*ma.crho ) && dual_feasible)) && Armijosuccess && !small_step)
 
     # return everything. Most users will use only the first four fields, but return
@@ -143,9 +147,9 @@ function pas_stop!(mod :: MPCCmod.MPCC,
 end
 
 function ending_test(spas::TStoppingPAS,
-                     rpen::RPen)
+                     rpen::RPen, sts::TStopping)
 
- sub_pb,unbounded = !rpen.sub_pb_solved,rpen.unbounded
+ sub_pb, unbounded = !rpen.sub_pb_solved, sts.unbounded
 
  stat=0
  if unbounded

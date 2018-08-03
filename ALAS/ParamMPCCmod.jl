@@ -1,6 +1,6 @@
 module ParamMPCCmod
 
-import SolveRelaxSubProblem.SolveSubproblemAlas
+import SolveRelaxSubProblem.solve_subproblem_rlx, SolveRelaxSubProblem.solve_subproblem_IpOpt
 
 type ParamMPCC
 
@@ -36,7 +36,7 @@ function ParamMPCC(nbc          :: Int64;
                    paramin      :: Float64  = sqrt(eps(Float64)),
                    initrst      :: Function = ()->(1.0,0.5,0.5),
                    updaterst    :: Function = (r,s,t)->(0.1*r,0.1*s,0.05*t),
-                   solve_sub_pb :: Function = SolveSubproblemAlas,
+                   solve_sub_pb :: Function = solve_subproblem_rlx,
                    verbose      :: Int64    = 0)
 
  return ParamMPCC(precmpcc,prec_oracle,

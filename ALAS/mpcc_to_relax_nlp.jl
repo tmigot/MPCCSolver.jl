@@ -33,9 +33,9 @@ function MPCCtoRelaxNLP_dontwork(mod::MPCC, r::Float64, s::Float64, t::Float64, 
   nl_constraint(x)=[G(x).*H(x);G(x);H(x)]
  end
 
- lcon=[mod.mp.meta.lcon;-Inf*ones(mod.nb_comp);zeros(mod.nb_comp*2)]
- ucon=[mod.mp.meta.ucon;zeros(mod.nb_comp);Inf*ones(mod.nb_comp*2)]
- y0=[mod.mp.meta.y0;zeros(3*mod.nb_comp)]
+ lcon=[mod.mp.meta.lcon;-Inf*ones(mod.ncc);zeros(mod.ncc*2)]
+ ucon=[mod.mp.meta.ucon;zeros(mod.ncc);Inf*ones(mod.ncc*2)]
+ y0=[mod.mp.meta.y0;zeros(3*mod.ncc)]
 
  nlc(x)=[tc(x);nl_constraint(x)]
  f(x)=MathProgBase.eval_f(mod.mp.mpmodel.eval, x)
@@ -62,9 +62,9 @@ function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::Ab
 
  nl_constraint(x)=[G(x).*H(x)-t;G(x);H(x)]
 
- #lcon=[mod.mp.meta.lcon;-Inf*ones(mod.nb_comp);zeros(mod.nb_comp*2)]
- #ucon=[mod.mp.meta.ucon;zeros(mod.nb_comp);Inf*ones(mod.nb_comp*2)]
- #y0=[mod.mp.meta.y0;zeros(3*mod.nb_comp)]
+ #lcon=[mod.mp.meta.lcon;-Inf*ones(mod.ncc);zeros(mod.ncc*2)]
+ #ucon=[mod.mp.meta.ucon;zeros(mod.ncc);Inf*ones(mod.ncc*2)]
+ #y0=[mod.mp.meta.y0;zeros(3*mod.ncc)]
  lcon=mod.mp.meta.lcon
  ucon=mod.mp.meta.ucon
  y0=mod.mp.meta.y0
@@ -82,7 +82,7 @@ function MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64, relax::Ab
 
  Hx(x;obj_weight=1.0, y=zeros)=hess(mod.mp,x,y)
  Hcoord(x;obj_weight=1.0, y=zeros)=hess_coord(mod.mp,x,y)
-#-hess(mod.G,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.nb_comp]-hess(mod.H,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.nb_comp])
+#-hess(mod.G,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.ncc]-hess(mod.H,x,y[mod.mp.meta.y0+1:mod.mp.meta.y0+mod.ncc])
   Hp(x, v, obj_weight=1.0, y=zeros) = hprod(mod.mp,x, v, obj_weight=1.0, y=zeros)
  Hp!(x, v, obj_weight=1.0, y=zeros) = hprod!(mod.mp,x, v, Hv, obj_weight=1.0, y=zeros)
 

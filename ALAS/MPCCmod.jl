@@ -2,6 +2,8 @@ module MPCCmod
 
 using NLPModels
 
+import NLPModels.AbstractNLPModel
+
 """
 Definit le type MPCC :
 min_x f(x)
@@ -12,47 +14,28 @@ lb <= c(x) <= ub
 liste des constructeurs :
 MPCC(f::Function,x0::Vector,
      G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,
-     nb_comp::Int64,
+     ncc::Int64,
      lvar::Vector,uvar::Vector,
      c::Function,lcon::Vector,ucon::Vector)
 MPCC(mp::NLPModels.AbstractNLPModel,
-     G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel,nb_comp)
-MPCC(mp::NLPModels.AbstractNLPModel)
-MPCC(mp::NLPModels.AbstractNLPModel,algo::AlgoSetmod.AlgoSet)
-MPCC(mp::NLPModels.AbstractNLPModel,
-     G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel;nb_comp::Float64=NaN)
+     G::NLPModels.AbstractNLPModel,H::NLPModels.AbstractNLPModel;ncc::Float64=NaN)
 
 liste des accesseurs :
-addInitialPoint(mod::MPCC,x0::Vector)
-obj(mod::MPCC,x::Vector)
-grad(mod::MPCC,x::Vector)
-jac_actif(mod::MPCC,x::Vector)
+
 
 liste des fonctions :
-viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
-viol_contrainte_norm(mod::MPCCmod.MPCC,x::Vector)
-viol_contrainte(mod::MPCCmod.MPCC,x::Vector,yg::Vector,yh::Vector)
-viol_contrainte(mod::MPCCmod.MPCC,x::Vector)
-viol_comp(mod::MPCCmod.MPCC,x::Vector)_ _v'
 
-dual_feasibility(mod::MPCC,x::Vector,l::Vector,A::Any)
-sign_stationarity_check(mod::MPCC,x::Vector,l::Vector)
-sign_stationarity_check(mod::MPCC,x::Vector,l::Vector,
-                        Il::Array{Int64,1},Iu::Array{Int64,1},
-                        Ig::Array{Int64,1},Ih::Array{Int64,1},
-                        IG::Array{Int64,1},IH::Array{Int64,1})
-stationary_check(mod::MPCC,x::Vector)
 """
 
 type MPCC
 
- mp :: NLPModels.AbstractNLPModel
- G  :: NLPModels.AbstractNLPModel
- H  :: NLPModels.AbstractNLPModel
+ mp :: AbstractNLPModel
+ G  :: AbstractNLPModel
+ H  :: AbstractNLPModel
 
- nb_comp :: Int64 #nb of complementarity constraints
- nbc     :: Int64 #nb of constraints (non-linéaire+bornes+complémentarité)
- n       :: Int64 #dimension of the problem
+ ncc :: Int64 #nb of complementarity constraints
+ nbc :: Int64 #nb of constraints (non-linéaire+bornes+complémentarité)
+ n   :: Int64 #dimension of the problem
 
 end
 
@@ -62,55 +45,37 @@ end
 
 ############################################################################
 
-function MPCC(f::Function,
-              x0::Vector,
-              G::NLPModels.AbstractNLPModel,
-              H::NLPModels.AbstractNLPModel,
-              nb_comp::Int64,
-              lvar::Vector,
-              uvar::Vector,
-              c::Function,
-              lcon::Vector,
-              ucon::Vector)
+function MPCC(f    :: Function,
+              x0   :: Vector,
+              G    :: AbstractNLPModel,
+              H    :: AbstractNLPModel,
+              ncc  :: Int64,
+              lvar :: Vector,
+              uvar :: Vector,
+              c    :: Function,
+              lcon :: Vector,
+              ucon :: Vector)
 
- mp=ADNLPModel(f, x0, lvar=lvar, uvar=uvar, c=c, lcon=lcon, ucon=ucon)
+ mp = ADNLPModel(f, x0, lvar = lvar, uvar = uvar, c = c, lcon = lcon, ucon = ucon)
 
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- n=length(mp.meta.x0)
+ nbc = length(mp.meta.lvar) + length(mp.meta.uvar) + length(mp.meta.lcon) + length(mp.meta.ucon) + 2*ncc
+ #et mp.meta.mp.ncon ? - pourquoi length ?
 
- return MPCC(mp,G,H,nb_comp,nbc,n)
+ n = length(mp.meta.x0)
+
+ return MPCC(mp, G, H, ncc, nbc, n)
 end
 
-function MPCC(mp::NLPModels.AbstractNLPModel,
-              G::NLPModels.AbstractNLPModel,
-              H::NLPModels.AbstractNLPModel,
-              nb_comp::Int64)
+function MPCC(mp  :: AbstractNLPModel;
+              G   :: AbstractNLPModel = SimpleNLPModel(x->0, [0.0]),
+              H   :: AbstractNLPModel = SimpleNLPModel(x->0, [0.0]),
+              ncc :: Int64=-1)
 
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- n=length(mp.meta.x0)
- 
- return MPCC(mp,G,H,nb_comp,nbc,n)
-end
+ ncc = ncc == -1 ? G.meta.ncon : ncc
+ n = length(mp.meta.x0)
+ nbc = 2*(n + mp.meta.ncon + ncc)
 
-function MPCC(mp::NLPModels.AbstractNLPModel)
-
- #le plus "petit" SimpleNLPModel
- G=SimpleNLPModel(x->0, [0.0])
- H=SimpleNLPModel(x->0, [0.0])
-
- return MPCC(mp,G,H,nb_comp=0)
-end
-
-function MPCC(mp::NLPModels.AbstractNLPModel,
-              G::NLPModels.AbstractNLPModel,
-              H::NLPModels.AbstractNLPModel;
-              nb_comp::Float64=NaN) #erreur Int64
-
- nb_comp=isnan(nb_comp)?length(NLPModels.cons(G,mp.meta.x0)):nb_comp
- nbc=length(mp.meta.lvar)+length(mp.meta.uvar)+length(mp.meta.lcon)+length(mp.meta.ucon)+2*nb_comp
- n=length(mp.meta.x0)
-
- return MPCC(mp,G,H,nb_comp,nbc,n)
+ return MPCC(mp, G, H, ncc, nbc, n)
 end
 
 ############################################################################
@@ -131,6 +96,38 @@ function hess(mod :: MPCC, x :: Vector)
  return NLPModels.hess(mod.mp, x)
 end
 
+function cons(mod :: MPCC, x :: Vector)
+
+ n = mod.n
+ x = length(x) == n ? x : x[1:n]
+
+ feas_x = vcat(max.(mod.mp.meta.lvar-x, 0), max.(x-mod.mp.meta.uvar, 0))
+
+ if mod.mp.meta.ncon !=0
+
+  c = NLPModels.cons(mod.mp, x)
+  feas_c = vcat(max.(mod.mp.meta.lcon-c, 0), max.(c-mod.mp.meta.ucon, 0))
+
+ else
+
+  feas_c = []
+
+ end
+
+ G=NLPModels.cons(mod.G, x)
+ H=NLPModels.cons(mod.H, x)
+
+ if ncc != 0
+  feas_cp = vcat(max.(mod.G.meta.lvar-G, 0), max.(mod.H.meta.lvar-H, 0))
+  feas_cc = max.(G.*H, 0)
+ else
+  feas_cp = []
+  feas_cc = []
+ end
+
+ return vcat(feas_x, feas_c, feas_cp, feas_cc)
+end
+
 function consG(mod :: MPCC, x :: Vector)
  return NLPModels.cons(mod.G, x)
 end
@@ -143,29 +140,29 @@ end
 Jacobienne des contraintes actives à precmpcc près
 """
 
-function jac_actif(mod::MPCC,x::Vector,prec)
+function jac_actif(mod :: MPCC, x :: Vector, prec :: Float64)
 
-  n=mod.n
+  n = mod.n
 
-  Il=find(z->z<=prec,abs.(x-mod.mp.meta.lvar))
-  Iu=find(z->z<=prec,abs.(x-mod.mp.meta.uvar))
-  jl=zeros(n);jl[Il]=1.0;Jl=diagm(jl);
-  ju=zeros(n);ju[Iu]=1.0;Ju=diagm(ju);
+  Il = find(z->z<=prec,abs.(x-mod.mp.meta.lvar))
+  Iu = find(z->z<=prec,abs.(x-mod.mp.meta.uvar))
+  jl = zeros(n);jl[Il]=1.0;Jl=diagm(jl);
+  ju = zeros(n);ju[Iu]=1.0;Ju=diagm(ju);
 
   IG=[];IH=[];Ig=[];Ih=[];
 
- if mod.mp.meta.ncon+mod.nb_comp ==0
+ if mod.mp.meta.ncon+mod.ncc ==0
 
   A=[]
 
  else
-  c=cons(mod.mp,x)
+  c=NLPModels.cons(mod.mp,x)
   Ig=find(z->z<=prec,abs.(c-mod.mp.meta.lcon))
   Ih=find(z->z<=prec,abs.(c-mod.mp.meta.ucon))
   Jg=NLPModels.jac(mod.mp,x)[Ig,1:n]
   Jh=NLPModels.jac(mod.mp,x)[Ih,1:n]
 
-  if mod.nb_comp>0
+  if mod.ncc>0
    IG=find(z->z<=prec,abs.(NLPModels.cons(mod.G,x)-mod.G.meta.lcon))
    IH=find(z->z<=prec,abs.(NLPModels.cons(mod.H,x)-mod.H.meta.lcon))
 
@@ -185,7 +182,7 @@ Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ;
 function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
 
  c=NLPModels.cons(mod.mp,x)
- if mod.nb_comp>0
+ if mod.ncc>0
   G=NLPModels.cons(mod.G,x)
   H=NLPModels.cons(mod.H,x)
   return [G-yg;H-yh;max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0);max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)]
@@ -195,10 +192,10 @@ function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
 
 end
 
-function viol_contrainte(mod::MPCC,x::Vector) #x de taille n+2nb_comp
+function viol_contrainte(mod::MPCC,x::Vector) #x de taille n+2ncc
  n=length(mod.mp.meta.x0)
 
- return viol_contrainte(mod,x[1:n],x[n+1:n+mod.nb_comp],x[n+mod.nb_comp+1:n+2*mod.nb_comp])
+ return viol_contrainte(mod,x[1:n],x[n+1:n+mod.ncc],x[n+mod.ncc+1:n+2*mod.ncc])
 end
 
 """
@@ -212,7 +209,7 @@ function viol_comp(mod::MPCC,x::Vector)
  G=NLPModels.cons(mod.G,x)
  H=NLPModels.cons(mod.H,x)
 
- return mod.nb_comp>0?G.*H./(G+H+1):[]
+ return mod.ncc>0?G.*H./(G+H+1):[] #et les contraintes de positivité ?
 end
 
 function viol_cons(mod   :: MPCC,

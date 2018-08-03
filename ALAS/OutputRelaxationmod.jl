@@ -53,7 +53,7 @@ end
 #Après une itération :
 function UpdateOR(or            :: OutputRelaxation,
                   xk            :: Vector,
-                  stat          :: Int64,
+                  stat          :: Bool,
                   r             :: Float64,
                   s             :: Float64,
                   t             :: Float64,
@@ -113,14 +113,17 @@ function final!(or    :: OutputRelaxation,
  return or
 end
 
-function UpdateFinalOR(or::OutputRelaxation,
-                       mess::String)
+function UpdateFinalOR(or   :: OutputRelaxation,
+                       mess :: String)
 
  or.solve_message=mess
  return or
 end
 
-function Print(or::OutputRelaxation,n::Int64,verbose::Int64;j::Int64=0)
+function Print(or      :: OutputRelaxation,
+               n       :: Int64,
+               verbose :: Int64;
+               j       :: Int64=0)
  if verbose>0
   println("")
   if j==0

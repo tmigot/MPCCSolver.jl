@@ -1,49 +1,46 @@
 importall LSDescentMethods
 
-function WorkingMin(ma     :: ActifMPCC,
-                    xjk    :: Vector,
-                    ractif :: RActif,
-                    oa     :: OutputALAS)
+function working_min(ma     :: ActifMPCC,
+                     xjk    :: Vector,
+                     ractif :: RActif,
+                     oa     :: OutputALAS)
 
  n=ma.n
  ρ = ma.pen.ρ
  dj = ma.dj
  ht,gradpen,wnew,step = ractif.fx, ractif.gx, ractif.wnew, ractif.step
 
- gradpen_prec=copy(gradpen) #sert juste pour checker wolfe (doit disparaitre)
+ gradpen_prec = copy(gradpen) #sert juste pour checker wolfe (doit disparaitre)
 
- l=0
-  ∇f=grad(ma,xjk,gradpen) #one eval can be saved
+ l = 0
+  ∇f = grad(ma, xjk, gradpen) #one eval can be saved
 
- ma.sts,OK=start!(ma,ma.sts,xjk,∇f)
+ ma.sts, OK = start!(ma, ma.sts, xjk, ∇f)
 
- subpb_fail=false
+ subpb_fail = false
  #Boucle 1 : Etape(s) de minimisation dans le sous-espace de travail
  while !OK
 
-  xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=LineSearchSolve(ma,
-                                                                               xjk,
-                                                                                dj,
-                                                                              step,
-                                                                           gradpen,
-                                                                                ht)
-  xjk=xjkl
+  #pourquoi il y a small_step ici et plus bas ?
+  xjkl,ma.w,dj,step,wnew,outputArmijo,small_step,ols,gradpen,ht=line_search_solve(ma,
+                                                                                 xjk,
+                                                                                  dj,
+                                                                                step,
+                                                                             gradpen,
+                                                                                  ht)
+  xjk = xjkl
 
-  #Prochaine étape :
-  #Faire sortir les contraintes actives du LineSearch
+  ma.sts.unbounded = outputArmijo==2
 
-  Armijosuccess = (outputArmijo==0)
-  ma.sts.unbounded = outputArmijo==2 ? true : false
+    ∇f = grad(ma, xjk, gradpen)
 
-    ∇f = grad(ma,xjk,gradpen)
+  l += 1
+  OK, elapsed_time = stop(ma, ma.sts, l, xjk, ht, ∇f)
 
-  l+=1
-  OK, elapsed_time = stop(ma,ma.sts,l,xjk,ht,∇f)
-
-  Update(oa,xjk,ρ,ractif.norm_feas,ma.sts.optimality,dj,step,ols,ht,n)
+  oa_update!(oa, xjk, ρ, ractif.norm_feas, ma.sts.optimality, dj, step, ols, ht, n)
 
   small_step = step == 0.0
-  subpb_fail=!(Armijosuccess && !small_step)
+  subpb_fail =! (outputArmijo==0 && !small_step)
 
   OK = OK || subpb_fail
  end
@@ -69,16 +66,15 @@ end
 ###################################################################################
 
 importall LSDescentMethods
-import ActifMPCCmod.evalx, ActifMPCCmod.PasMax, ActifMPCCmod.setw
 
-function WorkingMinProj(ma     :: ActifMPCC,
-                        xjk    :: Vector,
-                        ractif :: RActif,
-                        oa     :: OutputALAS)
+function working_min_proj(ma     :: ActifMPCC,
+                          xjk    :: Vector,
+                          ractif :: RActif,
+                          oa     :: OutputALAS)
 
  verbose = true
 
- n=ma.n
+ n = ma.n
  ρ = ma.pen.ρ
  ht,gradpen,wnew,step = ractif.fx, ractif.gx, ractif.wnew, ractif.step
 
@@ -86,27 +82,25 @@ function WorkingMinProj(ma     :: ActifMPCC,
 
   (x,d, f, tmp, iter,
   optimal, tired, status,   ma.counters.neval_obj,
-  ma.counters.neval_grad, ma.counters.neval_hess)=Newton(ma,
-                                                         x0=ma.x0,
+  ma.counters.neval_grad, ma.counters.neval_hess)=Newton(ma, x0=ma.x0,
                                                          stp=ma.sts,
                                      Nwtdirection=NwtdirectionSpectral)
-
  #NwtdirectionLDLt, NwtdirectionSpectral, CG_HZ
 
  if !tired && !ma.sts.actfeas   #backtracking:
    #Calcul du pas maximum:
-   step,wmax,wnew = PasMax(ma,x_old,d)
+   step, wmax, wnew = pas_max(ma, x_old, d)
    x = x_old + step*d
-   xjk = evalx(ma,x)
+   xjk = evalx(ma, x)
    ma.x0 = xjk
    #We hit a new constraint:
-   setw(ma,wmax)
+   setw(ma, wmax)
    ma.sts.wolfe_step = false
 
   verbose && print_with_color(:yellow, "step: $(step) \n")
  elseif !tired
    ma.x0 = x
-   xjk = evalx(ma,x)
+   xjk = evalx(ma, x)
    ma.sts.wolfe_step = true
  end
 

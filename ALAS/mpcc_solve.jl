@@ -3,98 +3,99 @@
 # MAIN FUNCTION
 #
 # TO DO : - c'est pénible d'avoir r,s,t au lieu de t de dim <= 3
-#         - qui doit s'occuper de rho et de la précision du sous-pb ?
 #
 ###################################################################################
 function solve(mpccsol :: MPCCSolve)
 
- xk = mpccsol.xj
-
- #Initialize the sub-problem (-ich)
- (r,s,t) = mpccsol.parammpcc.initrst()
- rho = mpccsol.parammpcc.rho_init
-
- #Initialization
+ xk    = mpccsol.xj
  rmpcc = mpccsol.rmpcc
  smpcc = mpccsol.smpcc
 
+ #Initialization
+ rlx = _rlx_init(mpccsol, xk)
+
  start!(rmpcc, mpccsol.mod, xk)
- OK = stop_start!(smpcc, mpccsol.mod, xk, rmpcc, r, s, t)
+ relax_start!(rlx.rrelax, rlx.mod, rlx.r, rlx.s, rlx.t, rlx.tb, xk,
+              c = rmpcc.feas, fx = rmpcc.fx)
+ OK = stop_start!(smpcc, mpccsol.mod, xk, rmpcc)
 
  or = OutputRelaxation(xk, rmpcc)
 
  #Major Loop
- j = 0
  while OK
 
-  #update the sub-problem (1)
-  rho = j == 0 ? mpccsol.parammpcc.rho_restart(r,s,t,rho) : rho
+  #solve the sub-problem
+  xk, rlx, solved, output = _solve_subproblem(rlx, xk, mpccsol, rmpcc) #pourquoi solved ?
 
-  xk,rmpcc,solved,rho,output = solve_subproblem(mpccsol,r,s,t,rho,rmpcc)
+  #update the sub-problem
+  _rlx_update!(rlx, mpccsol)
 
-  #met à jour le MPCC avec le nouveau point:
-  mpccsol = set_x(mpccsol, xk[1:mpccsol.mod.n]) 
+  #stopping
+  OK = stop!(smpcc, mpccsol.mod, xk, rmpcc, rlx, solved)
 
-  #update the sub-problem (2)
-  (r,s,t) = mpccsol.parammpcc.updaterst(r,s,t)
+  #output
+  UpdateOR(or, xk, solved, rlx.r, rlx.s, rlx.t, rlx.prec, rmpcc, output)
 
-  OK = stop!(smpcc,mpccsol.mod,xk,rmpcc,r,s,t,solved)
-
-  UpdateOR(or,xk[1:mpccsol.mod.n],0,r,s,t,
-              smpcc.prec_oracle(r,s,t,smpcc.precmpcc),
-              rmpcc,output)
-
-  j+=1
  end
  #End Major Loop
 
 
- #Traitement final :
- rmpcc = final(smpcc,rmpcc)
- or = final!(or,mpccsol.mod,rmpcc)
+ #Final:
+ #update the MPCC with the current iterate:
+ mpccsol = set_x(mpccsol, xk) 
 
- Print(or,mpccsol.mod.n,mpccsol.paramset.verbose)
+ final_update!(rmpcc, mpccsol.mod, xk, rlx)
+ rmpcc   = final(smpcc, rmpcc)
 
- # output
+ final!(or, mpccsol.mod, rmpcc)
+ Print(or, mpccsol.mod.n, mpccsol.paramset.verbose)
+
  return xk, rmpcc, or
 end
 ###################################################################################
-
 """
-Une méthode supplémentaire rapide
+Initialize the solve sub-problem structure
 """
-function solve(mod :: MPCC)
+function _rlx_init(mpccsol :: MPCCSolve,
+                   xk      :: Vector)
 
- return solve(MPCCSolve(mod, mod.mp.meta.x0))
+ #Initialize the sub-problem
+ (r,s,t) = mpccsol.parammpcc.initrst()
+ ρ       = mpccsol.parammpcc.rho_init
+ prec    = mpccsol.parammpcc.prec_oracle(r, s, t, mpccsol.parammpcc.precmpcc)
+
+ #Initialize the sub-problem Solve structure:
+ rlx = RlxMPCCSolve(mpccsol.mod, r, s, t, prec, ρ, mpccsol.paramset, mpccsol.algoset, xk)
+ #rlx.xj = vcat(xk,consG(mpccsol.mod,xk),consH(mpccsol.mod,xk))
+
+ return rlx
 end
-
-
 """
-Methode pour résoudre le sous-problème relaxé :
+Update of the solve sub-problem structure
 """
-function solve_subproblem(inst  :: MPCCSolve,
-                          r     :: Float64,
-                          s     :: Float64,
-                          t     :: Float64,
-                          rho   :: Vector,
-                          rmpcc :: RMPCC)
+function _rlx_update!(rlx    :: RlxMPCCSolve,
+                      mpccsol :: MPCCSolve)
 
+  r,s,t = mpccsol.parammpcc.updaterst(rlx.r, rlx.s, rlx.t)
 
- #Il faut réflechir un peu plus sur des alternatives
- prec = inst.parammpcc.prec_oracle(r,s,t,inst.parammpcc.precmpcc)
+  tb    = mpccsol.paramset.tb(r, s, t)
+  rho   = mpccsol.parammpcc.rho_restart(r, s, t, rlx.rho_init)
+  prec  = mpccsol.parammpcc.prec_oracle(r, s, t, mpccsol.parammpcc.precmpcc)
 
- return inst.parammpcc.solve_sub_pb(inst.mod,
-                                    rmpcc,
-                                    r,s,t,
-                                    rho,
-                                    inst.name_relax,
-                                    inst.paramset,
-                                    inst.algoset,
-                                    inst.xj,
-                                    prec)
+ return update_rlx!(rlx, r, s, t, tb, prec, rho)
 end
 
 """
-****
+Solve the relaxed sub-problem
 """
+function _solve_subproblem(rlx     :: RlxMPCCSolve,
+                          xj       :: Vector,
+                          mpccsol  :: MPCCSolve,
+                          rmpcc    :: RMPCC)
+
+ return mpccsol.parammpcc.solve_sub_pb(rlx,
+                                       rmpcc,
+                                       mpccsol.name_relax,
+                                       xj)
+end
 

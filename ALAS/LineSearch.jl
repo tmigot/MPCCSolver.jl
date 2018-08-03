@@ -17,7 +17,7 @@ using ActifMPCCmod
 Armijo : Backtracking line search
          1D Minimization
 """
-function Armijo(ma::ActifMPCCmod.ActifMPCC,xj::Any,d::Any,hg::Any,stepmax::Float64,slope::Float64,old_alpha::Float64;
+function armijo(ma::ActifMPCCmod.ActifMPCC,xj::Any,d::Any,hg::Any,stepmax::Float64,slope::Float64,old_alpha::Float64;
                 verbose :: Bool=false, kwargs...)
 
  good_grad=false
@@ -43,8 +43,14 @@ end
 ArmijoWolfe : Backtracking line search + amélioration si le pas initial peut être augmenté
          1D Minimization
 """
-function ArmijoWolfe(ma::ActifMPCCmod.ActifMPCC,xj::AbstractVector,d::AbstractVector,hg::Float64,stepmax::Float64,slope::Float64,old_alpha::Float64;
-                verbose :: Bool=true, kwargs...)
+function armijo_wolfe(ma        :: ActifMPCCmod.ActifMPCC,
+                      xj        :: AbstractVector,
+                      d         :: AbstractVector,
+                      hg        :: Float64,
+                      stepmax   :: Float64,
+                      slope     :: Float64,
+                      old_alpha :: Float64;
+                      verbose   :: Bool=true, kwargs...)
 
  good_grad=false
  nbW=0
@@ -53,15 +59,15 @@ function ArmijoWolfe(ma::ActifMPCCmod.ActifMPCC,xj::AbstractVector,d::AbstractVe
 
  #First try to increase t to satisfy loose Wolfe condition 
 
- xjp=xj+step*d
- ht=ActifMPCCmod.obj(ma,xjp)
+ xjp = xj+step*d
+ ht = ActifMPCCmod.obj(ma,xjp)
 
  gradft=ActifMPCCmod.grad(ma,xjp)
  slope_t=dot(d,gradft)
 
- while (slope_t<ma.paramset.tau_wolfe*slope) && (ht-hg<=ma.paramset.tau_armijo*step*slope) && (nbW<ma.paramset.ite_max_wolfe) && step<stepmax
+ while (slope_t < ma.paramset.tau_wolfe*slope) && (ht-hg<=ma.paramset.tau_armijo*step*slope) && (nbW<ma.paramset.ite_max_wolfe) && step<stepmax
 
-  step=min(step*ma.paramset.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
+  step = min(step*ma.paramset.wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
   xjp=xj+step*d
   ht=ActifMPCCmod.obj(ma,xjp)
   gradft=ActifMPCCmod.grad(ma,xjp)
@@ -96,7 +102,7 @@ ArmijoWolfe : 'Newarmijo_wolfe' de JPD
 Problème avec Hager et Zhang numerical trick
 + Ca n'a pas passé mon test... même sans Hager et Zhang trick...
 """
-function ArmijoWolfeHZ(ma::ActifMPCCmod.ActifMPCC,xj::Any,d::Any,hg::Any,stepmax::Float64,
+function armijo_wolfe_hz(ma::ActifMPCCmod.ActifMPCC,xj::Any,d::Any,hg::Any,stepmax::Float64,
                 slope::Float64,old_alpha::Float64;verbose :: Bool=false, kwargs...)
 
  # Perform improved Armijo linesearch.
