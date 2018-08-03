@@ -25,16 +25,16 @@ function solve(mpccsol :: MPCCSolve)
  while OK
 
   #solve the sub-problem
-  xk, rlx, solved, output = _solve_subproblem(rlx, xk, mpccsol, rmpcc) #pourquoi solved ?
+  xk, rlx, output = _solve_subproblem(rlx, xk, mpccsol, rmpcc)
 
   #update the sub-problem
   _rlx_update!(rlx, mpccsol)
 
   #stopping
-  OK = stop!(smpcc, mpccsol.mod, xk, rmpcc, rlx, solved)
+  OK = stop!(smpcc, mpccsol.mod, xk, rmpcc, rlx)
 
   #output
-  UpdateOR(or, xk, solved, rlx.r, rlx.s, rlx.t, rlx.prec, rmpcc, output)
+  UpdateOR(or, xk, rlx.spas.sub_pb_solved == 0, rlx.r, rlx.s, rlx.t, rlx.prec, rmpcc, output)
 
  end
  #End Major Loop

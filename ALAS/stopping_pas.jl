@@ -35,6 +35,9 @@ type TStoppingPAS
     # Stopping properties
     tired::Bool
 
+    #bilan
+    sub_pb_solved :: Int64
+
     function TStoppingPAS(;atol :: Float64 = 1.0e-8,
                        rtol :: Float64 = 1.0e-6,
                        goal_viol :: Float64 = -1.0e50,
@@ -55,7 +58,7 @@ type TStoppingPAS
         return new(atol, rtol, goal_viol,rho_max,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
                    max_iter, max_time, NaN, Inf, optimality_residual,false,false,
-                   negative_test,NaN,feasibility_residual,false,tired)
+                   negative_test,NaN,feasibility_residual,false,tired,0)
     end
 end
 
@@ -146,7 +149,7 @@ function pas_stop!(mod :: MPCCmod.MPCC,
            #,max_obj_f, max_obj_g, max_obj_H, max_obj_Hv, max_total, max_iter, max_time
 end
 
-function ending_test(spas::TStoppingPAS,
+function ending_test!(spas::TStoppingPAS,
                      rpen::RPen, sts::TStopping)
 
  sub_pb, unbounded = !rpen.sub_pb_solved, sts.unbounded
@@ -175,5 +178,6 @@ function ending_test(spas::TStoppingPAS,
   end
  end
 
+ spas.sub_pb_solved = stat
  return stat
 end

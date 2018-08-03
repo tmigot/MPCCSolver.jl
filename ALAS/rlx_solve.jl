@@ -28,7 +28,7 @@ function rlx_solve!(rlx     :: RlxMPCCSolve;
  # S3: MAJOR LOOP
  while !GOOD
 
-  xjk, ma = solve_subproblem_pen(ma, xjk, oa)
+  xjk, ma = pen_solve(ma, xjk, oa) #xjk dans ma.x0 ?
 
   rlx.spas, UPDATE = pas_rhoupdate!(rlx.mod, rlx.spas, xjk)
 
@@ -44,8 +44,8 @@ function rlx_solve!(rlx     :: RlxMPCCSolve;
  #Traitement finale :
  rlx = set_x(rlx, xjk)
 
- stat = ending_test(rlx.spas, ma.rpen, ma.sts)
+ stat = ending_test!(rlx.spas, ma.rpen, ma.sts)
 
  return xjk, stat, ma.rpen, oa
 end
-
+#ma.sts:

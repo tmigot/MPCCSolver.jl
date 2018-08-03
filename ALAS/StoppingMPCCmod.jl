@@ -59,10 +59,10 @@ function stop!(smpcc  :: StoppingMPCC,
                mod    :: MPCC,
                xk     :: Vector,
                rmpcc  :: RMPCC,
-               rlx   :: RlxMPCCSolve,
-               solved :: Bool)
+               rlx   :: RlxMPCCSolve)
 
   r,s,t = rlx.r, rlx.s, rlx.t
+  solved = rlx.spas.sub_pb_solved == 0
 
   #real = rlx.rrelax.norm_feas
 

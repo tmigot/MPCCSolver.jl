@@ -5,6 +5,7 @@ import ParamSetmod.ParamSet
 import RPenmod.RPen
 import PenMPCCmod.PenMPCC
 import Stopping.TStopping
+import StoppingPenmod.StoppingPen
 
 import OutputALASmod.oa_update!
 
@@ -24,7 +25,7 @@ type ActifMPCC <: AbstractNLPModel
  w          :: Array{Bool,2} # n +2ncc x 2 matrix
 
  n          :: Int64 #dans le fond est optionnel si on a ncc
- ncc    :: Int64
+ ncc        :: Int64
 
  #set of indices:
  wnc        :: Array{Int64,1} # indices of free variables in 1,...,n
@@ -60,10 +61,12 @@ type ActifMPCC <: AbstractNLPModel
  #Hd       ::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
 
  paramset   :: ParamSet
+ uncmin     :: Function #fonction qui 
  direction  :: Function #fonction qui calcul la direction de descente
  linesearch :: Function #fonction qui calcul la recherche linéaire
 
  rpen       :: RPen
+ spen       :: StoppingPen
  sts        :: TStopping
 
 end
@@ -123,7 +126,7 @@ import Stopping.TStopping, Stopping.start!, Stopping.stop
 import RPenmod.RPen, RPenmod.pen_start!, RPenmod.pen_update!
 import PenMPCCmod.PenMPCC
 
-include("solve_subproblem_pen.jl")
+include("pen_solve.jl")
 
 ############################################################################
 #

@@ -3,6 +3,7 @@ importall LSDescentMethods
 function working_min(ma     :: ActifMPCC,
                      xjk    :: Vector,
                      ractif :: RActif,
+                     sts    :: TStopping,
                      oa     :: OutputALAS)
 
  n=ma.n
@@ -10,12 +11,10 @@ function working_min(ma     :: ActifMPCC,
  dj = ma.dj
  ht,gradpen,wnew,step = ractif.fx, ractif.gx, ractif.wnew, ractif.step
 
- gradpen_prec = copy(gradpen) #sert juste pour checker wolfe (doit disparaitre)
-
  l = 0
   ∇f = grad(ma, xjk, gradpen) #one eval can be saved
 
- ma.sts, OK = start!(ma, ma.sts, xjk, ∇f)
+ sts, OK = start!(ma, sts, xjk, ∇f)
 
  subpb_fail = false
  #Boucle 1 : Etape(s) de minimisation dans le sous-espace de travail
@@ -30,14 +29,14 @@ function working_min(ma     :: ActifMPCC,
                                                                                   ht)
   xjk = xjkl
 
-  ma.sts.unbounded = outputArmijo==2
+  sts.unbounded = outputArmijo==2
 
     ∇f = grad(ma, xjk, gradpen)
 
   l += 1
-  OK, elapsed_time = stop(ma, ma.sts, l, xjk, ht, ∇f)
+  OK, elapsed_time = stop(ma, sts, l, xjk, ht, ∇f)
 
-  oa_update!(oa, xjk, ρ, ractif.norm_feas, ma.sts.optimality, dj, step, ols, ht, n)
+  oa_update!(oa, xjk, ρ, ractif.norm_feas, sts.optimality, dj, step, ols, ht, n)
 
   small_step = step == 0.0
   subpb_fail =! (outputArmijo==0 && !small_step)
@@ -45,7 +44,9 @@ function working_min(ma     :: ActifMPCC,
   OK = OK || subpb_fail
  end
 
- ma.sts.wolfe_step = dot(gradpen,dj)>=ma.paramset.tau_wolfe*dot(gradpen_prec,dj)
+ ###########################################################################
+ #Final rending:
+ sts.wolfe_step = dot(gradpen,dj) >= ma.paramset.tau_wolfe*dot(ractif.gx,dj)
 
  ractif.step = step
  ractif.wnew = wnew
@@ -55,8 +56,9 @@ function working_min(ma     :: ActifMPCC,
  ractif.iter = l
 
  ma.dj = dj
+ ###########################################################################
 
- return xjk,ma,ractif
+ return xjk,ma,ractif,sts
 end
 
 ###################################################################################
@@ -70,6 +72,7 @@ importall LSDescentMethods
 function working_min_proj(ma     :: ActifMPCC,
                           xjk    :: Vector,
                           ractif :: RActif,
+                          sts    :: TStopping,
                           oa     :: OutputALAS)
 
  verbose = true
@@ -83,11 +86,11 @@ function working_min_proj(ma     :: ActifMPCC,
   (x,d, f, tmp, iter,
   optimal, tired, status,   ma.counters.neval_obj,
   ma.counters.neval_grad, ma.counters.neval_hess)=Newton(ma, x0=ma.x0,
-                                                         stp=ma.sts,
+                                                         stp=sts,
                                      Nwtdirection=NwtdirectionSpectral)
  #NwtdirectionLDLt, NwtdirectionSpectral, CG_HZ
 
- if !tired && !ma.sts.actfeas   #backtracking:
+ if !tired && !sts.actfeas   #backtracking:
    #Calcul du pas maximum:
    step, wmax, wnew = pas_max(ma, x_old, d)
    x = x_old + step*d
@@ -95,13 +98,13 @@ function working_min_proj(ma     :: ActifMPCC,
    ma.x0 = xjk
    #We hit a new constraint:
    setw(ma, wmax)
-   ma.sts.wolfe_step = false
+   sts.wolfe_step = false
 
   verbose && print_with_color(:yellow, "step: $(step) \n")
  elseif !tired
    ma.x0 = x
    xjk = evalx(ma, x)
-   ma.sts.wolfe_step = true
+   sts.wolfe_step = true
  end
 
  ht,gradpen = objgrad(ma,xjk)
@@ -113,7 +116,7 @@ function working_min_proj(ma     :: ActifMPCC,
  ractif.gx = gradpen
  ractif.fx = ht
  ractif.iter = iter
- ma.dj = d
 
- return xjk,ma,ractif
+ ma.dj = d
+ return xjk,ma,ractif,sts
 end

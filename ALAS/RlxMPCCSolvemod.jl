@@ -21,16 +21,17 @@ import MPCCmod.obj, MPCCmod.grad
 import MPCCmod.consG, MPCCmod.consH
 
 import Stopping.TStopping
+import StoppingPenmod.StoppingPen
 
 import StoppingRelax.TStoppingPAS
 import StoppingRelax.pas_start!,  StoppingRelax.pas_rhoupdate!
-import StoppingRelax.pas_stop!,   StoppingRelax.ending_test
+import StoppingRelax.pas_stop!,   StoppingRelax.ending_test!
 
 import RRelaxmod.RRelax, RRelaxmod.relax_start!
 
 import Relaxation.psi
 
-import ActifMPCCmod.solve_subproblem_pen
+import ActifMPCCmod.pen_solve
 
 """
 Type ALASMPCC : 

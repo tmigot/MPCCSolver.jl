@@ -1,9 +1,11 @@
 function ActifMPCC(pen        :: PenMPCC,
                    ncc        :: Int64,
                    paramset   :: ParamSet,
+                   uncmin     :: Function,
                    direction  :: Function,
                    linesearch :: Function,
                    sts        :: TStopping,
+                   spen       :: StoppingPen,
                    rpen       :: RPen)
 
  nn  = length(pen.nlp.meta.x0) #n + 2ncc
@@ -55,10 +57,10 @@ function ActifMPCC(pen        :: PenMPCC,
  
  meta = pen.nlp.meta
  x  = pen.nlp.meta.x0
- x0 = vcat(x[1:n], x[n+w13c], x[n+ncc+w24c])
+ x0 = vcat(x[wnc], x[n+w13c], x[n+ncc+w24c])
 
  return ActifMPCC(meta,Counters(),x0,pen,w,n,ncc,
                   wnc,wn1,wn2,w1,w2,w3,w4,
                   wcomp,w13c,w24c,wc,wcc,wnew,dj,crho,beta,Hess,
-                  paramset,direction,linesearch,rpen,sts)
+                  paramset,uncmin,direction,linesearch,rpen,spen,sts)
 end

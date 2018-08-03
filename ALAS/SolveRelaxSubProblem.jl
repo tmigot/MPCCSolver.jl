@@ -60,7 +60,7 @@ function solve_subproblem_rlx(rlx       :: RlxMPCCSolve,
  #update rrelax with the output result rpen
  relax_update!(rlx.rrelax, rlx.mod, rlx.r, rlx.s, rlx.t, rlx.tb, xk, rpen)
 
- return xk[1:rlx.mod.n], rlx, stat==0, oa
+ return xk[1:rlx.mod.n], rlx, oa
 end
 
 using Ipopt
@@ -96,7 +96,9 @@ function solve_subproblem_IpOpt(rlx        :: RlxMPCCSolve,
   solved = false
  end
 
- return xk, rlx, rmpcc, solved, output
+ rlx.spas.sub_pb_solved = solved
+
+ return xk, rlx, output
 end
 
 ############################################################################

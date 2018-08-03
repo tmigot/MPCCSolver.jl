@@ -2,6 +2,11 @@ module StoppingPenmod
 
 import RPenmod.RPen
 
+importall PenMPCCmod
+import PenMPCCmod.PenMPCC
+
+import Stopping.TStopping
+
 type StoppingPen
 
     atol :: Float64                  # absolute tolerance
@@ -58,27 +63,32 @@ type StoppingPen
     end
 end
 
-function pen_start!(smpcc :: StoppingPen, 
-               rmpcc :: RPen,
-               xk    :: Vector)
+function spen_start!(spen :: StoppingPen,
+                    pen  :: PenMPCC,
+                    rpen :: RPen,
+                    xk   :: Vector)
 
- OK = true
+ OK = false
 
  return OK
 end
 
-function pen_stop!(smpcc :: StoppingPen, 
-               rmpcc :: RPen,
-               xk     :: Vector)
+function spen_stop!(spen :: StoppingPen, 
+                   pen  :: PenMPCC,
+                   rpen :: RPen,
+                   xk   :: Vector)
 
  OK = true
  
  return OK
 end
 
-function pen_final(smpcc :: StoppingPen, 
-               rmpcc :: RPen)
- return rmpcc
+function spen_final!(spen :: StoppingPen, 
+                     rpen :: RPen)
+
+ #spen.wolfe_step = sts.wolfe_step
+
+ return spen
 end
 
 # end of module
