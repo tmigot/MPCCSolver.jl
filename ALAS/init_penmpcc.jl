@@ -3,8 +3,9 @@ function _initialize_pen_mpcc(rlx  :: RlxMPCCSolve,
                               ρ    :: Vector,
                               u    :: Vector)
 
- n   = rlx.mod.n
- ncc = rlx.mod.ncc
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
 
  #Create a penalized NLP with bounds
  pen_nlp = _create_penaltynlp(rlx, xj, ρ, u)
@@ -24,9 +25,9 @@ function _initialize_pen_mpcc(rlx  :: RlxMPCCSolve,
  end
 
  penmpcc = PenMPCC(pen_nlp,
-                   rlx.r,rlx.s,rlx.t,
+                   r,s,t,
                    ρ,u,
-                   rlx.mod.ncc,rlx.mod.n)
+                   ncc,n)
 
  return penmpcc, rpen
 end

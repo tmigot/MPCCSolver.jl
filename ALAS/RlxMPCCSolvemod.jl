@@ -5,9 +5,16 @@ using NLPModels
 import AlgoSetmod.AlgoSet
 import ParamSetmod.ParamSet
 
-import ActifMPCCmod.ActifMPCC,ActifMPCCmod.grad
-import ActifMPCCmod.lsq_computation_multiplier_bool, ActifMPCCmod.relaxation_rule!
+###################################################################################
+import ActifMPCCmod.ActifMPCC
+import ActifMPCCmod.lsq_computation_multiplier_bool
 import ActifMPCCmod.setbeta, ActifMPCCmod.setcrho #pas sûr que ça reste
+###################################################################################
+
+import PenMPCCSolvemod.PenMPCCSolve
+import PenMPCCSolvemod.grad
+import PenMPCCSolvemod.lsq_computation_multiplier_bool
+import PenMPCCSolvemod.pen_solve
 
 import RPenmod.RPen
 import RPenmod.pen_start!, RPenmod.pen_update!, RPenmod.pen_rho_update!
@@ -20,7 +27,6 @@ import MPCCmod.MPCC, MPCCmod.viol_contrainte
 import MPCCmod.obj, MPCCmod.grad
 import MPCCmod.consG, MPCCmod.consH
 
-import Stopping.TStopping
 import StoppingPenmod.StoppingPen
 
 import StoppingRelax.TStoppingPAS
@@ -31,7 +37,7 @@ import RRelaxmod.RRelax, RRelaxmod.relax_start!
 
 import Relaxation.psi
 
-import ActifMPCCmod.pen_solve
+import RlxMPCCmod.RlxMPCC
 
 """
 Type ALASMPCC : 
@@ -54,13 +60,7 @@ liste des fonctions :
 
 type RlxMPCCSolve
 
- mod      :: MPCC
-
- #paramètres du pb
- r        :: Float64
- s        :: Float64
- t        :: Float64
- tb       :: Float64
+ nlp      :: RlxMPCC
 
  #paramètres algorithmiques
  prec     :: Float64 #precision à 0
@@ -97,7 +97,10 @@ function RlxMPCCSolve(mod      :: MPCC,
 
  rrelax = RRelax(x)
 
- return RlxMPCCSolve(mod,r,s,t,tb,prec,rho_init,x,paramset,algoset,spas,rrelax)
+ nlp = RlxMPCC(mod,r,s,t,tb,mod.ncc,mod.n, x = x)
+
+ return RlxMPCCSolve(nlp,
+                     prec,rho_init,x,paramset,algoset,spas,rrelax)
 end
 """
 Accesseur : modifie le point initial
@@ -124,14 +127,14 @@ function update_rlx!(rlx  :: RlxMPCCSolve,
                      prec :: Float64,
                      rho  :: Vector)
 
- rlx.r = r
- rlx.s = s
- rlx.t = t
  rlx.prec = prec
  rlx.rho_init = rho
 
- #rlx.tb = rlx.paramset.tb(r, s, t)
- rlx.tb = tb
+ rlx.nlp.r  = r
+ rlx.nlp.s  = s
+ rlx.nlp.t  = t
+ rlx.nlp.tb = tb
+ #rlx.nlp.tb = rlx.paramset.tb(r, s, t)
 
  rlx.spas.atol = rlx.prec
 
@@ -153,35 +156,34 @@ include("rlx_solve.jl")
 ############################################################################
 
 function _update_penalty!(rlx    :: RlxMPCCSolve,
-                          ma      :: ActifMPCC, 
+                          ps      :: PenMPCCSolve, 
                           xjk     :: Vector, 
                           UPDATE  :: Bool, 
                           verbose :: Bool)
 
   if UPDATE
 
-   ma.pen.ρ, ma  = _check_update_rho(rlx, ma, xjk, verbose)
-   rlx.rho_init = ma.pen.ρ
+   ps.pen.ρ, ps  = _check_update_rho!(rlx, ps, xjk, verbose)
 
   end
 
   #Mise à jour des paramètres de la pénalité Lagrangienne
-  ma.pen.u = _lagrange_update(rlx, ma.pen.ρ, xjk, ma.pen.u)
+  ps.pen.u = _lagrange_update(rlx, ps.pen.ρ, xjk, ps.pen.u)
 
   #met à jour la fonction objectif après la mise à jour des multiplicateurs
-  ma.pen.nlp, ma.rpen.fx, ma.rpen.gx = _update_penaltynlp(rlx, ma.pen.ρ, xjk,
-                                                          ma.pen.u,
-                                                          ma.pen.nlp,
-                                                          objpen = ma.rpen.fx,
-                                                          gradpen = ma.rpen.gx)
+  ps.pen.nlp, ps.rpen.fx, ps.rpen.gx = _update_penaltynlp(rlx, ps.pen.ρ, xjk,
+                                                          ps.pen.u,
+                                                          ps.pen.nlp,
+                                                          objpen = ps.rpen.fx,
+                                                          gradpen = ps.rpen.gx)
 
-  ma.rpen.lambda, rlx.spas.l_negative = lsq_computation_multiplier_bool(ma, xjk) 
+  ps.rpen.lambda, rlx.spas.l_negative = lsq_computation_multiplier_bool(ps, xjk) 
   #ne fait pas tout à fait la même chose
-  #rpen.lambda,rlx.spas.l_negative = computation_multiplier_bool(pen,rpen.gx,xjk)
+  #ps.rpen.lambda, rlx.spas.l_negative = computation_multiplier_bool(ps.pen,ps.rpen.gx,xjk)
 
-  pen_rho_update!(ma.pen, ma.rpen, xjk)
+  pen_rho_update!(ps.pen, ps.rpen, xjk)
 
- return rlx, ma
+ return rlx, ps
 end
 
 ############################################################################
@@ -190,37 +192,39 @@ end
 #
 ############################################################################
 
-function _check_update_rho(rlx    :: RlxMPCCSolve,
-                           ma      :: ActifMPCC,
+function _check_update_rho!(rlx    :: RlxMPCCSolve,
+                           ps      :: PenMPCCSolve,
                            xjkl    :: Vector,
                            verbose :: Bool)
 
- ht, gradpen = ma.rpen.fx, ma.rpen.gx
+ ht, gradpen = ps.rpen.fx, ps.rpen.gx
  feas = rlx.spas.feasibility
 
- ρ = ma.pen.ρ
- u = ma.pen.u
+ ρ = ps.pen.ρ
+ u = ps.pen.u
 
- cx = viol_contrainte(rlx.mod, xjkl)
- ρ = _rho_update(rlx, ρ, ma.crho, abs.(cx))
+ cx = viol_contrainte(rlx.nlp.mod, xjkl)
+ ρ = _rho_update(rlx, ρ, ps.crho, abs.(cx))
 
  #on change le problème donc on réinitialise beta
- setcrho(ma, rlx.algoset.crho_update(feas, ρ))
+ #setcrho(ma, rlx.algoset.crho_update(feas, ρ))
+ ps.crho = rlx.algoset.crho_update(feas, ρ)
 
  #met à jour la fonction objectif après la mise à jour de rho
- ma.pen.nlp, ht, gradpen = _update_penaltynlp(rlx, ρ, xjkl, u,
-                                              ma.pen.nlp,
+ ps.pen.nlp, ht, gradpen = _update_penaltynlp(rlx, ρ, xjkl, u,
+                                              ps.pen.nlp,
                                               objpen=ht,
                                               gradpen=gradpen,
-                                              crho=ma.crho)
+                                              crho=ps.crho)
 
  #met à jour les différents paramètres horizontaux
- setbeta(ma,0.0) #on change le problème donc on réinitialise beta
+ #setbeta(ma,0.0) #on change le problème donc on réinitialise beta
+ ps.beta = 0.0
  #ActifMPCCmod.sethess(ma,H) #on change le problème donc on réinitialise Hess
 
- ma.rpen.fx, ma.rpen.gx = ht, gradpen
+ ps.rpen.fx, ps.rpen.gx = ht, gradpen
 
- return ρ,ma
+ return ρ,ps
 end
 
 ############################################################################
@@ -296,21 +300,24 @@ function _lagrange_comp_init(rlx  :: RlxMPCCSolve,
                              xj   :: Vector;
                              c    :: Vector = Float64[])
 
- n   = rlx.mod.n
- ncc = rlx.mod.ncc
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ mod   = rlx.nlp.mod
+ r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
+ tb    = rlx.nlp.tb
 
- ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcons, ρ_ucon = _rho_detail(rlx.mod, ρ)
+ ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcons, ρ_ucon = _rho_detail(mod, ρ)
  
  if c == Float64[]
 
-  psiyg = psi(xj[n+1:n+ncc], rlx.r, rlx.s, rlx.t)
-  psiyh = psi(xj[n+1+ncc:n+2*ncc], rlx.r, rlx.s, rlx.t)
+  psiyg = psi(xj[n+1:n+ncc], r, s, t)
+  psiyh = psi(xj[n+1+ncc:n+2*ncc], r, s, t)
 
   #la fonction phi ne fait pas ça ?
   phi = (xj[n+1:n+ncc]-psiyh).*(xj[n+1+ncc:n+2*ncc]-psiyg)
 
-  slackg = xj[n+1:n+ncc]-rlx.tb
-  slackh = xj[n+1+ncc:n+2*ncc]-rlx.tb
+  slackg = xj[n+1:n+ncc]-tb
+  slackh = xj[n+1+ncc:n+2*ncc]-tb
 
  else
 
@@ -339,24 +346,27 @@ function _lagrange_init(rlx  :: RlxMPCCSolve,
                         xj   :: Vector;
                         c    :: Vector = Float64[])
 
- n = rlx.mod.n
- ncon = rlx.mod.mp.meta.ncon
- ncc = rlx.mod.ncc
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ mod   = rlx.nlp.mod
+ r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
+ tb    = rlx.nlp.tb
+ ncon  = rlx.nlp.mod.mp.meta.ncon
 
- ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(rlx.mod, ρ)
+ ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(mod, ρ)
 
  if c == Float64[]
 
-  uxl = max.(ρ_lvar.*(rlx.mod.mp.meta.lvar-xj[1:n]), zeros(n))
-  uxu = max.(ρ_uvar.*(xj[1:n]-rlx.mod.mp.meta.uvar), zeros(n))
+  uxl = max.(ρ_lvar.*(mod.mp.meta.lvar-xj[1:n]), zeros(n))
+  uxu = max.(ρ_uvar.*(xj[1:n]-mod.mp.meta.uvar), zeros(n))
 
-  if rlx.mod.mp.meta.ncon != 0
+  if mod.mp.meta.ncon != 0
 
-   cx = NLPModels.cons(rlx.mod.mp, xj[1:n])
-   nc = length(rlx.mod.mp.meta.y0) #nombre de contraintes
+   cx = NLPModels.cons(mod.mp, xj[1:n])
+   nc = length(mod.mp.meta.y0) #nombre de contraintes
 
-   ucl = max.(ρ_lcon.*(rlx.mod.mp.meta.lcon-cx), zeros(nc))
-   ucu = max.(ρ_ucon.*(cx-rlx.mod.mp.meta.ucon), zeros(nc))
+   ucl = max.(ρ_lcon.*(mod.mp.meta.lcon-cx), zeros(nc))
+   ucu = max.(ρ_ucon.*(cx-mod.mp.meta.ucon), zeros(nc))
 
   else
 
@@ -365,8 +375,8 @@ function _lagrange_init(rlx  :: RlxMPCCSolve,
 
   end
 
-  usg = zeros(rlx.mod.ncc)
-  ush = zeros(rlx.mod.ncc)
+  usg = zeros(ncc)
+  ush = zeros(ncc)
 
   u = vcat(usg,ush,uxl,uxu,ucl,ucu)
 
@@ -390,28 +400,30 @@ function _lagrange_update(rlx  :: RlxMPCCSolve,
                           xjk  :: Vector,
                           u    :: Vector)
 
- n = rlx.mod.n
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ mod   = rlx.nlp.mod
 
- ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(rlx.mod, ρ)
- usg,ush,uxl,uxu,ucl,ucu = _rho_detail(rlx.mod,u)
+ ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(mod, ρ)
+ usg,ush,uxl,uxu,ucl,ucu = _rho_detail(mod,u)
 
- uxl = uxl+max.(ρ_lvar.*(xjk[1:n]-rlx.mod.mp.meta.uvar), -uxl)
- uxu = uxu+max.(ρ_uvar.*(rlx.mod.mp.meta.lvar-xjk[1:n]), -uxu)
+ uxl = uxl+max.(ρ_lvar.*(xjk[1:n]-mod.mp.meta.uvar), -uxl)
+ uxu = uxu+max.(ρ_uvar.*(mod.mp.meta.lvar-xjk[1:n]), -uxu)
 
- if rlx.mod.mp.meta.ncon != 0
+ if mod.mp.meta.ncon != 0
 
-  c = NLPModels.cons(rlx.mod.mp, xjk[1:n])
-  ucl = ucl+max.(ρ_lcon.*(c-rlx.mod.mp.meta.ucon), -ucl)
-  ucu = ucu+max.(ρ_ucon.*(rlx.mod.mp.meta.lcon-c), -ucu)
+  c = NLPModels.cons(mod.mp, xjk[1:n])
+  ucl = ucl+max.(ρ_lcon.*(c-mod.mp.meta.ucon), -ucl)
+  ucu = ucu+max.(ρ_ucon.*(mod.mp.meta.lcon-c), -ucu)
 
  end
 
- if rlx.mod.ncc != 0
+ if ncc != 0
 
-  G(x) = consG(rlx.mod, x)
-  H(x) = consH(rlx.mod, x)
-  usg = usg+ρ_eqg.*(G(xjk[1:n])-xjk[n+1:n+rlx.mod.ncc])
-  ush = ush+ρ_eqh.*(H(xjk[1:n])-xjk[n+rlx.mod.ncc+1:n+2*rlx.mod.ncc])
+  G(x) = consG(mod, x)
+  H(x) = consH(mod, x)
+  usg = usg+ρ_eqg.*(G(xjk[1:n])-xjk[n+1:n+ncc])
+  ush = ush+ρ_eqh.*(H(xjk[1:n])-xjk[n+ncc+1:n+2*ncc])
 
  end
 
@@ -449,7 +461,7 @@ include("init_penmpcc.jl")
 #
 ############################################################################
 
-include("init_actifmpcc.jl")
+include("init_penmpccsolve.jl")
 
 ############################################################################
 #

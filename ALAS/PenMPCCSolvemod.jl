@@ -1,20 +1,32 @@
-module ActifMPCCmod
+module PenMPCCSolvemod
 
 import ParamSetmod.ParamSet
+import AlgoSetmod.AlgoSet
 
-import RActifmod.RActif, RActifmod.actif_start!
+import RPenmod.RPen, RPenmod.pen_start!, RPenmod.pen_update!
 import PenMPCCmod.PenMPCC
 import StoppingPenmod.StoppingPen
 
 import OutputALASmod.OutputALAS, OutputALASmod.oa_update!
-import Stopping.TStopping, Stopping.start!, Stopping.stop
 
 import Relaxation.psi, Relaxation.dpsi, Relaxation.ddpsi, Relaxation.dphi
+
+import StoppingPenmod.StoppingPen, StoppingPenmod.spen_start!
+import StoppingPenmod.spen_stop!, StoppingPenmod.spen_final!
+
+import Stopping.TStopping
+import RActifmod.RActif, RActifmod.actif_start!
+
+import ActifMPCCmod.ActifMPCC,ActifMPCCmod.grad
+import ActifMPCCmod.setw
+import ActifMPCCmod.lsq_computation_multiplier_bool, ActifMPCCmod.relaxation_rule!
+import ActifMPCCmod.pas_max, ActifMPCCmod.redd
+import ActifMPCCmod.evalx
 
 importall NLPModels
 #NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
 
-type ActifMPCC <: AbstractNLPModel
+type PenMPCCSolve <: AbstractNLPModel
 
  meta       :: NLPModelMeta
  counters   :: Counters #ATTENTION : increment! ne marche pas?
@@ -61,46 +73,28 @@ type ActifMPCC <: AbstractNLPModel
  #Hd       ::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
 
  paramset   :: ParamSet
- uncmin     :: Function #fonction qui 
- direction  :: Function #fonction qui calcul la direction de descente
- linesearch :: Function #fonction qui calcul la recherche linéaire
+ algoset    :: AlgoSet
 
- ractif     :: RActif
- sts        :: TStopping
+ rpen       :: RPen
+ spen       :: StoppingPen
 
 end
 
 ############################################################################
 #
-#function ActifMPCC(pen        :: PenMPCC,
-#                   ncc    :: Int64,
-#                   paramset   :: ParamSet,
-#                   direction  :: Function,
-#                   linesearch :: Function,
-#                   sts        :: TStopping,
-#                   rpen       :: RPen)
+#function ***
 #
 ############################################################################
 
-include("actifmpccsolve.jl")
+include("penmpccsolve.jl")
 
 ############################################################################
 #
-# Methods to update the ActifMPCC
-# setw, updatew, setbeta, setcrho, sethess
+# Methods to update the PenMPCCSolve
 #
 ############################################################################
 
-include("actifmpcc_setteur.jl")
-
-############################################################################
-#
-# Functions to switch from working space to whole space
-# exalx, evald, redd
-#
-############################################################################
-
-include("actifmpcc_eval.jl")
+#include("***")
 
 ############################################################################
 #
@@ -109,102 +103,45 @@ include("actifmpcc_eval.jl")
 #
 ############################################################################
 
-include("actifmpcc_nlp.jl")
+include("penmpccsolve_nlp.jl")
 
 ############################################################################
 #
-# Minimisation sans contrainte dans domaine actif
+#function solve_subproblem_pen(ma      :: PenMPCCSolve,
+#                              xjk     :: Vector,
+#                              oa      :: OutputALAS;
+#                              verbose :: Bool = true)
 #
 ############################################################################
-import RUncstrndmod.RUncstrnd, RUncstrndmod.runc_start!
-import Stopping1Dmod.Stopping1D
-import ActifModelmod.ActifModel
-import UncstrndSolvemod.UncstrndSolve, UncstrndSolvemod.solve_1d
-import ActifMPCCmod.redx
 
-include("working_min.jl")
-
-import OutputLSmod.OutputLS
-
-include("unconstrained_actifmpcc.jl")
+include("pen_solve.jl")
 
 ############################################################################
 #
 # calcul la valeur des multiplicateurs de Lagrange
 #
-#function _lsq_computation_multiplier_bool(ma  :: ActifMPCC,
+#function _lsq_computation_multiplier_bool(ma  :: PenMPCCSolve,
 #                                          xjk :: Vector) in n+2ncc
 # output: lambda (Vector), l_negative (Bool)
 #
-#function _lsq_computation_multiplier(ma      :: ActifMPCC,
+#function _lsq_computation_multiplier(ma      :: PenMPCCSolve,
 #                                     gradpen :: Vector,
 #                                     xj      :: Vector)
 # output: lambda (Vector)
 ############################################################################
 
-include("actifmpcc_compmultiplier.jl")
+include("penmpccsolve_compmultiplier.jl")
 
 ############################################################################
 #
-# Define the relaxation rule over the active constraints
+# Initialize ActifMPCC
 #
-#function relaxation_rule!(ma :: ActifMPCC,
-#                          xj :: Vector,
-#                          l :: Vector,
-#                          wmax :: Array{Bool,2})
-#
-# Input:
-#     xj          : vector of size n+2ncc
-#     l           : vector of multipliers size (n + 2ncc)
-#     wmax        : set of freshly added constraints
-#
-#return: ActifMPCC (with updated active constraints)
+# InitializeMPCCActif ***
+# return: ActifMPCC
 #
 ############################################################################
 
-function relaxation_rule!(ma   :: ActifMPCC,
-                          xj   :: Vector,
-                          l    :: Vector,
-                          wmax :: Array{Bool,2})
-
-  copy_wmax = copy(wmax)
-
-  n   = ma.n
-  ncc = ma.ncc
-
-  llx  = l[1:n]
-  lux  = l[n+1:2*n]
-  lg   = l[2*n+1:2*n+ncc]
-  lh   = l[2*n+ncc+1:2*n+2*ncc]
-  lphi = l[2*n+2*ncc+1:2*n+3*ncc]
-
-  # Relaxation de l'ensemble d'activation : 
-  # désactive toutes les contraintes négatives
-  ll = [llx; lg; lphi; lux; lh; lphi] #pas très catholique comme technique
-  ma.w[find(x -> x<0, ll)] = zeros(Bool, length(find(x -> x<0, ll)))
-
-  # Règle d'anti-cyclage : 
-  # on enlève pas une contrainte qui vient d'être ajouté.
-  ma.w[find(x->x==1.0, copy_wmax)] = ones(Bool,length(find(x->x==1.0, copy_wmax)))
-
- return updatew(ma)
-end
-
-############################################################################
-#
-# Compute the maximum step to stay feasible in a direction
-#
-# pas_max(ma::ActifMPCC,x::Vector,d::Vector)
-#
-# return: alpha, (the step)
-#         w_save, (contraintes actives au point x+step*d)
-#         w_new  (les nouvelles contraintes actives au point x+step*d)
-#
-############################################################################
-#- copie de code dans PasMax
-import Relaxation.invpsi, Relaxation.alpha_theta_max
-
-include("actifmpcc_pasmax.jl")
+include("init_actifmpccsolve.jl")
 
 #end of module
 end

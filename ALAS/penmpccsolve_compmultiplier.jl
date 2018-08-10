@@ -1,41 +1,34 @@
-function lsq_computation_multiplier_bool(ma  :: ActifMPCC,
+function lsq_computation_multiplier_bool(ps  :: PenMPCCSolve,
                                          xjk :: Vector)
 
-   gradpen = ma.ractif.gx
+   gradpen = copy(ps.rpen.gx)
 
-   l = _lsq_computation_multiplier(ma, gradpen, xjk)
+   l = _lsq_computation_multiplier(ps, gradpen, xjk)
 
    l_negative = findfirst(x->x<0, l) != 0
 
  return l, l_negative
 end
 
-function _lsq_computation_multiplier(ma      :: ActifMPCC,
+function _lsq_computation_multiplier(ps      :: PenMPCCSolve,
                                      gradpen :: Vector,
                                      xj      :: Vector)
 
- r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
- wn1 = ma.wn1
- wn2 = ma.wn2
- wcomp = ma.wcomp
- w1 = ma.w1
- w2 = ma.w2
- n, ncc = ma.n, ma.ncc
+ r,s,t = ps.pen.r,ps.pen.s,ps.pen.t
+ n, ncc = ps.n, ps.ncc
 
- dg = dphi(xj[ma.n+1:ma.n+ma.ncc],
-           xj[ma.n+ma.ncc+1:ma.n+2*ma.ncc],
-           r, s, t)
-
- gx = dg[1:ma.ncc]
- gy = dg[ma.ncc+1:2*ma.ncc]
-
- #matrices des contraintes actives : (lx,ux,lg,lh,lphi)'*A=b
- nx1 = length(ma.wn1)
- nx2 = length(ma.wn2)
+ nx1 = length(ps.wn1)
+ nx2 = length(ps.wn2)
  nx  = nx1 + nx2
- nw1 = length(ma.w1)
- nw2 = length(ma.w2)
- nwcomp = length(ma.wcomp)
+
+ wn1, wn2 = ps.wn1, ps.wn2
+ w1, w2   = ps.w1, ps.w2
+ wcomp    = ps.wcomp
+ nw1, nw2, nwcomp = length(ps.w1), length(ps.w2), length(ps.wcomp)
+
+ #jacobian of active constraints : (lx,ux,lg,lh,lphi)'*J=grad
+ dg = dphi(xj[n+1:n+ncc], xj[n+ncc+1:n+2*ncc], r, s, t)
+ gx, gy = dg[1:ncc], dg[ncc+1:2*ncc]
 
  Jxl = -diagm(ones(n))[1:n,wn1]
  Jxu = diagm(ones(n))[1:n,wn2]
@@ -66,7 +59,6 @@ function _lsq_computation_multiplier(ma      :: ActifMPCC,
  lk[2*n+w1]          = l[nx+1:nx+nw1]
  lk[2*n+ncc+w2]      = l[nx+nw1+1:nx+nw1+nw2]
  lk[2*n+2*ncc+wcomp] = l[nx+nw1+nw2+1:nx+nw1+nw2+nwcomp]
-
 
  return lk
 end

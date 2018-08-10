@@ -15,8 +15,7 @@ function solve(mpccsol :: MPCCSolve)
  rlx = _rlx_init(mpccsol, xk)
 
  start!(rmpcc, mpccsol.mod, xk)
- relax_start!(rlx.rrelax, rlx.mod, rlx.r, rlx.s, rlx.t, rlx.tb, xk,
-              c = rmpcc.feas, fx = rmpcc.fx)
+ relax_start!(rlx.rrelax, rlx.nlp, xk, c = rmpcc.feas, fx = rmpcc.fx)
  OK = stop_start!(smpcc, mpccsol.mod, xk, rmpcc)
 
  or = OutputRelaxation(xk, rmpcc)
@@ -34,7 +33,8 @@ function solve(mpccsol :: MPCCSolve)
   OK = stop!(smpcc, mpccsol.mod, xk, rmpcc, rlx)
 
   #output
-  UpdateOR(or, xk, rlx.spas.sub_pb_solved == 0, rlx.r, rlx.s, rlx.t, rlx.prec, rmpcc, output)
+  UpdateOR(or, xk, rlx.spas.sub_pb_solved == 0, 
+           rlx.nlp.r, rlx.nlp.s, rlx.nlp.t, rlx.prec, rmpcc, output)
 
  end
  #End Major Loop
@@ -65,7 +65,8 @@ function _rlx_init(mpccsol :: MPCCSolve,
  prec    = mpccsol.parammpcc.prec_oracle(r, s, t, mpccsol.parammpcc.precmpcc)
 
  #Initialize the sub-problem Solve structure:
- rlx = RlxMPCCSolve(mpccsol.mod, r, s, t, prec, ρ, mpccsol.paramset, mpccsol.algoset, xk)
+ rlx = RlxMPCCSolve(mpccsol.mod, r, s, t, 
+                    prec, ρ, mpccsol.paramset, mpccsol.algoset, xk)
  #rlx.xj = vcat(xk,consG(mpccsol.mod,xk),consH(mpccsol.mod,xk))
 
  return rlx
@@ -76,7 +77,7 @@ Update of the solve sub-problem structure
 function _rlx_update!(rlx    :: RlxMPCCSolve,
                       mpccsol :: MPCCSolve)
 
-  r,s,t = mpccsol.parammpcc.updaterst(rlx.r, rlx.s, rlx.t)
+  r,s,t = mpccsol.parammpcc.updaterst(rlx.nlp.r, rlx.nlp.s, rlx.nlp.t)
 
   tb    = mpccsol.paramset.tb(r, s, t)
   rho   = mpccsol.parammpcc.rho_restart(r, s, t, rlx.rho_init)
@@ -89,9 +90,9 @@ end
 Solve the relaxed sub-problem
 """
 function _solve_subproblem(rlx     :: RlxMPCCSolve,
-                          xj       :: Vector,
-                          mpccsol  :: MPCCSolve,
-                          rmpcc    :: RMPCC)
+                           xj       :: Vector,
+                           mpccsol  :: MPCCSolve,
+                           rmpcc    :: RMPCC)
 
  return mpccsol.parammpcc.solve_sub_pb(rlx,
                                        rmpcc,

@@ -38,6 +38,7 @@ type StoppingPen
     feas :: Bool
     # Stopping properties
     tired::Bool
+    unbounded :: Bool
 
     function StoppingPen(;atol :: Float64 = 1.0e-8,
                        rtol :: Float64 = 1.0e-6,
@@ -59,7 +60,7 @@ type StoppingPen
         return new(atol, rtol, goal_viol,rho_max,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
                    max_iter, max_time, NaN, Inf, optimality_residual,false,false,
-                   negative_test,false,NaN,feasibility_residual,false,tired)
+                   negative_test,false,NaN,feasibility_residual,false,tired, false)
     end
 end
 
@@ -76,7 +77,13 @@ end
 function spen_stop!(spen :: StoppingPen, 
                    pen  :: PenMPCC,
                    rpen :: RPen,
+                   sts  :: TStopping,
                    xk   :: Vector)
+
+ spen.wolfe_step = sts.wolfe_step
+ spen.unbounded  = sts.unbounded
+
+ #spen.sub_pb_solved = ma.sts.sub_pb_solved
 
  OK = true
  

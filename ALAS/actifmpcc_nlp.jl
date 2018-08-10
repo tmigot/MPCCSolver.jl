@@ -195,7 +195,7 @@ function cons(ma :: ActifMPCC, x :: Vector)
  vux = xf[ma.wn2]-ma.pen.nlp.meta.uvar[ma.wn2]
 
  vlg = sg[ma.w1]-ma.pen.nlp.meta.lvar[ma.w1+ma.n]
- vlh = sh[ma.w2]-ma.pen.nlp.meta.lvar[ma.w2+ma.n]
+ vlh = sh[ma.w2]-ma.pen.nlp.meta.lvar[ma.w2+ma.n+ma.ncc]
  vug = psi(sh[ma.w3],r,s,t)-sg[ma.w3]
  vuh = psi(sg[ma.w4],r,s,t)-sh[ma.w4]
 

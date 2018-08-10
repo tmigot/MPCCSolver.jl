@@ -35,6 +35,20 @@ function evalx(ma :: ActifMPCC,
  return xf
 end
 
+function redx(ma :: ActifMPCC,
+              x  :: Vector)
+
+ nc = length(ma.wnc)
+ nw13c = nc+length(ma.w13c)
+
+ xf = zeros(nc+length(ma.w13c)+length(ma.w24c))
+ xf[1:nc] = x[ma.wnc]
+ xf[nc+1:nw13c] = x[ma.w13c+ma.n]
+ xf[nw13c+1:nw13c+length(ma.w24c)] = x[ma.w24c+ma.ncc+ma.n]
+
+ return xf
+end
+
 """
 Renvoie la direction d au complet (avec des 0 aux actifs)
 """

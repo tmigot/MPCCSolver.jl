@@ -29,8 +29,8 @@ end
 
 #Constructeur par défaut
 function AlgoSet(;uncmin      :: Function = working_min, #working_min_proj
-                  penalty     :: Function = Penalty.lagrangian, #lagrangian
-                  direction   :: Function = DDirection.NwtdirectionSpectral,
+                  penalty     :: Function = Penalty.quadratic, #lagrangian
+                  direction   :: Function = DDirection.NwtdirectionSpectral, #SteepestDescent
                   linesearch  :: Function = LineSearch.armijo_wolfe,
                   crho_update :: Function = CRhoUpdate.MinProd)
 

@@ -8,6 +8,8 @@ import Relaxation.phi
 
 import RPenmod.RPen
 
+import RlxMPCCmod.RlxMPCC
+
 type RRelax
 
  x              :: Vector
@@ -49,14 +51,13 @@ function RRelax(x              :: Vector;
 end
 
 function relax_start!(rrelax :: RRelax,
-                      mod    :: MPCC,
-                      r      :: Float64,
-                      s      :: Float64,
-                      t      :: Float64,
-                      tb     :: Float64,
+                      nlp    :: RlxMPCC,
                       xk     :: Vector;
                       fx     :: Float64 = Inf,
                       c      :: Vector  = Float64[])
+
+ mod = nlp.mod
+ r,s,t,tb = nlp.r, nlp.s, nlp.t, nlp.tb
 
  rrelax.fx = fx == Inf ? obj(mod,xk[1:mod.n]) : fx
  rrelax.feas, rrelax.feas_cc = cons(mod,r,s,t,tb,xk;cnl=c)

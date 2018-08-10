@@ -72,7 +72,7 @@ function start!(nlp :: AbstractNLPModel,
 
     GOOD = s.optimal && s.actfeas
 
-    return s, ∇f₀
+    return ∇f₀
 end
 
 function start!(nlp :: AbstractNLPModel,
@@ -87,7 +87,7 @@ function start!(nlp :: AbstractNLPModel,
 
     GOOD = s.optimal && s.actfeas
 
-    return s, GOOD
+    return GOOD
 end
 
 function stop(nlp :: AbstractNLPModel,
@@ -129,7 +129,7 @@ function stop(nlp :: AbstractNLPModel,
     s.tired = (max_iter) | (max_calls) | (max_time)
 
     s.actfeas = cons(nlp,x)
-
+@show s.optimal && s.actfeas
     # return everything. Most users will use only the first four fields, but return
     # the fine grained information nevertheless.
     return (s.optimal && s.actfeas) || s.unbounded || s.tired, elapsed_time

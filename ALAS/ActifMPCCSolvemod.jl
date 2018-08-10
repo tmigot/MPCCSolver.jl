@@ -1,20 +1,21 @@
-module ActifMPCCmod
+module ActifMPCCSolvemod
 
 import ParamSetmod.ParamSet
 
-import RActifmod.RActif, RActifmod.actif_start!
 import PenMPCCmod.PenMPCC
 import StoppingPenmod.StoppingPen
 
-import OutputALASmod.OutputALAS, OutputALASmod.oa_update!
-import Stopping.TStopping, Stopping.start!, Stopping.stop
+import RActifmod.RActif
+import Stopping.TStopping
+
+import OutputALASmod.oa_update!
 
 import Relaxation.psi, Relaxation.dpsi, Relaxation.ddpsi, Relaxation.dphi
 
 importall NLPModels
 #NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
 
-type ActifMPCC <: AbstractNLPModel
+type ActifMPCCSolve <: AbstractNLPModel
 
  meta       :: NLPModelMeta
  counters   :: Counters #ATTENTION : increment! ne marche pas?
@@ -91,7 +92,7 @@ include("actifmpccsolve.jl")
 #
 ############################################################################
 
-include("actifmpcc_setteur.jl")
+#include("actifmpcc_setteur.jl")
 
 ############################################################################
 #
@@ -113,14 +114,25 @@ include("actifmpcc_nlp.jl")
 
 ############################################################################
 #
+#function solve_subproblem_pen(ma      :: ActifMPCC,
+#                              xjk     :: Vector,
+#                              oa      :: OutputALAS;
+#                              verbose :: Bool = true)
+#
+############################################################################
+import OutputALASmod.OutputALAS
+import RActifmod.RActif, RActifmod.actif_start!
+import Stopping.TStopping, Stopping.start!, Stopping.stop
+import RPenmod.RPen, RPenmod.pen_start!, RPenmod.pen_update!
+import PenMPCCmod.PenMPCC
+
+include("pen_solve.jl")
+
+############################################################################
+#
 # Minimisation sans contrainte dans domaine actif
 #
 ############################################################################
-import RUncstrndmod.RUncstrnd, RUncstrndmod.runc_start!
-import Stopping1Dmod.Stopping1D
-import ActifModelmod.ActifModel
-import UncstrndSolvemod.UncstrndSolve, UncstrndSolvemod.solve_1d
-import ActifMPCCmod.redx
 
 include("working_min.jl")
 
@@ -177,11 +189,13 @@ function relaxation_rule!(ma   :: ActifMPCC,
   lg   = l[2*n+1:2*n+ncc]
   lh   = l[2*n+ncc+1:2*n+2*ncc]
   lphi = l[2*n+2*ncc+1:2*n+3*ncc]
-
+@show ma.wmax
   # Relaxation de l'ensemble d'activation : 
   # désactive toutes les contraintes négatives
   ll = [llx; lg; lphi; lux; lh; lphi] #pas très catholique comme technique
+@show ll, ma.w
   ma.w[find(x -> x<0, ll)] = zeros(Bool, length(find(x -> x<0, ll)))
+@show ma.w
 
   # Règle d'anti-cyclage : 
   # on enlève pas une contrainte qui vient d'être ajouté.

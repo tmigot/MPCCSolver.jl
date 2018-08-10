@@ -62,6 +62,7 @@ function actif_start!(ractif  :: RActif,
   ractif.gx        = rpen.gx
   ractif.step      = rpen.step
   ractif.wnew      = rpen.wnew
+  ractif.lambda    = rpen.lambda
 
  return ractif
 end

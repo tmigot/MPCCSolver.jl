@@ -27,7 +27,7 @@ liste des fonctions :
 
 """
 
-type MPCC
+type MPCC #<: AbstractNLPModel
 
  mp :: AbstractNLPModel
  G  :: AbstractNLPModel
@@ -92,6 +92,10 @@ function grad(mod :: MPCC, x :: Vector)
  return NLPModels.grad(mod.mp, x)
 end
 
+function grad!(mod :: MPCC, x :: Vector, gx :: Vector)
+ return NLPModels.grad(mod.mp, x, gx)
+end
+
 function hess(mod :: MPCC, x :: Vector)
  return NLPModels.hess(mod.mp, x)
 end
@@ -128,12 +132,49 @@ function cons(mod :: MPCC, x :: Vector)
  return vcat(feas_x, feas_c, feas_cp, feas_cc)
 end
 
+function cons_mp(mod :: MPCC, x :: Vector)
+
+ n = mod.n
+ x = length(x) == n ? x : x[1:n]
+
+ feas_x = vcat(max.(mod.mp.meta.lvar-x, 0), max.(x-mod.mp.meta.uvar, 0))
+
+ if mod.mp.meta.ncon !=0
+
+  c = NLPModels.cons(mod.mp, x)
+  feas_c = vcat(max.(mod.mp.meta.lcon-c, 0), max.(c-mod.mp.meta.ucon, 0))
+
+ else
+
+  feas_c = []
+
+ end
+
+ return vcat(feas_x, feas_c)
+end
+
+function cons_nl(mod :: MPCC, x :: Vector)
+ return NLPModels.cons(mod.mp, x)
+end
+
 function consG(mod :: MPCC, x :: Vector)
  return NLPModels.cons(mod.G, x)
 end
 
 function consH(mod :: MPCC, x :: Vector)
  return NLPModels.cons(mod.H, x)
+end
+
+function jacG(mod :: MPCC, x :: Vector)
+ return NLPModels.jac(mod.G, x)
+end
+
+function jacH(mod :: MPCC, x :: Vector)
+ return NLPModels.jac(mod.H, x)
+end
+
+function jac_nl(mod :: MPCC, x :: Vector)
+ return NLPModels.jac(mod.mp, x)
 end
 
 """
@@ -159,8 +200,9 @@ function jac_actif(mod :: MPCC, x :: Vector, prec :: Float64)
   c=NLPModels.cons(mod.mp,x)
   Ig=find(z->z<=prec,abs.(c-mod.mp.meta.lcon))
   Ih=find(z->z<=prec,abs.(c-mod.mp.meta.ucon))
-  Jg=NLPModels.jac(mod.mp,x)[Ig,1:n]
-  Jh=NLPModels.jac(mod.mp,x)[Ih,1:n]
+  J = jac_nl(mod, x)
+  Jg=J[Ig,1:n]
+  Jh=J[Ih,1:n]
 
   if mod.ncc>0
    IG=find(z->z<=prec,abs.(NLPModels.cons(mod.G,x)-mod.G.meta.lcon))

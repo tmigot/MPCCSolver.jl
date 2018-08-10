@@ -17,9 +17,9 @@ function pas_max(ma::ActifMPCC,x::Vector,d::Vector)
   w_save_comp=zeros(Bool,0,0)
   w_new_comp=ma.w[ma.n+1:ma.n+2*ma.ncc,1:2]
  end
- 
+
  alpha_x,w_save_x,w_new_x=_pas_max_bound(ma,x,d)
- 
+
  w_save = [w_save_x;w_save_comp]
  w_new  = [w_new_x;w_new_comp]
 
@@ -134,7 +134,6 @@ function _pas_max_comp(ma::ActifMPCC,x::Vector,d::Vector)
   #alphac21=d[i+length(ma.w13c)+ma.n]<0 ? (ma.pen.nlp.meta.lvar[ma.n+length(ma.w13c)+i]-x[i+length(ma.w13c)+ma.n])/d[i+length(ma.w13c)+ma.n] : Inf  
   alphac21=d[rwr2]<0 ? (ma.pen.nlp.meta.lvar[iwr2]-x[rwr2])/d[rwr2] : Inf  
 
-if evalx(ma,x)[3] < -1.1 return end
   alphagh=_alpha_choix(alpha,alphac[1],alphac[2],alphac11,alphac21)
 
   if alphagh<=alpha
@@ -156,6 +155,26 @@ if evalx(ma,x)[3] < -1.1 return end
    end
 
  end #fin boucle for ma.wc
+
+############################################################################### A VERIFIER - améliore le cas alpha=0.0
+xf = evalx(ma,x)[ma.n+1:ma.n+2*ma.ncc]
+test = copy(ma.w[ma.n+1:ma.n+2*ma.ncc,1:2])
+
+if alpha < Inf
+nc = length(ma.wnc)
+I13 = 1+nc:length(ma.w13c)+nc
+I24 = 1+length(ma.w13c)+nc:length(ma.w24c)+length(ma.w13c)+nc
+l = ma.pen.nlp.meta.lvar[ma.n+1:ma.n+2*ma.ncc]
+
+test[ma.w13c,1]        = abs.(l[ma.w13c]-x[I13]-alpha*d[I13]) .<= eps(Float64)
+test[ma.ncc+ma.w13c,1]        = abs.(psi(xf[ma.ncc+ma.w13c],r,s,t)-x[I13]-alpha*d[I13]) .<= eps(Float64)
+
+test[ma.w24c,2] = abs.(l[ma.ncc+ma.w24c]-x[I24]-alpha*d[I24]) .<= eps(Float64)
+test[ma.ncc+ma.w24c,2] = abs.(psi(xf[ma.w24c],r,s,t)-x[I24]-alpha*d[I24]) .<= eps(Float64)
+
+end
+w_save = test
+###############################################################################
 
  return alpha,w_save,Array(w_save .& .!ma.w[ma.n+1:ma.n+2*ma.ncc,1:2])
 end
@@ -209,8 +228,8 @@ function _pas_max_bound(ma::ActifMPCC,x::Vector,d::Vector)
   end
  end
 
- w_save[ma.wnc,1] = (l[ma.wnc]-x[1:nc])./d[1:nc] == 0.0
- w_save[ma.wnc,2] = (u[ma.wnc]-x[1:nc])./d[1:nc] == 0.0
+ w_save[ma.wnc,1] = l[ma.wnc]-x[1:nc]-alpha*d[1:nc] .== 0.0
+ w_save[ma.wnc,2] = u[ma.wnc]-x[1:nc]-alpha*d[1:nc] .== 0.0
 
  w_new = Array(w_save .& .!ma.w[1:ma.n,1:2])
 

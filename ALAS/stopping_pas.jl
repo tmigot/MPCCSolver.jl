@@ -2,7 +2,7 @@
 export TStoppingPAS, start!, stop, ending_test
 
 import RPenmod.RPen
-import Stopping.TStopping
+import StoppingPenmod.StoppingPen
 
 type TStoppingPAS
     atol :: Float64                  # absolute tolerance
@@ -34,6 +34,7 @@ type TStoppingPAS
     feas :: Bool
     # Stopping properties
     tired::Bool
+    unbounded           :: Bool
 
     #bilan
     sub_pb_solved :: Int64
@@ -58,7 +59,7 @@ type TStoppingPAS
         return new(atol, rtol, goal_viol,rho_max,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
                    max_iter, max_time, NaN, Inf, optimality_residual,false,false,
-                   negative_test,NaN,feasibility_residual,false,tired,0)
+                   negative_test,NaN,feasibility_residual,false,tired,false,0)
     end
 end
 
@@ -101,10 +102,11 @@ function pas_stop!(mod :: MPCCmod.MPCC,
                    s :: TStoppingPAS,
                    x  :: Array{Float64,1},
                    rpen :: RPen,
-                   sts :: TStopping,
+                   spen :: StoppingPen,
                    ρ :: Float64)
 
     iter = rpen.iter
+    s.unbounded = spen.unbounded
 
     #counts = nlp.counters
     #calls = [counts.neval_obj,  counts.neval_grad, counts.neval_hess, counts.neval_hprod]
@@ -138,10 +140,10 @@ function pas_stop!(mod :: MPCCmod.MPCC,
     s.tired = (max_iter) | (max_calls) | (max_time)
 
     #si on bloque mais qu'un multiplicateur est <0 on continue
-    subpb_fail=!rpen.sub_pb_solved && !s.l_negative 
+    subpb_fail=!rpen.sub_pb_solved && !s.l_negative #devrait être spen
 
-    OK = s.tired || subpb_fail || (!s.l_negative && (s.feas || ρ == s.rho_max ) && s.optimal) || sts.unbounded
-  #GOOD=!(k<k_max && (alas.spas.l_negative || !((feasible || minimum(rho)==alas.paramset.rho_max*ma.crho ) && dual_feasible)) && Armijosuccess && !small_step)
+    @show s.tired, subpb_fail, s.l_negative, s.feas, s.optimal, s.unbounded
+    OK = s.tired || subpb_fail || (!s.l_negative && (s.feas || ρ == s.rho_max ) && s.optimal) || s.unbounded
 
     # return everything. Most users will use only the first four fields, but return
     # the fine grained information nevertheless.
@@ -150,9 +152,9 @@ function pas_stop!(mod :: MPCCmod.MPCC,
 end
 
 function ending_test!(spas::TStoppingPAS,
-                     rpen::RPen, sts::TStopping)
+                     rpen::RPen)
 
- sub_pb, unbounded = !rpen.sub_pb_solved, sts.unbounded
+ sub_pb, unbounded = !rpen.sub_pb_solved, spas.unbounded #devrait être spen
 
  stat=0
  if unbounded

@@ -50,17 +50,23 @@ function solve_subproblem_rlx(rlx       :: RlxMPCCSolve,
                              name_relax :: AbstractString,
                              x0         :: Vector)
 
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ mod   = rlx.nlp.mod
+ r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
+ tb    = rlx.nlp.tb
+
  #update the initial point
- xk0 = vcat(x0, consG(rlx.mod, x0), consH(rlx.mod, x0))
+ xk0 = vcat(x0, consG(mod, x0), consH(mod, x0))
  set_x(rlx, xk0)
 
  #solve the sub-problem
  xk, stat, rpen, oa = rlx_solve!(rlx)
 
  #update rrelax with the output result rpen
- relax_update!(rlx.rrelax, rlx.mod, rlx.r, rlx.s, rlx.t, rlx.tb, xk, rpen)
+ relax_update!(rlx.rrelax, mod, r, s, t, tb, xk, rpen)
 
- return xk[1:rlx.mod.n], rlx, oa
+ return xk[1:n], rlx, oa
 end
 
 using Ipopt
@@ -79,6 +85,12 @@ function solve_subproblem_IpOpt(rlx        :: RlxMPCCSolve,
                                 rmpcc      :: RMPCC,
                                 name_relax :: AbstractString,
                                 x0         :: Vector)
+
+ n     = rlx.nlp.n
+ ncc   = rlx.nlp.ncc
+ mod   = rlx.nlp.mod
+ r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
+ tb    = rlx.nlp.tb
 
  solved = true
  #nlp_relax = MPCCtoRelaxNLP(rlx.mod,rlx.r,rlx.s,rlx.t,name_relax) #si ncc>0
@@ -107,7 +119,7 @@ end
 #
 ############################################################################
 
-include("mpcc_to_relax_nlp.jl")
+#include("mpcc_to_relax_nlp.jl")
 
 #end of module
 end
