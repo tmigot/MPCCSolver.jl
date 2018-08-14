@@ -52,7 +52,7 @@ end
 ArmijoWolfe : Backtracking line search + amélioration si le pas initial peut être augmenté
          1D Minimization
 """
-function armijo_wolfe(ma        :: AbstractNLPModel,
+function armijo_wolfe(ma        :: AbstractNLPModel, #renommer le ma!!
                       stp       :: Stopping1D,
                       xj        :: AbstractVector,
                       d         :: AbstractVector,
@@ -64,7 +64,6 @@ function armijo_wolfe(ma        :: AbstractNLPModel,
 
  good_grad=false
  nbW=0
- nbk=0
  step=min(stepmax,1.0)
 
  tau_wolfe      = stp.tau_wolfe
@@ -80,6 +79,7 @@ function armijo_wolfe(ma        :: AbstractNLPModel,
  ht  = obj(ma, xjp)
 
  gradft  = grad(ma, xjp)
+
  slope_t = dot(d, gradft)
 
  OK = wolfe_stop!(ma, stp, xj, slope, d, gradft) && armijo_stop!(ma, stp, xj, hg, ht, slope, step)
@@ -102,7 +102,7 @@ function armijo_wolfe(ma        :: AbstractNLPModel,
 
   stp.unbounded = true
 
-  return step,good_grad,ht,nbk,nbW,gradft
+  return step,good_grad,ht,gradft
  end
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
@@ -121,8 +121,7 @@ function armijo_wolfe(ma        :: AbstractNLPModel,
   good_grad = true
  end
 
- nbk = stp.iter_armijo
- return step,good_grad,ht,nbk,nbW,gradft #virer nbk et nbW
+ return step,good_grad,ht,gradft
 end
 
 """

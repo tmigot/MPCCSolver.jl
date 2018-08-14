@@ -16,15 +16,14 @@ include("../ALAS/Stopping1Dmod.jl")
 include("../ALAS/ActifModelmod.jl")
 include("../ALAS/UncstrndSolvemod.jl")
 
-include("../ALAS/Stopping.jl")
-
 include("../ALAS/PenMPCCmod.jl")
+include("../ALAS/Stopping.jl") #changer le nom
 include("../ALAS/RPenmod.jl")
 include("../ALAS/StoppingPenmod.jl")
 
 include("../ALAS/RActifmod.jl")
 include("../../LSDescentMethods-master/src/LSDescentMethods.jl")
-include("../ALAS/ActifMPCCmod.jl")
+include("../ALAS/ActifMPCCmod.jl") #nommer ActifMPCCSolvemod ?
 
 include("../ALAS/DDirection.jl")
 include("../ALAS/LineSearch.jl")

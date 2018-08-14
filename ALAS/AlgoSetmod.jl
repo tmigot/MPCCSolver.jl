@@ -5,7 +5,7 @@ importall DDirection
 importall LineSearch
 importall CRhoUpdate
 
-import ActifMPCCmod.working_min, ActifMPCCmod.working_min_proj
+import ActifMPCCmod.actif_solve, ActifMPCCmod.working_min_proj
 
 """
 Commentaires :
@@ -28,7 +28,7 @@ type AlgoSet
 end
 
 #Constructeur par défaut
-function AlgoSet(;uncmin      :: Function = working_min, #working_min_proj
+function AlgoSet(;uncmin      :: Function = actif_solve, #working_min_proj
                   penalty     :: Function = Penalty.quadratic, #lagrangian
                   direction   :: Function = DDirection.NwtdirectionSpectral, #SteepestDescent
                   linesearch  :: Function = LineSearch.armijo_wolfe,

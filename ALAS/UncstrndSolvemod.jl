@@ -31,10 +31,23 @@ type UncstrndSolve
 #end of type
 end 
 
+############################################################################
+#
+# Methods to update the UncstrndSolve
+# set_x
+#
+############################################################################
+
 function set_x!(unc :: UncstrndSolve, x :: Vector)
  unc.x = x
  return unc
 end
+
+############################################################################
+#
+# Appel à une fonction pour la minimisation 1d
+#
+############################################################################
 
 function solve_1d(unc :: UncstrndSolve; stepmax :: Float64 = Inf)
  x = unc.x
@@ -47,7 +60,7 @@ function solve_1d(unc :: UncstrndSolve; stepmax :: Float64 = Inf)
 
  hg = unc.runc.fx
 
- step,good_grad,ht,nbarmijo,nbwolfe,gradft=unc.func_1d(unc.nlp,unc.sunc,
+ step,good_grad,ht,gradft=unc.func_1d(unc.nlp,unc.sunc,
                                                        x, d,
                                                        hg,
                                                        stepmax,
@@ -58,11 +71,23 @@ function solve_1d(unc :: UncstrndSolve; stepmax :: Float64 = Inf)
  xp = x + step*d
 
  beta=NaN
- ols = OutputLS(stepmax, step, slope, beta, nbarmijo, nbwolfe)
+ ols = OutputLS(stepmax, step, slope, beta,-1,-1)
 
  runc_update!(unc.runc, x, step = step, d = d, ∇fp = gradft, fxp = ht)
 
- return xp, unc, ols, nbarmijo,nbwolfe,good_grad
+  #Final rending
+  unc.runc.solved = 0
+  if unc.sunc.tired || true in isnan.(x) || true in isnan(unc.runc.fxp)
+   unc.runc.solved = 1
+   unc.runc.step   = 0.0
+  elseif unc.sunc.unbounded
+   unc.runc.solved = 2
+  end
+
+ #Update the solution, if we succeed
+ unc.x = unc.runc.solved == 0 || unc.runc.solved == 3 ? xp : unc.x
+
+ return xp, unc, ols, good_grad
 end
 
 #end of module

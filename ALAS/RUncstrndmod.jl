@@ -3,7 +3,7 @@ module RUncstrndmod
 #résultat du problème pénalisé
 type RUncstrnd
 
- x              :: Vector
+ x              :: Vector #x at the previous iteration
  fx             :: Float64 #objective at x
  gx             :: Vector #gradient at x
  fxp            :: Float64 #objective at x
@@ -59,7 +59,7 @@ function runc_start!(RUncstrnd :: RUncstrnd;
 
  RUncstrnd.d = d == Float64[] ? RUncstrnd.d : d
 
- RUncstrnd.step += 1
+ RUncstrnd.step += 1 #WTF !!!
 
  return RUncstrnd
 end
@@ -74,7 +74,7 @@ function runc_update!(RUncstrnd :: RUncstrnd,
                                        ∇fp            :: Vector  = Float64[],
                       step           :: Float64 = 1.0,
                       d              :: Vector  = Float64[],
-                      iter           :: Int64 = 0,
+                      iter           :: Int64 = -1,
                       solved         :: Int64 = -1)
 
  RUncstrnd.fx = fx == Inf ? RUncstrnd.fx : fx
@@ -88,9 +88,9 @@ function runc_update!(RUncstrnd :: RUncstrnd,
 
  RUncstrnd.d = d == Float64[] ? RUncstrnd.d : d
 
- RUncstrnd.step = step == Float64[] ? RUncstrnd.step : step
+ RUncstrnd.step = step == 1.0 ? RUncstrnd.step : step
 
- RUncstrnd.iter += 1
+ RUncstrnd.iter = iter == -1 ? RUncstrnd.iter+1 : iter
 
  return RUncstrnd
 end

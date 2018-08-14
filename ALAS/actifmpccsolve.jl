@@ -1,12 +1,12 @@
 function ActifMPCC(pen        :: PenMPCC,
                    x          :: Vector,
-                        ncc        :: Int64,
-                        paramset   :: ParamSet,
-                        uncmin     :: Function,
-                        direction  :: Function,
-                        linesearch :: Function,
-                        sts        :: TStopping,
-                        ractif       :: RActif)
+                   ncc        :: Int64,
+                   paramset   :: ParamSet,
+                   uncmin     :: Function,
+                   direction  :: Function,
+                   linesearch :: Function,
+                   sts        :: TStopping,
+                   ractif     :: RActif)
 
  nn  = length(x) #n + 2ncc
  n   = length(x)-2*ncc

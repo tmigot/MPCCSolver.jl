@@ -24,7 +24,6 @@ function pen_solve(ps      :: PenMPCCSolve,
 
   #Minization of the penalized problem in the working subspace
   xjk, ma = ma.uncmin(ma, xjkl, oa) #ma.x0: itéré en dimension active
-
   #Backtracking if unfeasible
   xjkl = backtracking!(ma,xjk,verbose)
 
@@ -58,6 +57,7 @@ function _state_update!(ma :: ActifMPCC, ps :: PenMPCCSolve)
 
  ps.w = ma.w
  ps.wn1, ps.wn2, ps.w1, ps.w2, ps.wcomp = ma.wn1,ma.wn2,ma.w1,ma.w2,ma.wcomp
+ #Est-ce bien nécessaire de transporter tout ça ?
  ps.w3, ps.w4, ps.wcomp, ps.w13c, ps.w24c, ps.wc, ps.wcc = ma.w3, ma.w4, ma.wcomp, ma.w13c, ma.w24c, ma.wc, ma.wcc
  ps.dj = ma.dj
  ps.crho = ma.crho
@@ -93,17 +93,23 @@ end
 ##############################################################################
 function _active_new_constraint!(ma :: ActifMPCC)
 
-   d = redd(ma,ma.dj)
+   d     = redd(ma,ma.dj)
    x_old = ma.x0 - d * ma.ractif.step
+
    stepmax, wmax, wnew = pas_max(ma, x_old, d)
-   MAJ = false
 
  if ma.ractif.step == stepmax
+
   setw(ma, wmax)
+
   ma.ractif.wnew = wnew
   MAJ = true
+
  else
+
   ma.ractif.wnew = zeros(Bool,0,0)
+  MAJ = false
+
  end
 
  return MAJ

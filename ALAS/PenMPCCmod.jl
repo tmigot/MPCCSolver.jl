@@ -102,7 +102,7 @@ end
 
 function cons(pen_mpcc :: PenMPCC, x :: Vector)
 
- n       = pen_mpcc.n
+ n   = pen_mpcc.n
  ncc = pen_mpcc.ncc
 
  sg = x[n+1:n+ncc]

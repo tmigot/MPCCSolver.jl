@@ -2,8 +2,10 @@ function _initialize_solve_actifmpccsolve(ps      :: PenMPCCSolve,
                                           xjkl    :: Vector)
 
  ractif = RActif(xjkl)
- sts    = TStopping(max_iter = ps.paramset.ite_max_viol, atol = ps.spen.atol)
- sts.wolfe_step = ps.spen.wolfe_step
+
+ sts    = TStopping(max_iter   = ps.paramset.ite_max_viol,
+                    atol       = ps.spen.atol,
+                    wolfe_step = ps.spen.wolfe_step)
 
  ma = ActifMPCC(ps.pen,
                 xjkl,

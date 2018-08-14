@@ -12,8 +12,7 @@ import OutputALASmod.oa_update!
 
 import Relaxation.psi, Relaxation.dpsi, Relaxation.ddpsi, Relaxation.dphi
 
-importall NLPModels
-#NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
+import NLPModels.AbstractNLPModel, NLPModels.NLPModelMeta, NLPModels.Counters
 
 type ActifMPCCSolve <: AbstractNLPModel
 
@@ -74,7 +73,7 @@ end
 ############################################################################
 #
 #function ActifMPCC(pen        :: PenMPCC,
-#                   ncc    :: Int64,
+#                   ncc        :: Int64,
 #                   paramset   :: ParamSet,
 #                   direction  :: Function,
 #                   linesearch :: Function,

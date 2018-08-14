@@ -10,9 +10,9 @@ import OutputALASmod.OutputALAS, OutputALASmod.oa_update!
 import Stopping.TStopping, Stopping.start!, Stopping.stop
 
 import Relaxation.psi, Relaxation.dpsi, Relaxation.ddpsi, Relaxation.dphi
+import Relaxation.invpsi, Relaxation.alpha_theta_max
 
-importall NLPModels
-#NLPModels.AbstractNLPModel,  NLPModelMeta, Counters
+importall NLPModels #Est-ce que ActifMPCC doit vraiment hériter du AbstractNLPModel ?
 
 type ActifMPCC <: AbstractNLPModel
 
@@ -50,7 +50,6 @@ type ActifMPCC <: AbstractNLPModel
  #ensemble des indices des contraintes où yG et yH sont fixés
  wcc        :: Array{Int64,1} 
 
-
  wnew       :: Array{Bool,2} #dernières contraintes ajoutés
  dj         :: Vector #previous direction
 
@@ -58,9 +57,9 @@ type ActifMPCC <: AbstractNLPModel
  crho       :: Float64 #constant such that : ||c(x)||_2 \approx crho*rho
  beta       :: Float64 #paramètre pour gradient conjugué
  Hess       :: Array{Float64,2} #inverse matrice hessienne approximée
- #Hd       ::Vector #produit inverse matrice hessienne et gradient (au lieu de la hessienne entière)
 
  paramset   :: ParamSet
+
  uncmin     :: Function #fonction qui 
  direction  :: Function #fonction qui calcul la direction de descente
  linesearch :: Function #fonction qui calcul la recherche linéaire
@@ -73,12 +72,14 @@ end
 ############################################################################
 #
 #function ActifMPCC(pen        :: PenMPCC,
-#                   ncc    :: Int64,
+#                   x          :: Vector,
+#                   ncc        :: Int64,
 #                   paramset   :: ParamSet,
+#                   uncmin     :: Function,
 #                   direction  :: Function,
 #                   linesearch :: Function,
 #                   sts        :: TStopping,
-#                   rpen       :: RPen)
+#                   ractif     :: RActif)
 #
 ############################################################################
 
@@ -116,17 +117,14 @@ include("actifmpcc_nlp.jl")
 # Minimisation sans contrainte dans domaine actif
 #
 ############################################################################
-import RUncstrndmod.RUncstrnd, RUncstrndmod.runc_start!
+import RUncstrndmod.RUncstrnd
+import RUncstrndmod.runc_start!, RUncstrndmod.runc_update!
 import Stopping1Dmod.Stopping1D
 import ActifModelmod.ActifModel
 import UncstrndSolvemod.UncstrndSolve, UncstrndSolvemod.solve_1d
 import ActifMPCCmod.redx
 
-include("working_min.jl")
-
-import OutputLSmod.OutputLS
-
-include("unconstrained_actifmpcc.jl")
+include("actif_solve.jl")
 
 ############################################################################
 #
@@ -162,33 +160,7 @@ include("actifmpcc_compmultiplier.jl")
 #
 ############################################################################
 
-function relaxation_rule!(ma   :: ActifMPCC,
-                          xj   :: Vector,
-                          l    :: Vector,
-                          wmax :: Array{Bool,2})
-
-  copy_wmax = copy(wmax)
-
-  n   = ma.n
-  ncc = ma.ncc
-
-  llx  = l[1:n]
-  lux  = l[n+1:2*n]
-  lg   = l[2*n+1:2*n+ncc]
-  lh   = l[2*n+ncc+1:2*n+2*ncc]
-  lphi = l[2*n+2*ncc+1:2*n+3*ncc]
-
-  # Relaxation de l'ensemble d'activation : 
-  # désactive toutes les contraintes négatives
-  ll = [llx; lg; lphi; lux; lh; lphi] #pas très catholique comme technique
-  ma.w[find(x -> x<0, ll)] = zeros(Bool, length(find(x -> x<0, ll)))
-
-  # Règle d'anti-cyclage : 
-  # on enlève pas une contrainte qui vient d'être ajouté.
-  ma.w[find(x->x==1.0, copy_wmax)] = ones(Bool,length(find(x->x==1.0, copy_wmax)))
-
- return updatew(ma)
-end
+include("actifmpcc_relaxationrule.jl")
 
 ############################################################################
 #
@@ -202,7 +174,6 @@ end
 #
 ############################################################################
 #- copie de code dans PasMax
-import Relaxation.invpsi, Relaxation.alpha_theta_max
 
 include("actifmpcc_pasmax.jl")
 
