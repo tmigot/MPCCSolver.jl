@@ -25,7 +25,7 @@ function pen_solve(ps      :: PenMPCCSolve,
   #Minization of the penalized problem in the working subspace
   xjk, ma = ma.uncmin(ma, xjkl, oa) #ma.x0: itéré en dimension active
   #Backtracking if unfeasible
-  xjkl = backtracking!(ma,xjk,verbose)
+  xjkl = _backtracking!(ma,xjk,verbose)
 
   #Add new constraints
   MAJ = _active_new_constraint!(ma) #on vient de mettre à jour des contraintes
@@ -50,6 +50,15 @@ end
 
 ##############################################################################
 #
+# Active-set strategy functions:
+# _relaxation_rule!, _backtracking!, _active_new_constraint!
+#
+##############################################################################
+
+include("activesetbnd_fct.jl")
+
+##############################################################################
+#
 #
 #
 ##############################################################################
@@ -58,7 +67,7 @@ function _state_update!(ma :: ActifMPCC, ps :: PenMPCCSolve)
  ps.w = ma.w
  ps.wn1, ps.wn2, ps.w1, ps.w2, ps.wcomp = ma.wn1,ma.wn2,ma.w1,ma.w2,ma.wcomp
  #Est-ce bien nécessaire de transporter tout ça ?
- ps.w3, ps.w4, ps.wcomp, ps.w13c, ps.w24c, ps.wc, ps.wcc = ma.w3, ma.w4, ma.wcomp, ma.w13c, ma.w24c, ma.wc, ma.wcc
+ #ps.w3, ps.w4, ps.wcomp, ps.w13c, ps.w24c, ps.wc, ps.wcc = ma.w3, ma.w4, ma.wcomp, ma.w13c, ma.w24c, ma.wc, ma.wcc
  ps.dj = ma.dj
  ps.crho = ma.crho
  ps.beta = ma.beta
@@ -84,80 +93,4 @@ function _rpen_update!(pen            :: PenMPCC,
                     step = ractif.step,
                     wnew = ractif.wnew,
                     lambda = ractif.lambda)
-end
-
-##############################################################################
-#
-#
-#
-##############################################################################
-function _active_new_constraint!(ma :: ActifMPCC)
-
-   d     = redd(ma,ma.dj)
-   x_old = ma.x0 - d * ma.ractif.step
-
-   stepmax, wmax, wnew = pas_max(ma, x_old, d)
-
- if ma.ractif.step == stepmax
-
-  setw(ma, wmax)
-
-  ma.ractif.wnew = wnew
-  MAJ = true
-
- else
-
-  ma.ractif.wnew = zeros(Bool,0,0)
-  MAJ = false
-
- end
-
- return MAJ
-end
-
-##############################################################################
-#
-#
-#
-##############################################################################
-function backtracking!(ma :: ActifMPCC, xjkl :: Vector, verbose :: Bool)
-
-  if !ma.sts.actfeas
-
-   #Calcul du pas maximum:
-   d = redd(ma,ma.dj)
-   x_old = ma.x0 - d * ma.ractif.step
-   step, wmax, wnew = pas_max(ma, x_old, d)
-   x = x_old + step*d
-   xjkl = evalx(ma, x)
-   ma.x0 = x
-
-   ma.ractif.step = step
-   ma.sts.wolfe_step = false
-   verbose && print_with_color(:yellow, "step: $(step) \n")
- 
-  end
-
- return xjkl
-end
-
-##############################################################################
-#
-#
-#
-##############################################################################
-function _relaxation_rule!(ma :: ActifMPCC, xjk :: Vector, verbose :: Bool)
-
-  #ma.ractif.lambda, l_negative = lsq_computation_multiplier_bool(ma, xjk)
-  l_negative = findfirst(x->x<0, ma.ractif.lambda) != 0
-
-  #faire un test qu'on est pas deux pas consécutifs nuls
-  if (ma.sts.wolfe_step || ma.ractif.step == 0.0) && l_negative
-
-   relaxation_rule!(ma, xjk, ma.ractif.lambda, ma.ractif.wnew)
-
-   verbose && print_with_color(:yellow, "Active set: $(ma.wcc) \n")
-  end
-
- return ma
 end

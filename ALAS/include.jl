@@ -12,8 +12,8 @@ include("../ALAS/Penalty.jl")
 include("../ALAS/ParamSetmod.jl")
 
 include("../ALAS/RUncstrndmod.jl")
-include("../ALAS/Stopping1Dmod.jl")
 include("../ALAS/ActifModelmod.jl")
+include("../ALAS/Stopping1Dmod.jl")
 include("../ALAS/UncstrndSolvemod.jl")
 
 include("../ALAS/PenMPCCmod.jl")

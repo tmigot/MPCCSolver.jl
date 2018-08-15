@@ -35,6 +35,7 @@ type TStopping
 
     #result
     wolfe_step          :: Bool
+    tau_wolfe           :: Float64
     iter                :: Int64
     sub_pb_solved       :: Bool
 
@@ -56,11 +57,12 @@ type TStopping
                         max_time            :: Float64  = 600.0,
                         optimality_residual :: Function = x -> norm(x,Inf),
                         wolfe_step          :: Bool     = true,
+                        tau_wolfe           :: Float64  = 0.6,
                         kwargs...)
         
         return new(atol, rtol, unbounded_threshold,
                    max_obj_f, max_obj_grad, max_obj_hess, max_obj_hv, max_eval,
-                   max_iter, max_time, NaN, Inf, optimality_residual,false,wolfe_step,0,true,NaN,
+                   max_iter, max_time, NaN, Inf, optimality_residual,false,wolfe_step,tau_wolfe,0,true,NaN,
                    false,false,false)
     end
 end
@@ -147,6 +149,9 @@ function stop(nlp :: AbstractNLPModel,
     s.sub_pb_solved = !subpb_fail
 
     s.actfeas = minimum(cons(nlp,x)) == 0.0
+
+    #@show ma.sts.wolfe_step, unc.sunc.wolfe_step
+    s.wolfe_step = dot(runc.gxp,runc.d) >= s.tau_wolfe*dot(runc.gx,runc.d)
 
     # return everything. Most users will use only the first four fields, but return
     # the fine grained information nevertheless.

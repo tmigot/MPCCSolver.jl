@@ -27,16 +27,22 @@ function actif_solve(ma     :: ActifMPCC,
   xjk = _update_state_result!(ma, unc, good_grad) #bizarre le good_grad
 
   #VI. Stopping
+  unc.runc.d = evald(ma, unc.runc.d)
   OK = stop(ma.pen, ma.sts, xjk, unc.sunc, unc.runc, stepmax)
-
+_amp_ffytreklj = .6
+_amp2_fqdgrkl = .6
+@show typeof(_amp_ffytreklj), typeof(_amp2_fqdgrkl)
+_amp_ffytreklj*_amp2_fqdgrkl
+@show "Hiha"
   #VII. Update result
   runc_update!(unc.runc, unc.x, fx   = unc.runc.fxp, 
                                 gx   = unc.runc.gxp,
                                                           ∇f   = unc.runc.∇fp,
-                                d    = evald(ma, unc.runc.d),
                                 iter = unc.runc.iter)
 
-  oa_update!(oa, xjk, ma.pen.ρ, ma.ractif.norm_feas, ma.sts.optimality, unc.runc.d, unc.runc.step, ols, unc.runc.fx, ma.n)
+  oa_update!(oa, xjk, ma.pen.ρ, ma.ractif.norm_feas, 
+                      ma.sts.optimality, unc.runc.d, 
+                      unc.runc.step, ols, unc.runc.fx, ma.n)
  end
 
  #Final Rending
@@ -52,8 +58,6 @@ end
 #
 ############################################################################
 function _actifmpcc_update!(ma :: ActifMPCC, runc :: RUncstrnd)
-
- ma.sts.wolfe_step = runc.solved == 0 && dot(runc.gx,runc.d) >= ma.paramset.tau_wolfe*dot(ma.ractif.gx,runc.d) #WTF ?
 
  ma.ractif.sub_pb_solved = ma.sts.sub_pb_solved
  ma.ractif.gx = runc.gx
@@ -81,7 +85,7 @@ function _update_state_result!(ma        :: ActifMPCC,
   xjk = evalx(ma,unc.x)
   unc.runc.gxp = grad(ma, xjk)
 
-  if unc.runc.solved == 0 || unc.runc.solved == 3 #que note le 3 ?
+  if unc.runc.solved == 0 || unc.runc.solved == 3 #que/qui note le 3 ?
 
     #V. Update the state
     good_grad || (unc.runc.∇fp = grad(ma, unc.x, unc.runc.gxp))

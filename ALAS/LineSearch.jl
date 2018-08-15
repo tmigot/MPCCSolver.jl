@@ -4,16 +4,52 @@ Package de fonction pour la recherche linéaire
 module LineSearch
 
 import ActifModelmod.obj, ActifModelmod.grad
+import NLPModels.AbstractNLPModel
+
 import Stopping1Dmod.Stopping1D
 import Stopping1Dmod.stop!, Stopping1Dmod.start!
-import Stopping1Dmod.wolfe_stop!, Stopping1Dmod.armijo_stop!
-import NLPModels.AbstractNLPModel
+import Stopping1Dmod.hz_start!, Stopping1Dmod.hz_stop!
+import Stopping1Dmod.aw_start!, Stopping1Dmod.aw_stop!
+
+################################################################################
+#
+# LineSearch générique
+#
+################################################################################
+function gen_linesearch(nlp       :: AbstractNLPModel,
+                        stp       :: Stopping1D,
+                        xj        :: Vector, 
+                        d         :: Vector;
+                        hg        :: Float64 = NaN,
+                        stepmax   :: Float64 = Inf,
+                        slope     :: Float64 = NaN,
+                        old_alpha :: Float64 = NaN,
+                        verbose   :: Bool = false,
+                        kwargs...)
+
+ #Step 1: remplir les champs optionnels
+ hg = isnan(hg) ? obj(nlp, xj) : hg
+ if isnan(slope)
+  gradf = grad(nlp, xj)
+  slope = dot(d,gradf)
+ end
+ #old_alpha = ??
+
+ #Step 2: procédure qui augmente le pas
+ # ****
+
+ #Step 3: procédure qui diminue le pas
+ # ****
+
+ return nothing
+end
+
 
 """
 Armijo : Backtracking line search
          1D Minimization
 """
-function armijo(ma        :: AbstractNLPModel,
+function armijo(nlp       :: AbstractNLPModel,
                 stp       :: Stopping1D,
                 xj        :: AbstractVector,
                 d         :: AbstractVector,
@@ -23,36 +59,34 @@ function armijo(ma        :: AbstractNLPModel,
                 old_alpha :: Float64;
                 verbose   :: Bool=true, kwargs...)
 
- good_grad=false
- nbW=0
- nbk=0
  step=min(stepmax,1.0)
+ 
+ xjp = xj+step*d
+ ht  = obj(nlp, xjp)
 
- tau_wolfe      = stp.tau_wolfe
- tau_armijo     = stp.tau_armijo
- armijo_update  = stp.armijo_update
- wolfe_update   = stp.wolfe_update
- ite_max_wolfe  = stp.ite_max_wolfe
- ite_max_armijo = stp.ite_max_armijo
-
- ht=obj(ma,xj+step*d)
+ gradft = Float64[]
+ good_grad=false
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- while nbk<ite_max_armijo && ht-hg>tau_armijo*step*slope
-  step*=armijo_update #step=step_0*(1/2)^m
-  ht=obj(ma,xj+step*d)
-  nbk+=1
- end
- step=step
+ OK = start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
+ while !OK
 
- return step,good_grad,ht,nbk,nbW,gradft
+  step *= stp.armijo_update #step=step_0*(1/2)^m
+  xjp   = xj+step*d
+  ht    = obj(nlp, xjp)
+
+  OK = stop!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
+
+ end
+
+ return step,good_grad,ht,gradft
 end
 
 """
 ArmijoWolfe : Backtracking line search + amélioration si le pas initial peut être augmenté
          1D Minimization
 """
-function armijo_wolfe(ma        :: AbstractNLPModel, #renommer le ma!!
+function armijo_wolfe(nlp       :: AbstractNLPModel,
                       stp       :: Stopping1D,
                       xj        :: AbstractVector,
                       d         :: AbstractVector,
@@ -62,63 +96,36 @@ function armijo_wolfe(ma        :: AbstractNLPModel, #renommer le ma!!
                       old_alpha :: Float64;
                       verbose   :: Bool=true, kwargs...)
 
+ #I.Initialization
  good_grad=false
- nbW=0
- step=min(stepmax,1.0)
-
- tau_wolfe      = stp.tau_wolfe
- tau_armijo     = stp.tau_armijo
- armijo_update  = stp.armijo_update
- wolfe_update   = stp.wolfe_update
- ite_max_wolfe  = stp.ite_max_wolfe
- ite_max_armijo = stp.ite_max_armijo
+ step = min(stepmax,1.0)
+ xjp = xj+step*d
+ ht  = obj(nlp, xjp)
+ gradft  = grad(nlp, xjp)
 
  #First try to increase t to satisfy loose Wolfe condition 
+ OK = aw_start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
+ while OK && step<stepmax
 
- xjp = xj+step*d
- ht  = obj(ma, xjp)
-
- gradft  = grad(ma, xjp)
-
- slope_t = dot(d, gradft)
-
- OK = wolfe_stop!(ma, stp, xj, slope, d, gradft) && armijo_stop!(ma, stp, xj, hg, ht, slope, step)
-
- while OK && nbW < ite_max_wolfe && step<stepmax
-
-  step    = min(step*wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
+  step    = min(step*stp.wolfe_update,stepmax)
   xjp     = xj+step*d
-  ht      = obj(ma, xjp)
-  gradft  = grad(ma, xjp)
-  slope_t = dot(d, gradft)
+  ht      = obj(nlp, xjp)
+  gradft  = grad(nlp, xjp)
 
-  OK = wolfe_stop!(ma, stp, xj, slope, d, gradft) && armijo_stop!(ma, stp, xj, hg, ht, slope, step)
-
-  nbW+=1
+  OK = aw_start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
  end
-
- #In this case the problem is very likely to be unbounded
- if nbW==ite_max_wolfe
-
-  stp.unbounded = true
-
-  return step,good_grad,ht,gradft
- end
+ good_grad = true
 
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- OK = start!(ma, stp, xj, hg, ht, slope, step, d, gradft)
+ OK = start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
  while !OK
 
-  step *= armijo_update #step=step_0*(1/2)^m
+  step *= stp.armijo_update #step=step_0*(1/2)^m
   xjp   = xj+step*d
-  ht    = obj(ma, xjp)
+  ht    = obj(nlp, xjp)
 
-  OK = stop!(ma, stp, xj, hg, ht, slope, step, d, gradft)
+  OK = stop!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
 
- end
-
- if stp.iter_armijo == 0
-  good_grad = true
  end
 
  return step,good_grad,ht,gradft
@@ -126,10 +133,9 @@ end
 
 """
 ArmijoWolfe : 'Newarmijo_wolfe' de JPD
-Problème avec Hager et Zhang numerical trick
-+ Ca n'a pas passé mon test... même sans Hager et Zhang trick...
 """
-function armijo_wolfe_hz(ma        :: AbstractNLPModel,
+ # Perform improved Armijo linesearch.
+function armijo_wolfe_hz(nlp        :: AbstractNLPModel,
                          stp       :: Stopping1D,
                          xj        :: AbstractVector,
                          d         :: AbstractVector,
@@ -138,62 +144,45 @@ function armijo_wolfe_hz(ma        :: AbstractNLPModel,
                          slope     :: Float64,
                          old_alpha :: Float64;
                          verbose   :: Bool=true, kwargs...)
-
- # Perform improved Armijo linesearch.
- nbk = 0
- nbW = 0
+ #I.Initialization
  step = min(stepmax,1.0)
-
- tau_wolfe      = stp.tau_wolfe
- tau_armijo     = stp.tau_armijo
- armijo_update  = stp.armijo_update
- wolfe_update   = stp.wolfe_update
- ite_max_wolfe  = stp.ite_max_wolfe
- ite_max_armijo = stp.ite_max_armijo
+ xjp = xj+step*d
+ ht  = obj(nlp, xjp)
+ gradft  = grad(nlp, xjp)
 
  #First try to increase t to satisfy loose Wolfe condition 
- ht=obj(ma,xj+step*d)
- gradft=grad(ma,xj+step*d)
- slope_t=dot(d,gradft)
- while (slope_t<tau_wolfe*slope) && (ht-hg<=tau_armijo*step*slope) && (nbW<ite_max_armijo) && step<stepmax
-  step=min(step*wolfe_update,stepmax) #on ne peut pas dépasser le pas maximal
-  ht=obj(ma,xj+step*d)
-  slope_t=dot(d,grad(ma,xj+step*d))
+ OK = aw_start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
+ while OK && step<stepmax
 
-  nbW+=1
+  step    = min(step*stp.wolfe_update,stepmax)
+  xjp     = xj+step*d
+  ht      = obj(nlp, xjp)
+  gradft  = grad(nlp, xjp)
+
+  OK = aw_start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
  end
+ good_grad = true
 
-# Hager & Zhang numerical trick
- hgoal = hg+slope*step*tau_armijo
- fact=-0.8
- prec=1e-10
- Armijo = (ht <= hgoal) || ((ht <= hg + prec*abs(hg)) && (slope_t <= fact * slope))
- good_grad=true
+ # Hager & Zhang numerical trick
  #critère d'Armijo : f(x+alpha*d)-f(x)<=tau_a*alpha*grad f^Td
- while nbk<ite_max_armijo && !Armijo
-  step*=armijo_update #step=step_0*(1/2)^m
-  ht=obj(ma,xj+step*d)
-  hgoal = hg+slope*step*tau_armijo
+ OK = hz_start!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
+ while !OK
 
-  Armijo=false
-  good_grad=false
-  if ht <= hgoal
-   Armijo=true
-  elseif ht <= hg+prec*abs(hg)
-   gradft=grad(ma,xj+step*d)
-   slope_t = dot(d,gradft)
-   good_grad=true
-   if slope_t <= fact*slope
-    Armijo = true
-   end
-  end
+  step *= stp.armijo_update #step=step_0*(1/2)^m
+  xjp   = xj+step*d
+  ht    = obj(nlp, xjp)
 
-  nbk+=1
+  OK, good_grad, gradft = hz_stop!(nlp, stp, xjp, hg, ht, slope, step, d, gradft)
  end
 
- good_grad=false #à enlever ?
- return step,good_grad,ht,nbk,nbW,gradft
+ return step,good_grad,ht,gradft
 end
+
+############################################################################
+#
+# Armijo sub_problem
+#
+############################################################################
 
 #end of module
 end

@@ -4,6 +4,7 @@ module RUncstrndmod
 type RUncstrnd
 
  x              :: Vector #x at the previous iteration
+
  fx             :: Float64 #objective at x
  gx             :: Vector #gradient at x
  fxp            :: Float64 #objective at x
@@ -36,63 +37,61 @@ type RUncstrnd
  end
 end
 
-function runc_start!(RUncstrnd :: RUncstrnd;
-                 fx             :: Float64 = Inf,
-                 gx             :: Vector  = Float64[],
-                 fxp            :: Float64 = Inf,
-                 gxp            :: Vector  = Float64[],
-                              ∇f             :: Vector  = Float64[],
-                               ∇fp            :: Vector  = Float64[],
-                 step           :: Float64 = 1.0,
-                 d              :: Vector  = Float64[],
-                 iter           :: Int64 = 0,
-                 solved         :: Int64 = -1)
+function runc_start!(runc :: RUncstrnd;
+                     fx     :: Float64 = Inf,
+                     gx     :: Vector  = Float64[],
+                     fxp    :: Float64 = Inf,
+                     gxp    :: Vector  = Float64[],
+                                     ∇f     :: Vector  = Float64[],
+                                     ∇fp    :: Vector  = Float64[],
+                     step   :: Float64 = 1.0,
+                     d      :: Vector  = Float64[],
+                     iter   :: Int64 = 0,
+                     solved :: Int64 = -1)
 
- RUncstrnd.fx = fx == Inf ? RUncstrnd.fx : fx
- RUncstrnd.gx = gx == Float64[] ? RUncstrnd.gx : gx
+ runc.fx = fx == Inf ? runc.fx : fx
+ runc.gx = gx == Float64[] ? runc.gx : gx
 
- RUncstrnd.fxp = fxp == Inf ? RUncstrnd.fxp : fxp
- RUncstrnd.gxp = gxp == Float64[] ? RUncstrnd.gxp : gxp
+ runc.fxp = fxp == Inf ? runc.fxp : fxp
+ runc.gxp = gxp == Float64[] ? runc.gxp : gxp
 
- RUncstrnd.∇f  = ∇f  == Float64[] ? RUncstrnd.∇f  : ∇f
- RUncstrnd.∇fp = ∇fp == Float64[] ? RUncstrnd.∇fp : ∇fp
+ runc.∇f  = ∇f  == Float64[] ? runc.∇f  : ∇f
+ runc.∇fp = ∇fp == Float64[] ? runc.∇fp : ∇fp
 
- RUncstrnd.d = d == Float64[] ? RUncstrnd.d : d
+ runc.d = d == Float64[] ? runc.d : d
 
- RUncstrnd.step += 1 #WTF !!!
-
- return RUncstrnd
+ return runc
 end
 
-function runc_update!(RUncstrnd :: RUncstrnd,
-                      xk             :: Vector;
-                      fx             :: Float64 = Inf,
-                      gx             :: Vector  = Float64[],
-                      fxp            :: Float64 = Inf,
-                      gxp            :: Vector  = Float64[],
-                                       ∇f             :: Vector  = Float64[],
-                                       ∇fp            :: Vector  = Float64[],
-                      step           :: Float64 = 1.0,
-                      d              :: Vector  = Float64[],
-                      iter           :: Int64 = -1,
-                      solved         :: Int64 = -1)
+function runc_update!(runc   :: RUncstrnd,
+                      xk     :: Vector;
+                      fx     :: Float64 = Inf,
+                      gx     :: Vector  = Float64[],
+                      fxp    :: Float64 = Inf,
+                      gxp    :: Vector  = Float64[],
+                                       ∇f     :: Vector  = Float64[],
+                                       ∇fp    :: Vector  = Float64[],
+                      step   :: Float64 = 1.0,
+                      d      :: Vector  = Float64[],
+                      iter   :: Int64 = -1,
+                      solved :: Int64 = -1)
 
- RUncstrnd.fx = fx == Inf ? RUncstrnd.fx : fx
- RUncstrnd.gx = gx == Float64[] ? RUncstrnd.gx : gx
+ runc.fx = fx == Inf ? runc.fx : fx
+ runc.gx = gx == Float64[] ? runc.gx : gx
 
- RUncstrnd.fxp = fxp == Inf ? RUncstrnd.fxp : fxp
- RUncstrnd.gxp = gxp == Float64[] ? RUncstrnd.gxp : gxp
+ runc.fxp = fxp == Inf ? runc.fxp : fxp
+ runc.gxp = gxp == Float64[] ? runc.gxp : gxp
 
- RUncstrnd.∇f = ∇f == Float64[] ? RUncstrnd.∇f : ∇f
- RUncstrnd.∇fp = ∇fp == Float64[] ? RUncstrnd.∇fp : ∇fp
+ runc.∇f  = ∇f  == Float64[] ? runc.∇f : ∇f
+ runc.∇fp = ∇fp == Float64[] ? runc.∇fp : ∇fp
 
- RUncstrnd.d = d == Float64[] ? RUncstrnd.d : d
+ runc.d = d == Float64[] ? runc.d : d
 
- RUncstrnd.step = step == 1.0 ? RUncstrnd.step : step
+ runc.step = step == 1.0 ? runc.step : step
 
- RUncstrnd.iter = iter == -1 ? RUncstrnd.iter+1 : iter
+ runc.iter = iter == -1 ? runc.iter+1 : iter
 
- return RUncstrnd
+ return runc
 end
 
 #end of module

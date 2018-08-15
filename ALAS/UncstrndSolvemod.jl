@@ -50,34 +50,33 @@ end
 ############################################################################
 
 function solve_1d(unc :: UncstrndSolve; stepmax :: Float64 = Inf)
+
+ 
  x = unc.x
  d = unc.runc.d
 
  scale   = 1.0
-
  slope   = dot(unc.runc.∇f, d)
  step    = unc.runc.step
-
  hg = unc.runc.fx
 
+ #Call a 1-D minimization function
+ # Minimizes f along the direction d.
  step,good_grad,ht,gradft=unc.func_1d(unc.nlp,unc.sunc,
-                                                       x, d,
-                                                       hg,
-                                                       stepmax,
-                                                       scale*slope,
-                                                       step)
+                                      x, d, hg, stepmax,
+                                      scale*slope, step)
 
  step *= scale
- xp = x + step*d
+ xp    = x + step*d
 
- beta=NaN
- ols = OutputLS(stepmax, step, slope, beta,-1,-1)
+ ols = OutputLS(stepmax, step, slope, NaN,-1,-1)
 
  runc_update!(unc.runc, x, step = step, d = d, ∇fp = gradft, fxp = ht)
 
   #Final rending
   unc.runc.solved = 0
-  if unc.sunc.tired || true in isnan.(x) || true in isnan(unc.runc.fxp)
+  nan_check = true in isnan.(x) || true in isnan(unc.runc.fxp)
+  if unc.sunc.tired || nan_check
    unc.runc.solved = 1
    unc.runc.step   = 0.0
   elseif unc.sunc.unbounded
