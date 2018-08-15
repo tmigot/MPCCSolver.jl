@@ -29,11 +29,7 @@ function actif_solve(ma     :: ActifMPCC,
   #VI. Stopping
   unc.runc.d = evald(ma, unc.runc.d)
   OK = stop(ma.pen, ma.sts, xjk, unc.sunc, unc.runc, stepmax)
-_amp_ffytreklj = .6
-_amp2_fqdgrkl = .6
-@show typeof(_amp_ffytreklj), typeof(_amp2_fqdgrkl)
-_amp_ffytreklj*_amp2_fqdgrkl
-@show "Hiha"
+
   #VII. Update result
   runc_update!(unc.runc, unc.x, fx   = unc.runc.fxp, 
                                 gx   = unc.runc.gxp,
