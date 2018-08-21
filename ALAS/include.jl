@@ -5,7 +5,7 @@
 include("../ALAS/OutputLSmod.jl")
 include("../ALAS/OutputALASmod.jl")
 
-include("../ALAS/Thetafunc.jl")
+include("../ALAS/ThetaFct.jl")
 include("../ALAS/Relaxation.jl")
 
 include("../ALAS/Penalty.jl")

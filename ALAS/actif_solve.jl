@@ -1,3 +1,10 @@
+############################################################################
+#
+# solve unconstrained minimization with line search
+#
+# On devrait donc avoir un LineModel plutôt qu'un ActifModel !
+# modifier dans _init_uncstrnd_solve(ma, xjk)
+############################################################################
 function actif_solve(ma     :: ActifMPCC,
                      xjk    :: Vector,
                      oa     :: OutputALAS)

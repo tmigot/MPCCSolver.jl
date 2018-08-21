@@ -10,7 +10,7 @@ import OutputALASmod.OutputALAS, OutputALASmod.oa_update!
 import Stopping.TStopping, Stopping.start!, Stopping.stop
 
 import Relaxation.psi, Relaxation.dpsi, Relaxation.ddpsi, Relaxation.dphi
-import Relaxation.invpsi, Relaxation.alpha_theta_max
+import Relaxation.invpsi, Relaxation.alpha_max
 
 importall NLPModels #Est-ce que ActifMPCC doit vraiment hériter du AbstractNLPModel ?
 

@@ -12,7 +12,7 @@ using NLPModels
 #package to solve unconstrained minimization pb
 type UncstrndSolve
 
-  nlp  :: ActifModel
+  nlp  :: ActifModel #Est-ce que ça pourrait plutôt être un AbstractNLPModel
   x    :: Vector
   runc :: RUncstrnd
   sunc :: Stopping1D

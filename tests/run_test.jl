@@ -15,7 +15,7 @@ using PyPlot
 test=0
 done=false
 
-	(test==0 || test==1) ? include("run_test_Thetafunc.jl") : print("")
+	(test==0 || test==1) ? include("run_test_ThetaFct.jl") : print("")
 
 	(test==0 || test==2) ? include("run_test_Relaxation.jl") : print("")
 

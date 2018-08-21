@@ -5,6 +5,7 @@ import ActifModelmod.grad
 
 type Stopping1D
 
+    #Problem tolerances
     atol :: Float64                  # absolute tolerance
     rtol :: Float64                  # relative tolerance
     unbounded_threshold :: Float64   # below this value, the problem is declared unbounded

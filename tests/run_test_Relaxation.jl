@@ -2,24 +2,38 @@ println("On teste le package Relaxation")
 
 using Relaxation
 
-
 r=1.0;s=1.0;t=1.0;
-Relaxation_success=true
+
+Relaxation_success = true
 
 # psi(x::Any,r::Float64,s::Float64,t::Float64)
-if norm(Relaxation.psi(s,r,s,t)-s)>precision
+t0 = norm(Relaxation.psi(s,r,s,t)-s) <= eps(Float64)*10
+
+if !t0
+
  x = linspace(-0.5,10,1000); y = Relaxation.psi(x,r,s,t)
  PyPlot.plot(x, y, color="red", linewidth=2.0, linestyle="-")
  x = linspace(-0.5,10,1000); y = Relaxation.psi(x,r,s,t)
  PyPlot.plot(y, x, color="blue", linewidth=2.0, linestyle="-")
+
+ Relaxation_success=false
+ throw("UnitaryTestFailure: Error in the definition of psi")
+
 end
 
 #invpsi(x::Any,r::Float64,s::Float64,t::Float64)
-if norm(Relaxation.invpsi(s,r,s,t)-s)>precision
+t1 = norm(Relaxation.invpsi(s,r,s,t)-s) <= eps(Float64)*10
+
+if !t1
+
  x = linspace(-0.5,10,1000); y = Relaxation.psi(x,r,s,t)
  PyPlot.plot(x, y, color="red", linewidth=2.0, linestyle="-")
  x = linspace(-0.5,10,1000); y = Relaxation.psi(x,r,s,t)
  PyPlot.plot(y, x, color="blue", linewidth=2.0, linestyle="-")
+
+ Relaxation_success=false
+ throw("UnitaryTestFailure: Error in the definition of invpsi")
+
 end
 #dpsi(x::Any,r::Float64,s::Float64,t::Float64)
 #phi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
@@ -27,45 +41,71 @@ end
 #dphi(yg::Any,yh::Any,r::Float64,s::Float64,t::Float64)
 #dphi(x::Any,nb_comp::Int64,r::Float64,s::Float64,t::Float64)
 
-#AlphaThetaMax(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
-#AlphaThetaMax : résoud l'équation en alpha où psi(x,r,s,t)=s+t*theta(x,r)
+#alpha_max(x::Float64,dx::Float64,y::Float64,dy::Float64,r::Float64,s::Float64,t::Float64)
+#alpha_max : résoud l'équation en alpha où psi(x,r,s,t)=s+t*theta(x,r)
 r=1.0;s=1.0;t=0.0 #résoud l'éq.
 
 x=1.0;y=2.0;dx=1.0;dy=-1.0;
 #doit rendre (0,1)
-if !isequal(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t),[0.0,1.0])
- println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
- Thetafunc_success=false
+t2 = isequal(Relaxation.alpha_max(x,dx,y,dy,r,s,t),[0.0,1.0])
+
+if !t2
+
+ println(Relaxation.alpha_max(x,dx,y,dy,r,s,t))
+ Relaxation_success = false
+
 end
 
 x=0.0;y=2.0;dx=1.0;dy=-2.0;
 #solution : (1,0.5)
-if !isequal(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t),[1.0,0.5])
- println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
- Relaxation_success=false
+t3 = isequal(Relaxation.alpha_max(x,dx,y,dy,r,s,t),[1.0,0.5])
+
+if !t3
+
+ println(Relaxation.alpha_max(x,dx,y,dy,r,s,t))
+ Relaxation_success = false
+
 end
 
 r=1.0;s=1.0;t=1.0
 #on tape la contrainte :
 x=1.0;y=2.0;dx=1.0;dy=0.0;
-if !(minimum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))>=0.0) || !(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))==Inf)
- println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
- Relaxation_success=false
+
+t4 = minimum(Relaxation.alpha_max(x,dx,y,dy,r,s,t))>=0.0
+t5 = maximum(Relaxation.alpha_max(x,dx,y,dy,r,s,t))==Inf
+
+if !(t4) || !(t5)
+
+ println(Relaxation.alpha_max(x,dx,y,dy,r,s,t))
+ Relaxation_success = false
+
 end
+
 x=2.0;y=1.0;dx=-1.0;dy=2.0;
-if !(minimum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))>=0.0) || !(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))<Inf)
- println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
- Relaxation_success=false
+
+t6 = minimum(Relaxation.alpha_max(x,dx,y,dy,r,s,t)) >= 0.0
+t7 = maximum(Relaxation.alpha_max(x,dx,y,dy,r,s,t)) <  Inf
+
+if !(t6) || !(t7)
+
+ println(Relaxation.alpha_max(x,dx,y,dy,r,s,t))
+ Relaxation_success = false
+
 end
 
 #on est sous (s,s) et donc on ne tape pas la contrainte virtuelle
 x=0.0;y=0.0;dx=0.0;dy=-2.0;
-if !isequal(maximum(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t)),Inf)
- println(Relaxation.AlphaThetaMax(x,dx,y,dy,r,s,t))
- Relaxation_success=false
+
+t8 = isequal(maximum(Relaxation.alpha_max(x,dx,y,dy,r,s,t)),Inf)
+
+if !t8
+
+ println(Relaxation.alpha_max(x,dx,y,dy,r,s,t))
+ Relaxation_success = false
+
 end
 
-#Bilan : donner une sortie bilan
+#Conclusion:
 if Relaxation_success==true
  println("Relaxationmod.jl passes the test !")
 else
