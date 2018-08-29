@@ -32,6 +32,7 @@ type MPCCSolve
  xj         :: Vector #itéré courant
 
  algoset    :: AlgoSet
+
  paramset   :: ParamSet
  parammpcc  :: ParamMPCC
 

@@ -3,7 +3,8 @@ module ActifMPCCmod
 import ParamSetmod.ParamSet
 
 import RActifmod.RActif, RActifmod.actif_start!
-import PenMPCCmod.PenMPCC
+import PenMPCCmod.PenMPCC, PenMPCCmod.cons
+import PenMPCCmod.get_bounds
 import StoppingPenmod.StoppingPen
 
 import OutputALASmod.OutputALAS, OutputALASmod.oa_update!

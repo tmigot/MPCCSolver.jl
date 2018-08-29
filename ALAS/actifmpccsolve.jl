@@ -18,9 +18,11 @@ function ActifMPCC(pen        :: PenMPCC,
 
  w   = zeros(Bool,nn,2)
  #active bounds
- w[1:n+ncc,1] = x[1:n+ncc]      .== pen.nlp.meta.lvar[1:n+ncc]
- w[n+1:n+ncc,2] = x[n+ncc+1:n+2*ncc]  .== pen.nlp.meta.lvar[n+ncc+1:n+2*ncc]
- w[1:n,2]  = x[1:n] .== pen.nlp.meta.uvar[1:n]
+ lvar, uvar = get_bounds(pen)
+
+ w[1:n+ncc,1] = x[1:n+ncc]      .== lvar[1:n+ncc]
+ w[n+1:n+ncc,2] = x[n+ncc+1:n+2*ncc]  .== lvar[n+ncc+1:n+2*ncc]
+ w[1:n,2]  = x[1:n] .== uvar[1:n]
 
   # puis la boucle: est-ce qu'il y a Relaxation.psi vectoriel ?
   #A simplifier
@@ -57,7 +59,7 @@ function ActifMPCC(pen        :: PenMPCC,
  Hess = eye(n+2*ncc)
 
  
- meta = pen.nlp.meta
+ meta = pen.meta
  x0 = vcat(x[wnc], x[n+w13c], x[n+ncc+w24c])
 
  return ActifMPCC(meta,Counters(),x0,pen,w,n,ncc,

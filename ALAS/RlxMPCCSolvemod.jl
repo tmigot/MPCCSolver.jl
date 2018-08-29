@@ -1,6 +1,7 @@
 module RlxMPCCSolvemod
 
 using NLPModels
+import NLPModels.AbstractNLPModel
 
 import AlgoSetmod.AlgoSet
 import ParamSetmod.ParamSet
@@ -15,6 +16,7 @@ import PenMPCCSolvemod.PenMPCCSolve
 import PenMPCCSolvemod.grad
 import PenMPCCSolvemod.lsq_computation_multiplier_bool
 import PenMPCCSolvemod.pen_solve
+import PenMPCCmod.objgrad
 
 import RPenmod.RPen
 import RPenmod.pen_start!, RPenmod.pen_update!, RPenmod.pen_rho_update!
@@ -23,6 +25,7 @@ import PenMPCCmod.PenMPCC,PenMPCCmod.computation_multiplier_bool, PenMPCCmod.jac
 
 import OutputALASmod.OutputALAS
 
+using MPCCmod
 import MPCCmod.MPCC, MPCCmod.viol_contrainte
 import MPCCmod.obj, MPCCmod.grad
 import MPCCmod.consG, MPCCmod.consH
@@ -37,7 +40,10 @@ import RRelaxmod.RRelax, RRelaxmod.relax_start!
 
 import Relaxation.psi
 
+using RlxMPCCmod
 import RlxMPCCmod.RlxMPCC
+import RlxMPCCmod.obj, RlxMPCCmod.grad
+import RlxMPCCmod.viol_cons_nl
 
 """
 Type ALASMPCC : 
@@ -154,8 +160,7 @@ include("rlx_solve.jl")
 # ...
 #
 ############################################################################
-
-function _update_penalty!(rlx    :: RlxMPCCSolve,
+function _update_penalty!(rlx     :: RlxMPCCSolve,
                           ps      :: PenMPCCSolve, 
                           xjk     :: Vector, 
                           UPDATE  :: Bool, 
@@ -163,7 +168,7 @@ function _update_penalty!(rlx    :: RlxMPCCSolve,
 
   if UPDATE
 
-   ps.pen.ρ, ps  = _check_update_rho!(rlx, ps, xjk, verbose)
+   ps  = _check_update_rho!(rlx, ps, xjk, verbose)
 
   end
 
@@ -171,11 +176,7 @@ function _update_penalty!(rlx    :: RlxMPCCSolve,
   ps.pen.u = _lagrange_update(rlx, ps.pen.ρ, xjk, ps.pen.u)
 
   #met à jour la fonction objectif après la mise à jour des multiplicateurs
-  ps.pen.nlp, ps.rpen.fx, ps.rpen.gx = _update_penaltynlp(rlx, ps.pen.ρ, xjk,
-                                                          ps.pen.u,
-                                                          ps.pen.nlp,
-                                                          objpen = ps.rpen.fx,
-                                                          gradpen = ps.rpen.gx)
+  ps.rpen.fx, ps.rpen.gx = objgrad(ps.pen,xjk)
 
   ps.rpen.lambda, rlx.spas.l_negative = lsq_computation_multiplier_bool(ps, xjk) 
   #ne fait pas tout à fait la même chose
@@ -192,10 +193,10 @@ end
 #
 ############################################################################
 
-function _check_update_rho!(rlx    :: RlxMPCCSolve,
-                           ps      :: PenMPCCSolve,
-                           xjkl    :: Vector,
-                           verbose :: Bool)
+function _check_update_rho!(rlx     :: RlxMPCCSolve,
+                            ps      :: PenMPCCSolve,
+                            xjkl    :: Vector,
+                            verbose :: Bool)
 
  ht, gradpen = ps.rpen.fx, ps.rpen.gx
  feas = rlx.spas.feasibility
@@ -203,19 +204,16 @@ function _check_update_rho!(rlx    :: RlxMPCCSolve,
  ρ = ps.pen.ρ
  u = ps.pen.u
 
- cx = viol_contrainte(rlx.nlp.mod, xjkl)
- ρ = _rho_update(rlx, ρ, ps.crho, abs.(cx))
+ cx = viol_cons_nl(rlx.nlp, xjkl)
+ ρ  = _rho_update(rlx, ρ, ps.crho, abs.(cx))
+ ps.pen.ρ = ρ
 
  #on change le problème donc on réinitialise beta
  #setcrho(ma, rlx.algoset.crho_update(feas, ρ))
  ps.crho = rlx.algoset.crho_update(feas, ρ)
 
  #met à jour la fonction objectif après la mise à jour de rho
- ps.pen.nlp, ht, gradpen = _update_penaltynlp(rlx, ρ, xjkl, u,
-                                              ps.pen.nlp,
-                                              objpen=ht,
-                                              gradpen=gradpen,
-                                              crho=ps.crho)
+ ht, gradpen = objgrad(ps.pen,xjkl)
 
  #met à jour les différents paramètres horizontaux
  #setbeta(ma,0.0) #on change le problème donc on réinitialise beta
@@ -224,7 +222,7 @@ function _check_update_rho!(rlx    :: RlxMPCCSolve,
 
  ps.rpen.fx, ps.rpen.gx = ht, gradpen
 
- return ρ,ps
+ return ps
 end
 
 ############################################################################
@@ -274,7 +272,7 @@ end
 #
 ############################################################################
 
-include("nlp_penalty.jl")
+#include("nlp_penalty.jl")
 
 ############################################################################
 # SlackComplementarityProjection : 

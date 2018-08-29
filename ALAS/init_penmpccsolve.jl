@@ -6,11 +6,12 @@ function _initialize_solve_penmpcc(rlx  :: RlxMPCCSolve,
  spen   = StoppingPen(max_iter = rlx.paramset.ite_max_viol, atol = rlx.prec)
 
  ps = PenMPCCSolve(penmpcc,
-                  penmpcc.ncc,
-                  rlx.paramset,
-                  rlx.algoset,
-                  spen,
-                  rpen)
+                   xj,
+                   penmpcc.ncc,
+                   rlx.paramset,
+                   rlx.algoset,
+                   spen,
+                   rpen)
 
  #Create an ActifMPCC
  return ps

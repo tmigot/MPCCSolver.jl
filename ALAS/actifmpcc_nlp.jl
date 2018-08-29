@@ -6,7 +6,7 @@ function obj(ma :: ActifMPCC,x :: Vector)
  #increment!(ma, :neval_obj)
 
  xf = evalx(ma, x)
- return NLPModels.obj(ma.pen.nlp, xf)
+ return obj(ma.pen, xf)
 end
 
 """
@@ -20,7 +20,7 @@ function grad(ma :: ActifMPCC,x :: Vector)
  #on calcul xf le vecteur complet
  xf = evalx(ma, x)
  #construction du vecteur gradient de taille n+2ncc
- gradf = NLPModels.grad(ma.pen.nlp, xf)
+ gradf = grad(ma.pen, xf)
 
  return length(x) == ma.n + 2*ma.ncc ? gradf : grad(ma, x, gradf)
 end
@@ -34,7 +34,7 @@ function grad!(ma :: ActifMPCC, x :: Vector, gx :: Vector)
  #increment!(nlp, :neval_grad)
 
  if length(x) == ma.n+2*ma.ncc
-  gradf = NLPModels.grad(ma.pen.nlp, x)
+  gradf = grad(ma.pen, x)
   gx = grad(ma, x, gradf)
  else
   gx = grad(ma, x)
@@ -106,7 +106,7 @@ function hess(ma :: ActifMPCC, x :: Vector)
  #H=NLPModels.hess(ma.nlp,xf) #renvoi la triangulaire inférieure tril(H,-1)'
  #H=H+tril(H,-1)'
 
- H = ma.pen.nlp.H(xf)
+ H = hess(ma.pen,xf)
  H = H+tril(H,-1)'
 
  if ma.ncc>0
@@ -133,12 +133,12 @@ function hess(ma :: ActifMPCC, x :: Vector, H :: Array{Float64,2})
  nnbt = ma.n+2*ma.ncc
 
  #construction du vecteur gradient de taille n+2ncc
- gradf=NLPModels.grad(ma.pen.nlp,xf)
+ gradf = grad(ma.pen, xf)
 
  #la hessienne des variables du sous-espace (nredxnred)
  Hred=vcat(hcat(H[ma.wnc,ma.wnc],H[ma.wnc,ma.n+ma.w13c],H[ma.wnc,nnb+ma.w24c]),
            hcat(H[ma.n+ma.w13c,ma.wnc],H[ma.n+ma.w13c,ma.n+ma.w13c],H[ma.n+ma.w13c,nnb+ma.w24c]),
-             hcat(H[nnb+ma.w24c,ma.wnc],H[nnb+ma.w24c,ma.n+ma.w13c],H[nnb+ma.w24c,ma.n+ma.ncc+ma.w24c]))
+           hcat(H[nnb+ma.w24c,ma.wnc],H[nnb+ma.w24c,ma.n+ma.w13c],H[nnb+ma.w24c,ma.n+ma.ncc+ma.w24c]))
 
  if isempty(ma.w4)
   hessg=sparse(zeros(length(ma.w13c),nred))
@@ -184,6 +184,7 @@ x in n+2ncc
 function cons(ma :: ActifMPCC, x :: Vector)
 
  r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+ lvar, uvar = get_bounds(ma.pen)
 
  #increment!(ma, :neval_cons)
  xf = evalx(ma,x)
@@ -191,11 +192,11 @@ function cons(ma :: ActifMPCC, x :: Vector)
  sg = xf[ma.n+1:ma.n+ma.ncc]
  sh = xf[ma.n+ma.ncc+1:ma.n+2*ma.ncc]
 
- vlx = xf[ma.wn1]-ma.pen.nlp.meta.lvar[ma.wn1]
- vux = xf[ma.wn2]-ma.pen.nlp.meta.uvar[ma.wn2]
+ vlx = xf[ma.wn1]-lvar[ma.wn1]
+ vux = xf[ma.wn2]-uvar[ma.wn2]
 
- vlg = sg[ma.w1]-ma.pen.nlp.meta.lvar[ma.w1+ma.n]
- vlh = sh[ma.w2]-ma.pen.nlp.meta.lvar[ma.w2+ma.n+ma.ncc]
+ vlg = sg[ma.w1]-lvar[ma.w1+ma.n]
+ vlh = sh[ma.w2]-lvar[ma.w2+ma.n+ma.ncc]
  vug = psi(sh[ma.w3],r,s,t)-sg[ma.w3]
  vuh = psi(sg[ma.w4],r,s,t)-sh[ma.w4]
 

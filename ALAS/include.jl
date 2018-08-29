@@ -2,13 +2,20 @@
 #include("installer.jl")
 
 #include file
+include("../ALAS/MPCCmod.jl")
+
 include("../ALAS/OutputLSmod.jl")
 include("../ALAS/OutputALASmod.jl")
 
 include("../ALAS/ThetaFct.jl")
 include("../ALAS/Relaxation.jl")
 
+include("../ALAS/RlxMPCCmod.jl")
+
 include("../ALAS/Penalty.jl")
+
+include("../ALAS/PenMPCCmod.jl")
+
 include("../ALAS/ParamSetmod.jl")
 
 include("../ALAS/RUncstrndmod.jl")
@@ -16,7 +23,6 @@ include("../ALAS/ActifModelmod.jl")
 include("../ALAS/Stopping1Dmod.jl")
 include("../ALAS/UncstrndSolvemod.jl")
 
-include("../ALAS/PenMPCCmod.jl")
 include("../ALAS/Stopping.jl") #changer le nom
 include("../ALAS/RPenmod.jl")
 include("../ALAS/StoppingPenmod.jl")
@@ -32,8 +38,6 @@ include("../ALAS/CRhoUpdate.jl")
 include("../ALAS/AlgoSetmod.jl")
 include("../ALAS/PenMPCCSolvemod.jl")
 
-include("../ALAS/MPCCmod.jl") #parce qu'on a pas de nlp RlxMPCC
-include("../ALAS/RlxMPCCmod.jl")
 include("../ALAS/RRelaxmod.jl")
 include("../ALAS/StoppingRelax.jl")
 include("../ALAS/RlxMPCCSolvemod.jl")

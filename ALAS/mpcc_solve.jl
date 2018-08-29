@@ -2,8 +2,6 @@
 #
 # MAIN FUNCTION
 #
-# TO DO : - c'est pénible d'avoir r,s,t au lieu de t de dim <= 3
-#
 ###################################################################################
 function solve(mpccsol :: MPCCSolve)
 

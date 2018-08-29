@@ -28,7 +28,7 @@ type AlgoSet
 end
 
 #Constructeur par défaut
-function AlgoSet(;uncmin      :: Function = actif_solve, #working_min_proj
+function AlgoSet(;uncmin      :: Function = actif_solve, #working_min_proj, actif_solve
                   penalty     :: Function = Penalty.quadratic, #lagrangian, quadratic
                   direction   :: Function = DDirection.NwtdirectionSpectral, #NwtdirectionSpectral, CGHZ, invBFGS
                   linesearch  :: Function = LineSearch.armijo_wolfe, #armijo, armijo_wolfe, armijo_wolfe_hz

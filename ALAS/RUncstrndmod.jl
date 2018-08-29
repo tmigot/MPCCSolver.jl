@@ -13,6 +13,8 @@ type RUncstrnd
  ∇f             :: Vector #gradient projected at x
  ∇fp            :: Vector #gradient projected at x
 
+ cons           :: Vector #violation of the constraints
+
  step           :: Float64 #last step in the sub-problem
  d              :: Vector #gradient at x
 
@@ -27,13 +29,14 @@ type RUncstrnd
                     gxp            :: Vector  = Float64[],
                                    ∇f             :: Vector  = Float64[],
                                    ∇fp            :: Vector  = Float64[],
+                    cons           :: Vector  = Float64[],
                     step           :: Float64 = 1.0,
                     d              :: Vector  = Float64[],
                     iter           :: Int64 = 0,
                     solved         :: Int64 = -1)
 
 
-  return new(x,fx,gx,fxp,gxp,∇f,∇fp,step,d,iter,solved)
+  return new(x,fx,gx,fxp,gxp,∇f,∇fp,cons,step,d,iter,solved)
  end
 end
 
@@ -44,6 +47,7 @@ function runc_start!(runc :: RUncstrnd;
                      gxp    :: Vector  = Float64[],
                                      ∇f     :: Vector  = Float64[],
                                      ∇fp    :: Vector  = Float64[],
+                     cons   :: Vector  = Float64[],
                      step   :: Float64 = 1.0,
                      d      :: Vector  = Float64[],
                      iter   :: Int64 = 0,
@@ -58,6 +62,8 @@ function runc_start!(runc :: RUncstrnd;
  runc.∇f  = ∇f  == Float64[] ? runc.∇f  : ∇f
  runc.∇fp = ∇fp == Float64[] ? runc.∇fp : ∇fp
 
+ runc.cons = cons == Float64[] ? runc.cons : cons
+
  runc.d = d == Float64[] ? runc.d : d
 
  return runc
@@ -71,6 +77,7 @@ function runc_update!(runc   :: RUncstrnd,
                       gxp    :: Vector  = Float64[],
                                        ∇f     :: Vector  = Float64[],
                                        ∇fp    :: Vector  = Float64[],
+                      cons   :: Vector  = Float64[],
                       step   :: Float64 = 1.0,
                       d      :: Vector  = Float64[],
                       iter   :: Int64 = -1,
@@ -84,6 +91,8 @@ function runc_update!(runc   :: RUncstrnd,
 
  runc.∇f  = ∇f  == Float64[] ? runc.∇f : ∇f
  runc.∇fp = ∇fp == Float64[] ? runc.∇fp : ∇fp
+
+ runc.cons = cons == Float64[] ? runc.cons : cons
 
  runc.d = d == Float64[] ? runc.d : d
 

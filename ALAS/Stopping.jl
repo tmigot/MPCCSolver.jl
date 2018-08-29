@@ -1,7 +1,7 @@
 module Stopping
 
 using NLPModels
-import PenMPCCmod.cons
+
 import Stopping1Dmod.Stopping1D
 import RUncstrndmod.RUncstrnd
 
@@ -84,7 +84,7 @@ function start!(nlp :: AbstractNLPModel,
 
     GOOD = s.optimal && s.actfeas
 
-    return ∇f₀
+    return GOOD, ∇f₀
 end
 
 function start!(nlp :: AbstractNLPModel,
@@ -97,7 +97,7 @@ function start!(nlp :: AbstractNLPModel,
     s.optimality0 = s.optimality_residual(∇f₀)
     s.start_time  = time()
     s.optimal = (s.optimality0 < s.atol) | (s.optimality0 <( s.rtol * s.optimality0))
-    s.actfeas = minimum(cons(nlp,x₀)) == 0.0
+    s.actfeas = minimum(runc.cons) == 0.0
 
     GOOD = s.optimal && s.actfeas
 
@@ -148,7 +148,7 @@ function stop(nlp :: AbstractNLPModel,
     subpb_fail =! (runc.solved == 0 && !small_step)
     s.sub_pb_solved = !subpb_fail
 
-    s.actfeas = minimum(cons(nlp,x)) == 0.0
+    s.actfeas = minimum(runc.cons) == 0.0
 
     #@show ma.sts.wolfe_step, unc.sunc.wolfe_step
     s.wolfe_step = dot(runc.gxp,runc.d) >= s.tau_wolfe*dot(runc.gx,runc.d)

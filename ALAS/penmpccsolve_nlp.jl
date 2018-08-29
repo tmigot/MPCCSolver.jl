@@ -1,11 +1,11 @@
 """
 Evalue la fonction objectif d'un MPCC actif : x
 """
-function obj(ma :: PenMPCCSolve,x :: Vector)
+function obj(ma :: PenMPCCSolve, x :: Vector)
 
  #increment!(ma, :neval_obj)
-
- return NLPModels.obj(ma.pen.nlp, x)
+@show "On vient la???"
+ return obj(ma.pen, x)
 end
 
 """
@@ -16,5 +16,5 @@ function grad(ma :: PenMPCCSolve,x :: Vector)
 
  #increment!(ma, :neval_grad)
 
- return NLPModels.grad(ma.pen.nlp, x)
+ return grad(ma.pen, x)
 end

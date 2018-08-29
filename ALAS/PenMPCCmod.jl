@@ -1,20 +1,45 @@
 module PenMPCCmod
 
+#pas censer être là ?
 import Relaxation.psi, Relaxation.phi, Relaxation.dphi
-import ParamSetmod.ParamSet
 
+import RlxMPCCmod.RlxMPCC
+import RlxMPCCmod.jtprod_nlslack
+import RlxMPCCmod.hess_nlslack
+import RlxMPCCmod.jac_nlslack
+import RlxMPCCmod.viol_cons_nl
+
+#pas censer être là
+using RlxMPCCmod
+
+##############################################################################
+#Pas censer être là
 import NLPModels.grad!, NLPModels.hess, NLPModels.obj, NLPModels.grad
 import NLPModels.AbstractNLPModel, NLPModels.NLPModelMeta, NLPModels.Counters
+#impact sur l'héritage dans ActifMPCC
+##############################################################################
 
+#############################################################################
+#
+# Problème pénalisé de la relaxation du MPCC
+#
+# min  f(x) + (\rho)^-1 P(cons(x),yg-G(x),yh-H(x))
+# s.t. lvar <= x <= uvar
+#      lvar <= (yg,yh)
+#      phi(yg,yh) <= 0
+#
+#############################################################################
 
-
+#On a besoin de (r,s,t) pour les contraintes
 type PenMPCC <: AbstractNLPModel
 
  meta     :: NLPModelMeta
  counters :: Counters #ATTENTION : increment! ne marche pas?
  x0       :: Vector
 
- nlp      :: AbstractNLPModel
+ rlx      :: RlxMPCC
+ penalty  :: Function
+
  r        :: Float64
  s        :: Float64
  t        :: Float64
@@ -27,7 +52,9 @@ type PenMPCC <: AbstractNLPModel
 
 end
 
-function PenMPCC(nlp     :: AbstractNLPModel,
+function PenMPCC(x       :: Vector,
+                 rlx     :: RlxMPCC,
+                 penalty :: Function,
                  r       :: Float64,
                  s       :: Float64,
                  t       :: Float64,
@@ -36,14 +63,19 @@ function PenMPCC(nlp     :: AbstractNLPModel,
                  ncc     :: Int64,
                  n       :: Int64)
 
- 
- meta = nlp.meta
- x    = nlp.meta.x0
+ meta = rlx.meta #mp.meta.ncon
 
-
- return PenMPCC(meta,Counters(),x,nlp,r,s,t,ρ,u,n,ncc)
+ return PenMPCC(meta,Counters(),x,rlx,penalty,r,s,t,ρ,u,n,ncc)
 end
 
+function get_bounds(pen :: PenMPCC)
+
+ tb  = pen.rlx.tb
+ lvar = [pen.rlx.mod.mp.meta.lvar;tb*ones(2*pen.ncc)]
+ uvar = [pen.rlx.mod.mp.meta.uvar;Inf*ones(2*pen.ncc)]
+
+ return lvar, uvar
+end
 
 ############################################################################
 #
@@ -53,20 +85,73 @@ end
 ############################################################################
 
 function obj(pen_mpcc :: PenMPCC, x :: Vector)
- return obj(pen_mpcc.nlp, x)
+
+ n,ncc = pen_mpcc.n, pen_mpcc.ncc
+ xn = x[1:n]
+ err = viol_cons_nl(pen_mpcc.rlx, x)
+ hx,bx,gx = err[1:2*ncc], err[2*ncc+1:2*ncc+2*n], err[2*ncc+2*n+1:length(err)]
+
+ fx = RlxMPCCmod.obj(pen_mpcc.rlx,xn)
+ px = pen_mpcc.penalty(hx,bx,gx,pen_mpcc.ρ,pen_mpcc.u)
+
+ return fx+px
 end
 
 function grad(pen_mpcc :: PenMPCC, x :: Vector)
- return grad(pen_mpcc.nlp, x)
+
+ n,ncc = pen_mpcc.n, pen_mpcc.ncc
+
+ err = viol_cons_nl(pen_mpcc.rlx, x)
+ hx,bx,gx = err[1:2*ncc], err[2*ncc+1:2*ncc+2*n], err[2*ncc+2*n+1:length(err)]
+
+ Jgx = Float64[]
+ Jgx = pen_mpcc.penalty(hx,bx,gx,Jgx,pen_mpcc.ρ,pen_mpcc.u)
+
+ gpx = vcat(jtprod_nlslack(pen_mpcc.rlx,x,Jgx[1:length(Jgx)-2*ncc]),
+            -Jgx[length(Jgx)-2*ncc+1:length(Jgx)])
+ gradx  = vcat(RlxMPCCmod.grad(pen_mpcc.rlx,x[1:n]),zeros(2*ncc))
+
+ return gradx + gpx
 end
 
-function grad!(pen_mpcc :: PenMPCC, x :: Vector, gx :: Vector)
- return grad!(pen_mpcc.nlp, x, gx)
+function objgrad(pen_mpcc :: PenMPCC, x :: Vector)
+
+ n,ncc = pen_mpcc.n, pen_mpcc.ncc
+ xn = x[1:n]
+ err = viol_cons_nl(pen_mpcc.rlx, x)
+ hx,bx,gx = err[1:2*ncc], err[2*ncc+1:2*ncc+2*n], err[2*ncc+2*n+1:length(err)]
+
+ fx = RlxMPCCmod.obj(pen_mpcc.rlx,xn)
+ px = pen_mpcc.penalty(hx,bx,gx,pen_mpcc.ρ,pen_mpcc.u)
+
+ Jgx = Float64[]
+ Jgx = pen_mpcc.penalty(hx,bx,gx,Jgx,pen_mpcc.ρ,pen_mpcc.u)
+
+ gpx = vcat(jtprod_nlslack(pen_mpcc.rlx,x,Jgx[1:length(Jgx)-2*ncc]),
+            -Jgx[length(Jgx)-2*ncc+1:length(Jgx)])
+ gradx  = vcat(RlxMPCCmod.grad(pen_mpcc.rlx,x[1:n]),zeros(2*ncc))
+
+ return fx+px, gradx + gpx
 end
 
 function hess(pen_mpcc :: PenMPCC, x :: Vector)
- #renvoi la triangulaire inférieure tril(H,-1)'
- return hess(pen_mpcc.nlp, x)
+
+ n,ncc = pen_mpcc.n, pen_mpcc.ncc
+
+ err = viol_cons_nl(pen_mpcc.rlx, x)
+ hx,bx,gx = err[1:2*ncc], err[2*ncc+1:2*ncc+2*n], err[2*ncc+2*n+1:length(err)]
+
+ Jgx, Hx = Float64[], zeros(0,0)
+ Jgx, Hx = pen_mpcc.penalty(hx,bx,gx,Jgx,Hx,pen_mpcc.ρ,pen_mpcc.u)
+
+ #la jacobienne des contraintes actives
+ Jnls = vcat(ones(2*ncc),bx.>0.0,gx.>0.0) .* jac_nlslack(pen_mpcc.rlx, x[1:n])
+
+ rslt = hess_nlslack(pen_mpcc.rlx, x[1:n], Jgx, 1.0) + Jnls' * Hx * Jnls
+
+ rslt2 = Hx[1:2*ncc,1:2*ncc]
+
+ return cat([1,2],rslt,rslt2)
 end
 
 #jacobienne des contraintes:
@@ -77,7 +162,7 @@ function jac(pen_mpcc :: PenMPCC,
 
  #x of size n+2ncc, lambda of size
  n       = pen_mpcc.n
- ncc = pen_mpcc.ncc
+ ncc     = pen_mpcc.ncc
  r, s, t = pen_mpcc.r,pen_mpcc.s,pen_mpcc.t
 
  if length(x) != n+2*ncc || length(lambda) != 2*n+3*ncc return end
@@ -104,18 +189,20 @@ function cons(pen_mpcc :: PenMPCC, x :: Vector)
 
  n   = pen_mpcc.n
  ncc = pen_mpcc.ncc
+ r, s, t = pen_mpcc.r, pen_mpcc.s, pen_mpcc.t
+ lvar, uvar = get_bounds(pen_mpcc)
 
  sg = x[n+1:n+ncc]
  sh = x[n+ncc+1:n+2*ncc]
 
- vlx = max.(- x[1:n] + pen_mpcc.nlp.meta.lvar[1:n], 0)
- vux = max.(  x[1:n] - pen_mpcc.nlp.meta.uvar[1:n], 0)
+ vlx = max.(- x[1:n] + lvar[1:n], 0)
+ vux = max.(  x[1:n] - uvar[1:n], 0)
 
- vlg = max.(- sg + pen_mpcc.nlp.meta.lvar[n+1:n+ncc], 0)
- vlh = max.(- sh + pen_mpcc.nlp.meta.lvar[n+ncc+1:n+2*ncc], 0)
+ vlg = max.(- sg + lvar[n+1:n+ncc], 0)
+ vlh = max.(- sh + lvar[n+ncc+1:n+2*ncc], 0)
 
- vug = psi(sh, pen_mpcc.r, pen_mpcc.s, pen_mpcc.t) - sg
- vuh = psi(sg, pen_mpcc.r, pen_mpcc.s, pen_mpcc.t) - sh
+ vug = psi(sh, r, s, t) - sg
+ vuh = psi(sg, r, s, t) - sh
 
  cx = vcat(vlx, vux, vlg, vlh, max.(vug.*vuh, 0))
 
@@ -148,23 +235,25 @@ function _computation_multiplier(pen     :: PenMPCC,
                                  xj      :: Vector;
                                  prec    :: Float64 = eps(Float64))
 
- n       = pen.n
- ncc = pen.ncc
+ n     = pen.n
+ ncc   = pen.ncc
+ r,s,t = pen.r,pen.s,pen.t
+ lvar, uvar = get_bounds(pen)
 
  sg = xj[n+1:n+ncc]
  sh = xj[n+ncc+1:n+2*ncc]
  x  = xj[1:n]
 
- dg =  dphi(sg,sh,pen.r,pen.s,pen.t)
- phix = phi(sg,sh,pen.r,pen.s,pen.t)
+ dg =  dphi(sg,sh,r,s,t)
+ phix = phi(sg,sh,r,s,t)
 
  gx = dg[1:ncc]
  gy = dg[ncc+1:2*ncc]
 
- wn1 = find(z->z<=prec,abs.(x-pen.nlp.meta.lvar[1:n]))
- wn2 = find(z->z<=prec,abs.(x-pen.nlp.meta.uvar[1:n]))
- w1  = find(z->z<=prec,abs.(sg-pen.nlp.meta.lvar[n+1:n+ncc]))
- w2  = find(z->z<=prec,abs.(sh-pen.nlp.meta.lvar[n+ncc+1:n+2*ncc]))
+ wn1 = find(z->z<=prec,abs.(x-lvar[1:n]))
+ wn2 = find(z->z<=prec,abs.(x-uvar[1:n]))
+ w1  = find(z->z<=prec,abs.(sg-lvar[n+1:n+ncc]))
+ w2  = find(z->z<=prec,abs.(sh-lvar[n+ncc+1:n+2*ncc]))
  wcomp = find(z->z<=prec,abs.(phix))
 
  #matrices des contraintes actives : (lx,ux,lg,lh,lphi)'*A=b
@@ -200,10 +289,10 @@ function _computation_multiplier(pen     :: PenMPCC,
  l = pinv(A')*b
  #l=A' \ b
 
- lk                      = zeros(2*n+3*ncc)
- lk[wn1]                 = l[1:nx1]
- lk[n+wn2]               = l[nx1+1:nx]
- lk[2*n+w1]              = l[nx+1:nx+nw1]
+ lk                  = zeros(2*n+3*ncc)
+ lk[wn1]             = l[1:nx1]
+ lk[n+wn2]           = l[nx1+1:nx]
+ lk[2*n+w1]          = l[nx+1:nx+nw1]
  lk[2*n+ncc+w2]      = l[nx+nw1+1:nx+nw1+nw2]
  lk[2*n+2*ncc+wcomp] = l[nx+nw1+nw2+1:nx+nw1+nw2+nwcomp]
 

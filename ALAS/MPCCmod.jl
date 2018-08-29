@@ -132,6 +132,11 @@ function cons(mod :: MPCC, x :: Vector)
  return vcat(feas_x, feas_c, feas_cp, feas_cc)
 end
 
+##############################################################################
+#
+# En fait c'est plutôt la violation des contraintes non-linéaire ça ?
+#
+##############################################################################
 function cons_mp(mod :: MPCC, x :: Vector)
 
  n = mod.n
@@ -165,6 +170,10 @@ function consH(mod :: MPCC, x :: Vector)
  return NLPModels.cons(mod.H, x)
 end
 
+function jac_nl(mod :: MPCC, x :: Vector)
+ return NLPModels.jac(mod.mp, x)
+end
+
 function jacG(mod :: MPCC, x :: Vector)
  return NLPModels.jac(mod.G, x)
 end
@@ -173,8 +182,29 @@ function jacH(mod :: MPCC, x :: Vector)
  return NLPModels.jac(mod.H, x)
 end
 
-function jac_nl(mod :: MPCC, x :: Vector)
- return NLPModels.jac(mod.mp, x)
+function jtprodnl(mod :: MPCC, x :: Vector, v :: Vector)
+ return NLPModels.jtprod(mod.mp,x,v)
+end
+
+function jtprodG(mod :: MPCC, x :: Vector, v :: Vector)
+ return NLPModels.jtprod(mod.G,x,v)
+end
+
+function jtprodH(mod :: MPCC, x :: Vector, v :: Vector)
+ return NLPModels.jtprod(mod.H,x,v)
+end
+
+#hessienne du Lagrangien
+function hessnl(mod :: MPCC, x :: Vector ; obj_weight = 1.0, y = zeros)
+ return NLPModels.hess(mod.mp,x; obj_weight = obj_weight, y = y)
+end
+
+function hessG(mod :: MPCC, x :: Vector ; obj_weight = 1.0, y = zeros)
+ return NLPModels.hess(mod.G,x; obj_weight = obj_weight, y = y)
+end
+
+function hessH(mod :: MPCC, x :: Vector ; obj_weight = 1.0, y = zeros)
+ return NLPModels.hess(mod.H,x; obj_weight = obj_weight, y = y)
 end
 
 """
@@ -220,7 +250,6 @@ end
 """
 Donne le vecteur de violation des contraintes dans l'ordre : G(x)-yg ; H(x)-yh ; lvar<=x ; x<=uvar ; lvar<=c(x) ; c(x)<=uvar
 """
-# Pourquoi ça s'appelle pas "cons" ?
 function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
 
  c=NLPModels.cons(mod.mp,x)
@@ -229,15 +258,17 @@ function viol_contrainte(mod::MPCC,x::Vector,yg::Vector,yh::Vector)
   H=NLPModels.cons(mod.H,x)
   return [G-yg;H-yh;max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0);max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)]
  else
+  #Tangi18: pourquoi ça rend yg yh ?
   return [yg;yh;max.(mod.mp.meta.lvar-x,0);max.(x-mod.mp.meta.uvar,0);max.(mod.mp.meta.lcon-c,0);max.(c-mod.mp.meta.ucon,0)]
  end
 
 end
 
 function viol_contrainte(mod::MPCC,x::Vector) #x de taille n+2ncc
- n=length(mod.mp.meta.x0)
+ n   = mod.n
+ ncc = mod.ncc
 
- return viol_contrainte(mod,x[1:n],x[n+1:n+mod.ncc],x[n+mod.ncc+1:n+2*mod.ncc])
+ return viol_contrainte(mod,x[1:n],x[n+1:n+ncc],x[n+ncc+1:n+2*ncc])
 end
 
 """
@@ -254,6 +285,17 @@ function viol_comp(mod::MPCC,x::Vector)
  return mod.ncc>0?G.*H./(G+H+1):[] #et les contraintes de positivité ?
 end
 
+function viol_cons_c(mod   :: MPCC,
+                     x     :: Vector)
+
+ n=mod.n
+
+ c=cons(mod.mp,x)
+ feas_c=vcat(max.(mod.mp.meta.lcon-c,0),max.(c-mod.mp.meta.ucon,0))
+
+ return feas_c
+end
+
 function viol_cons(mod   :: MPCC,
                    x     :: Vector)
 
@@ -263,13 +305,8 @@ function viol_cons(mod   :: MPCC,
 
  feas_x=vcat(max.(mod.mp.meta.lvar-x,0),max.(x-mod.mp.meta.uvar,0))
 
- if mod.mp.meta.ncon !=0
-
-  c=cons(mod.mp,x)
-  feas_c=vcat(max.(mod.mp.meta.lcon-c,0),max.(c-mod.mp.meta.ucon,0))
- else
-  feas_c = []
- end
+ c=NLPModels.cons(mod.mp,x)
+ feas_c=vcat(max.(mod.mp.meta.lcon-c,0),max.(c-mod.mp.meta.ucon,0))
 
  return vcat(feas_x,feas_c)
 end

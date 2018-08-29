@@ -1,23 +1,26 @@
 function PenMPCCSolve(pen        :: PenMPCC,
+                      x          :: Vector, #long
                       ncc        :: Int64,
                       paramset   :: ParamSet,
                       algoset    :: AlgoSet,
                       spen       :: StoppingPen,
                       rpen       :: RPen)
 
- nn  = length(pen.nlp.meta.x0) #n + 2ncc
- n   = length(pen.nlp.meta.x0)-2*ncc
- xk  = pen.nlp.meta.x0[1:n]
- ygk = pen.nlp.meta.x0[n+1:n+ncc]
- yhk = pen.nlp.meta.x0[n+ncc+1:n+2*ncc]
-
  r,s,t = pen.r,pen.s,pen.t
+ lvar, uvar = get_bounds(pen)
+ meta = pen.meta
+
+ nn  = length(x) #n + 2ncc
+ n   = length(x)-2*ncc
+ xk  = x[1:n]
+ ygk = x[n+1:n+ncc]
+ yhk = x[n+ncc+1:n+2*ncc]
 
  w   = zeros(Bool,nn,2)
  #active bounds
- w[1:n+ncc,1] = pen.nlp.meta.x0[1:n+ncc]      .== pen.nlp.meta.lvar[1:n+ncc]
- w[n+1:n+ncc,2] = pen.nlp.meta.x0[n+ncc+1:n+2*ncc]  .== pen.nlp.meta.lvar[n+ncc+1:n+2*ncc]
- w[1:n,2]  = xk .== pen.nlp.meta.uvar[1:n]
+ w[1:n+ncc,1]   = x[1:n+ncc]          .== lvar[1:n+ncc]
+ w[n+1:n+ncc,2] = x[n+ncc+1:n+2*ncc]  .== lvar[n+ncc+1:n+2*ncc]
+ w[1:n,2]       = xk                  .== uvar[1:n]
 
   # puis la boucle: est-ce qu'il y a Relaxation.psi vectoriel ?
   #A simplifier
@@ -52,10 +55,6 @@ function PenMPCCSolve(pen        :: PenMPCC,
  crho = 1.0
  beta = 0.0
  Hess = eye(n+2*ncc)
-
- 
- meta = pen.nlp.meta
- x  = pen.nlp.meta.x0
 
  return PenMPCCSolve(meta,Counters(),x,pen,w,n,ncc,
                      wnc,wn1,wn2,w1,w2,w3,w4,

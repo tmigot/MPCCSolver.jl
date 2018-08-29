@@ -2,10 +2,11 @@ module RlxMPCCmod
 
 import MPCCmod.MPCC, MPCCmod.obj, MPCCmod.grad, MPCCmod.grad!, MPCCmod.hess
 import MPCCmod.cons_mp, MPCCmod.consG, MPCCmod.consH, MPCCmod.jacG, MPCCmod.jacH
-import MPCCmod.cons_nl, MPCCmod.jac_nl
+import MPCCmod.cons_nl, MPCCmod.jac_nl, MPCCmod.viol_cons
+import MPCCmod.jtprodG, MPCCmod.jtprodH, MPCCmod.jtprodnl
+import MPCCmod.hessnl, MPCCmod.hessG, MPCCmod.hessH
 
 import Relaxation.psi, Relaxation.phi, Relaxation.dphi
-import ParamSetmod.ParamSet
 
 import NLPModels.AbstractNLPModel, NLPModels.NLPModelMeta, NLPModels.Counters
 
@@ -35,6 +36,8 @@ function RlxMPCC(mod     :: MPCC,
                  n       :: Int64;
                  meta    :: NLPModelMeta = mod.mp.meta,
                  x       :: Vector = mod.mp.meta.x0)
+
+println("Warning: RlxMPCC: il manque les meta plus précis du problème.")
 
  return RlxMPCC(meta,Counters(),x,mod,r,s,t,tb,n,ncc)
 end
@@ -66,26 +69,172 @@ end
 
 function cons(rlxmpcc :: RlxMPCC, x :: Vector)
 
- c = cons_mp(rlxmpcc.mod, x)
+ c  = cons_mp(rlxmpcc.mod, x)
 
- G = consG(rlxmpcc.mod, x)
- H = consH(rlxmpcc.mod, x)
- cc = phi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t)
+ G  = consG(rlxmpcc.mod, x)
+ H  = consH(rlxmpcc.mod, x)
+ sc = vcat(G,H)
+
+ cc = phi(G, H , rlxmpcc.r, rlxmpcc.s, rlxmpcc.t)
 
  return vcat(c,sc,cc)
 end
 
+#########################################################
+#
+# Return the violation of the constraints
+# |yg - G(x)|, |yh-H(x)|, lc <= c(x) <= uc
+#
+#########################################################
+function viol_cons_c(rlxmpcc :: RlxMPCC, x :: Vector)
+
+ n, ncc = rlxmpcc.n, rlxmpcc.ncc
+
+ if length(x) == n
+
+  c = viol_cons_c(rlxmpcc.mod, x)
+
+ elseif length(x) == n+2*ncc
+
+  xn, yg, yh = x[1:n], x[n+1:n+ncc], x[n+ncc+1:n+2*ncc]
+
+  c = viol_cons_c(rlxmpcc.mod, xn)
+  G = consG(rlxmpcc.mod, xn)
+  H = consH(rlxmpcc.mod, xn)
+
+  c = vcat(abs.(yg-G),abs.(yh-H),c)
+
+ else
+  throw("error wrong dimension")
+ end
+
+ return c
+end
+
+#########################################################
+#
+# Return the violation of the constraints
+# |yg - G(x)|, |yh-H(x)|, l <= x <= u, lc <= c(x) <= uc
+#
+#########################################################
+function viol_cons_nl(rlxmpcc :: RlxMPCC, x :: Vector)
+
+ n, ncc = rlxmpcc.n, rlxmpcc.ncc
+
+ if length(x) == n
+
+  c = viol_cons(rlxmpcc.mod, x)
+
+ elseif length(x) == n+2*ncc
+
+  xn, yg, yh = x[1:n], x[n+1:n+ncc], x[n+ncc+1:n+2*ncc]
+
+  c = viol_cons(rlxmpcc.mod, xn)
+  G = consG(rlxmpcc.mod, xn)
+  H = consH(rlxmpcc.mod, xn)
+
+  c = vcat(G-yg,H-yh,c)
+
+ else
+  throw("error wrong dimension")
+ end
+
+ return c
+end
+
 function viol_cons(rlxmpcc :: RlxMPCC, x :: Vector)
 
- c = viol_cons(rlxmpcc.mod, x)
+ n, ncc = rlxmpcc.n, rlxmpcc.ncc
 
- G = consG(rlxmpcc.mod, x)
- H = consH(rlxmpcc.mod, x)
- cc = max.(phi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t),0)
- sc = vcat(max.(rlxmpcc.mod.G.meta.lvar-G, 0),
-           max.(rlxmpcc.mod.H.meta.lvar-H, 0))
+ c = viol_cons_nl(rlxmpcc, x)
+
+ if length(x) == n
+
+  G = consG(rlxmpcc.mod, x)
+  H = consH(rlxmpcc.mod, x)
+  cc = max.(phi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t),0)
+  sc = vcat(max.(rlxmpcc.mod.G.meta.lcon-G, 0),
+            max.(rlxmpcc.mod.H.meta.lcon-H, 0))
+
+ elseif length(x) == n+2*ncc
+
+  xn, yg, yh = x[1:n], x[n+1:n+ncc], x[n+ncc+1:n+2*ncc]
+
+  cc = max.(phi(yg,yh,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t),0)
+  sc = vcat(max.(rlxmpcc.mod.G.meta.lcon-yg, 0),
+            max.(rlxmpcc.mod.H.meta.lcon-yh, 0))
+
+ else
+  throw("error wrong dimension")
+ end
 
  return vcat(c,sc,cc)
+end
+
+function jac_nl(rlxmpcc :: RlxMPCC, x :: Vector)
+
+  n = rlxmpcc.n
+
+  Jc = jac_nl(rlxmpcc.mod, x)
+  Jl, Ju = eye(n), eye(n)
+
+  A = vcat(-Jl,Ju,-Jc,Jc)
+
+ return A
+end
+
+function jac_slack(rlxmpcc :: RlxMPCC, x :: Vector)
+
+ JG   = jacG(rlxmpcc.mod,x)
+ JH   = jacH(rlxmpcc.mod,x)
+
+ A = vcat(JG,JH)
+
+ return A
+end
+
+function jac_nlslack(rlxmpcc :: RlxMPCC, x :: Vector)
+ return vcat(jac_slack(rlxmpcc, x), jac_nl(rlxmpcc, x))
+end
+
+function jtprod_nlslack(rlxmpcc :: RlxMPCC, x :: Vector, v :: Vector)
+#v of size 2*ncc + 2*n + 2*ncon
+
+ n, ncc, ncon = rlxmpcc.n, rlxmpcc.ncc, rlxmpcc.mod.mp.meta.ncon
+ xn = x[1:n]
+ vbl, vbu = v[2*ncc+1:2*ncc+n], v[2*ncc+n+1:2*ncc+2*n]
+ vlc, vuc = v[2*ncc+2*n+1:2*ncc+2*n+ncon], v[2*ncc+2*n+ncon+1:length(v)]
+
+ return (- vbl + vbu
+         - jtprodnl(rlxmpcc.mod, xn, vlc)
+         + jtprodnl(rlxmpcc.mod, xn, vuc)
+         + jtprodG(rlxmpcc.mod,xn,v[1:ncc]) 
+         + jtprodH(rlxmpcc.mod,xn,v[ncc+1:2*ncc]))
+end
+
+function jac_rlx(rlxmpcc :: RlxMPCC, x :: Vector)
+
+   JPHI = dphi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t)
+   JPHIG, JPHIH = JPHI[1:rlxmpcc.ncc], JPHI[rlxmpcc.ncc+1:2*rlxmpcc.ncc]
+
+   JG   = jacG(rlxmpcc.mod,x)
+   JH   = jacH(rlxmpcc.mod,x)
+
+   A = vcat(-JG, -JH, diagm(JPHIG)*JG + diagm(JPHIH)*JH)
+
+ return A
+end
+
+function hess_nlslack(rlxmpcc :: RlxMPCC, x :: Vector, v :: Vector, objw :: Float64)
+
+ n, ncc, ncon = rlxmpcc.n, rlxmpcc.ncc, rlxmpcc.mod.mp.meta.ncon
+ xn = x[1:n]
+
+ test= (hessnl(rlxmpcc.mod,xn,y=v[2*ncc+1:2*ncc+2*n+2*ncon], obj_weight = objw)
+         + hessG(rlxmpcc.mod,xn,y=v[1:ncc], obj_weight = 0.0)
+         + hessH(rlxmpcc.mod,xn,y=v[1+ncc:2*ncc], obj_weight = 0.0))
+
+ return test
 end
 
 """

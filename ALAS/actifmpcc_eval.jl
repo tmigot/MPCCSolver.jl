@@ -2,6 +2,7 @@ function evalx(ma :: ActifMPCC,
                x  :: Vector)
 
  r,s,t = ma.pen.r,ma.pen.s,ma.pen.t
+ lvar, uvar = get_bounds(ma.pen)
 
  if length(x) != ma.n+2*ma.ncc
 
@@ -15,15 +16,15 @@ function evalx(ma :: ActifMPCC,
   xf[ma.w24c+ma.n+ma.ncc] = x[nw13c+1:nw13c+length(ma.w24c)]
 
   #on regarde les variables x fixées:
-  xf[ma.wn1] = ma.pen.nlp.meta.lvar[ma.wn1]
-  xf[ma.wn2] = ma.pen.nlp.meta.uvar[ma.wn2]
+  xf[ma.wn1] = lvar[ma.wn1]
+  xf[ma.wn2] = uvar[ma.wn2]
 
   #on regarde les variables yG fixées :
-  xf[ma.w1+ma.n] = ma.pen.nlp.meta.lvar[ma.w1+ma.n]
+  xf[ma.w1+ma.n] = lvar[ma.w1+ma.n]
   xf[ma.w3+ma.n] = psi(xf[ma.w3+ma.n+ma.ncc], r, s, t)
 
   #on regarde les variables yH fixées :
-  xf[ma.w2+ma.n+ma.ncc] = ma.pen.nlp.meta.lvar[ma.w2+ma.n+ma.ncc]
+  xf[ma.w2+ma.n+ma.ncc] = lvar[ma.w2+ma.n+ma.ncc]
   xf[ma.w4+ma.n+ma.ncc] = psi(xf[ma.w4+ma.n], r, s, t)
 
  else

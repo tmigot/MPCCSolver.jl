@@ -16,6 +16,7 @@ function actif_solve(ma     :: ActifMPCC,
  runc_start!(unc.runc, fx = ma.ractif.fx, 
              gx = ma.ractif.gx,
                         ∇f = grad(ma, xjk, ma.ractif.gx),
+             cons = cons(ma.pen,xjk),
              step = ma.ractif.step, d = ma.dj)
 
  OK = start!(ma.pen, ma.sts, xjk, unc.runc)
@@ -108,6 +109,8 @@ function _update_state_result!(ma        :: ActifMPCC,
 
   end
 
+ unc.runc.cons = cons(ma.pen,xjk)
+
  return xjk
 end
 
@@ -127,7 +130,7 @@ function _init_uncstrnd_solve(ma :: ActifMPCC, xjk :: Vector)
                     ite_max_wolfe  = ma.paramset.ite_max_wolfe,
                     ite_max_armijo = ma.paramset.ite_max_armijo)
 
- nlp  = ActifModel(x -> ma.pen.nlp.f(evalx(ma,x)), ma.x0;
+ nlp  = ActifModel(x -> obj(ma.pen, evalx(ma,x)), ma.x0;
                    g = x-> grad(ma,x), g! = x-> grad!(ma,x))
 
  unc  = UncstrndSolve(nlp, ma.x0, runc, sunc, ma.linesearch)
@@ -183,8 +186,6 @@ function working_min_proj(ma     :: ActifMPCC,
  ht,gradpen,wnew,step = ma.ractif.fx, ma.ractif.gx, ma.ractif.wnew, ma.ractif.step
  ####################
 
- x_old = ma.x0
-
   #calcul la direction + Armijo
   (x,d, f, tmp, iter,
   optimal, tired, status,   ma.counters.neval_obj,
@@ -193,39 +194,19 @@ function working_min_proj(ma     :: ActifMPCC,
                                      Nwtdirection=NwtdirectionSpectral)
  #NwtdirectionLDLt, NwtdirectionSpectral, CG_HZ
 
- #modifié par on fait, la MAJ si !tired (et le backtracking dans l'autre fonction)
-# if !tired && !ma.sts.actfeas   #backtracking:
-#   #Calcul du pas maximum:
-#   step, wmax, wnew = pas_max(ma, x_old, d)
-#   x = x_old + step*d
-#   xjk = evalx(ma, x)
-#   ma.x0 = xjk
-#   #We hit a new constraint:
-#   setw(ma, wmax)
-#   ma.sts.wolfe_step = false
-#
-#  verbose && print_with_color(:yellow, "step: $(step) \n")
-# elseif !tired
-#   ma.x0 = x
-#   xjk = evalx(ma, x)
-#   ma.sts.wolfe_step = true
-# end
-if !tired
+ if !tired
    ma.x0 = x
    xjk = evalx(ma, x)
    ma.sts.wolfe_step = true
-end
+ end
 
  ht,gradpen = objgrad(ma,xjk)
- subpb_fail = tired
-
- ma.ractif.step = step
- ma.ractif.wnew = wnew
- ma.ractif.sub_pb_solved = !subpb_fail
+ ma.ractif.sub_pb_solved = !tired
+ ma.ractif.step = iter == 0 ? 0.0 : ma.ractif.step
  ma.ractif.gx = gradpen
  ma.ractif.fx = ht
  ma.ractif.iter = iter
-
  ma.dj = d
+
  return xjk, ma
 end

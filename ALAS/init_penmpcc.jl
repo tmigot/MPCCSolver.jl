@@ -7,9 +7,6 @@ function _initialize_pen_mpcc(rlx  :: RlxMPCCSolve,
  ncc   = rlx.nlp.ncc
  r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
 
- #Create a penalized NLP with bounds
- pen_nlp = _create_penaltynlp(rlx, xj, ρ, u)
-
  if norm(xj[1:n] - rlx.xj[1:n], Inf) < eps(Float64)
 
   #we keep only the bound constraints
@@ -24,7 +21,10 @@ function _initialize_pen_mpcc(rlx  :: RlxMPCCSolve,
   rpen = RPen(xj)
  end
 
- penmpcc = PenMPCC(pen_nlp,
+println("Warning: init_penmpcc: enlever pen_nlp")
+ penmpcc = PenMPCC(xj,
+                   rlx.nlp,
+                   rlx.algoset.penalty,
                    r,s,t,
                    ρ,u,
                    ncc,n)

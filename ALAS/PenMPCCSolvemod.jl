@@ -4,7 +4,8 @@ import ParamSetmod.ParamSet
 import AlgoSetmod.AlgoSet
 
 import RPenmod.RPen, RPenmod.pen_start!, RPenmod.pen_update!
-import PenMPCCmod.PenMPCC
+import PenMPCCmod.PenMPCC, PenMPCCmod.get_bounds
+import PenMPCCmod.obj, PenMPCCmod.grad
 import StoppingPenmod.StoppingPen
 
 import OutputALASmod.OutputALAS, OutputALASmod.oa_update!
@@ -103,7 +104,7 @@ include("penmpccsolve.jl")
 #
 ############################################################################
 
-include("penmpccsolve_nlp.jl")
+#include("penmpccsolve_nlp.jl")
 
 ############################################################################
 #
