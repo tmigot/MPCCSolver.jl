@@ -4,23 +4,14 @@ MPCCSolve(mod::MPCCmod.MPCC)
 
 module MPCCSolvemod
 
-import MPCCmod.MPCC, MPCCmod.viol_comp
-import MPCCmod.consG, MPCCmod.consH
-
+import MPCCmod: MPCC
 import ParamSetmod.ParamSet
 import ParamMPCCmod.ParamMPCC
 import AlgoSetmod.AlgoSet
-
-import RMPCCmod.RMPCC,RMPCCmod.start!, RMPCCmod.update!, RMPCCmod.final_update!
-
-import StoppingMPCCmod.StoppingMPCC, StoppingMPCCmod.stop!
-import StoppingMPCCmod.stop_start!,  StoppingMPCCmod.final
-
-import OutputRelaxationmod.OutputRelaxation,OutputRelaxationmod.UpdateOR
-import OutputRelaxationmod.Print,OutputRelaxationmod.final!
-
-import RlxMPCCSolvemod.RlxMPCCSolve, RlxMPCCSolvemod.update_rlx!
-
+import RMPCCmod: RMPCC, start!, update!, final_update!
+import StoppingMPCCmod: StoppingMPCC, stop!, stop_start!, final
+import OutputRelaxationmod: OutputRelaxation, UpdateOR, Print, final!
+import RlxMPCCSolvemod: RlxMPCCSolve, update_rlx!
 import RRelaxmod.relax_start!
 
 type MPCCSolve
@@ -45,8 +36,8 @@ function MPCCSolve(mod        :: MPCC,
                    x          :: Vector;
                    name_relax :: String    = "KS",
                    algoset    :: AlgoSet   = AlgoSet(),
-                   paramset   :: ParamSet  = ParamSet(mod.nbc),
-                   parammpcc  :: ParamMPCC = ParamMPCC(mod.nbc))
+                   paramset   :: ParamSet  = ParamSet(2*(mod.meta.nvar + mod.meta.ncon + mod.meta.ncc)),
+                   parammpcc  :: ParamMPCC = ParamMPCC(2*(mod.meta.nvar + mod.meta.ncon + mod.meta.ncc)))
 
  rmpcc = RMPCC(x)
  smpcc = StoppingMPCC(precmpcc    = parammpcc.precmpcc,

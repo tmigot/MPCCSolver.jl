@@ -111,7 +111,6 @@ function pen_rho_update!(pen  :: PenMPCC,
                          xk   :: Vector)
 
   rpen.dual_feas = rpen.gx + jac(pen, xk, rpen.lambda)
-@show rpen.dual_feas
   rpen.feas = cons(pen, xk)
 
  return rpen

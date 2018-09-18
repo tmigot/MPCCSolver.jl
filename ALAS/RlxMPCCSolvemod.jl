@@ -25,8 +25,7 @@ import PenMPCCmod.PenMPCC,PenMPCCmod.computation_multiplier_bool, PenMPCCmod.jac
 
 import OutputALASmod.OutputALAS
 
-using MPCCmod
-import MPCCmod.MPCC, MPCCmod.viol_contrainte
+import MPCCmod.MPCC
 import MPCCmod.obj, MPCCmod.grad
 import MPCCmod.consG, MPCCmod.consH
 
@@ -103,7 +102,7 @@ function RlxMPCCSolve(mod      :: MPCC,
 
  rrelax = RRelax(x)
 
- nlp = RlxMPCC(mod,r,s,t,tb,mod.ncc,mod.n, x = x)
+ nlp = RlxMPCC(mod,r,s,t,tb, x = x)
 
  return RlxMPCCSolve(nlp,
                      prec,rho_init,x,paramset,algoset,spas,rrelax)
@@ -349,22 +348,22 @@ function _lagrange_init(rlx  :: RlxMPCCSolve,
  mod   = rlx.nlp.mod
  r,s,t = rlx.nlp.r, rlx.nlp.s, rlx.nlp.t
  tb    = rlx.nlp.tb
- ncon  = rlx.nlp.mod.mp.meta.ncon
+ ncon  = rlx.nlp.mod.meta.ncon
 
  ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(mod, ρ)
 
  if c == Float64[]
 
-  uxl = max.(ρ_lvar.*(mod.mp.meta.lvar-xj[1:n]), zeros(n))
-  uxu = max.(ρ_uvar.*(xj[1:n]-mod.mp.meta.uvar), zeros(n))
+  uxl = max.(ρ_lvar.*(mod.meta.lvar-xj[1:n]), zeros(n))
+  uxu = max.(ρ_uvar.*(xj[1:n]-mod.meta.uvar), zeros(n))
 
-  if mod.mp.meta.ncon != 0
+  if mod.meta.ncon != 0
 
    cx = NLPModels.cons(mod.mp, xj[1:n])
-   nc = length(mod.mp.meta.y0) #nombre de contraintes
+   nc = mod.meta.ncon #nombre de contraintes
 
-   ucl = max.(ρ_lcon.*(mod.mp.meta.lcon-cx), zeros(nc))
-   ucu = max.(ρ_ucon.*(cx-mod.mp.meta.ucon), zeros(nc))
+   ucl = max.(ρ_lcon.*(mod.meta.lcon-cx), zeros(nc))
+   ucu = max.(ρ_ucon.*(cx-mod.meta.ucon), zeros(nc))
 
   else
 
@@ -405,14 +404,14 @@ function _lagrange_update(rlx  :: RlxMPCCSolve,
  ρ_eqg, ρ_eqh, ρ_lvar, ρ_uvar, ρ_lcon, ρ_ucon = _rho_detail(mod, ρ)
  usg,ush,uxl,uxu,ucl,ucu = _rho_detail(mod,u)
 
- uxl = uxl+max.(ρ_lvar.*(xjk[1:n]-mod.mp.meta.uvar), -uxl)
- uxu = uxu+max.(ρ_uvar.*(mod.mp.meta.lvar-xjk[1:n]), -uxu)
+ uxl = uxl+max.(ρ_lvar.*(xjk[1:n]-mod.meta.uvar), -uxl)
+ uxu = uxu+max.(ρ_uvar.*(mod.meta.lvar-xjk[1:n]), -uxu)
 
- if mod.mp.meta.ncon != 0
+ if mod.meta.ncon != 0
 
   c = NLPModels.cons(mod.mp, xjk[1:n])
-  ucl = ucl+max.(ρ_lcon.*(c-mod.mp.meta.ucon), -ucl)
-  ucu = ucu+max.(ρ_ucon.*(mod.mp.meta.lcon-c), -ucu)
+  ucl = ucl+max.(ρ_lcon.*(c-mod.meta.ucon), -ucl)
+  ucu = ucu+max.(ρ_ucon.*(mod.meta.lcon-c), -ucu)
 
  end
 
@@ -471,11 +470,11 @@ include("init_penmpccsolve.jl")
 function _rho_detail(mod :: MPCC,
                      ρ   :: Vector)
 
- nil   = length(mod.mp.meta.lvar)
- niu   = length(mod.mp.meta.uvar)
- nlcon = length(mod.mp.meta.lcon)
- nucon = length(mod.mp.meta.ucon)
- ncc   = mod.ncc
+ nil   = length(mod.meta.lvar)
+ niu   = length(mod.meta.uvar)
+ nlcon = length(mod.meta.lcon)
+ nucon = length(mod.meta.ucon)
+ ncc   = mod.meta.ncc
 
  return ρ[1:ncc],
         ρ[ncc+1:2*ncc],

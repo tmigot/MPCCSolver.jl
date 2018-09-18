@@ -1,6 +1,6 @@
 using ThetaFct
 
-println("On teste le package Theta")
+print_with_color(:yellow, "Test Theta module:\n")
 
 ThetaFct_success = true
 
@@ -141,5 +141,5 @@ end
 
 #Conclusion:
 if ThetaFct_success==true
- println("Theta.jl passes the test !")
+ print_with_color(:yellow, "Theta.jl passes the test !\n")
 end

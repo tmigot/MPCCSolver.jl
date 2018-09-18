@@ -1,8 +1,7 @@
 module RMPCCmod
 
 import MPCCmod.MPCC, MPCCmod.obj, MPCCmod.grad
-import MPCCmod.jac_actif
-import MPCCmod.viol_contrainte, MPCCmod.viol_comp, MPCCmod.viol_cons
+import MPCCmod.viol, MPCCmod.viol_comp, MPCCmod.viol_mp
 
 import RlxMPCCSolvemod.RlxMPCCSolve
 
@@ -48,7 +47,7 @@ function start!(rmpcc :: RMPCC,
 
  rmpcc.fx        = obj(mod, xk)
 
- rmpcc.feas      = viol_cons(mod, xk)
+ rmpcc.feas      = viol_mp(mod, xk)
  rmpcc.feas_cc   = viol_comp(mod, xk)
  rmpcc.norm_feas = norm(vcat(rmpcc.feas, rmpcc.feas_cc), Inf)
 
@@ -107,7 +106,7 @@ function viol_contrainte_norm(mod   :: MPCC,
                               yh    :: Vector;
                               tnorm :: Real=2)
 
- return norm(viol_contrainte(mod,x,yg,yh),tnorm)
+ return norm(viol(mod,x,yg,yh),tnorm)
 end
 
 #x de taille n+2ncc
@@ -115,7 +114,7 @@ function viol_contrainte_norm(mod   :: MPCC,
                               x     :: Vector;
                               tnorm :: Real=2)
 
- n=mod.n
+ n=mod.meta.nvar
 
  if length(x)==n
   resul=max(viol_comp_norm(mod,x),viol_cons_norm(mod,x))
@@ -133,7 +132,7 @@ function viol_comp_norm(mod   :: MPCC,
                         x     :: Vector;
                         tnorm :: Real=2)
 
- return mod.ncc > 0 ? norm(viol_comp(mod,x),tnorm) : 0
+ return mod.meta.ncc > 0 ? norm(viol_comp(mod,x),tnorm) : 0
 end
 
 """
@@ -143,7 +142,7 @@ function viol_cons_norm(mod   :: MPCC,
                         x     :: Vector;
                         tnorm :: Real=2)
 
- return norm(viol_cons(mod,x),Inf)
+ return norm(viol_mp(mod,x),Inf)
 end
 
 

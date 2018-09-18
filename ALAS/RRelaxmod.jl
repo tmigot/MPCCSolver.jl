@@ -2,7 +2,7 @@ module RRelaxmod
 
 import MPCCmod.MPCC, MPCCmod.obj, MPCCmod.grad
 import MPCCmod.consG, MPCCmod.consH
-import MPCCmod.viol_contrainte
+import MPCCmod.viol
 
 import Relaxation.phi
 
@@ -66,8 +66,6 @@ function relax_start!(rrelax :: RRelax,
  return rrelax
 end
 
-import MPCCmod.viol_cons, MPCCmod.viol_comp
-
 function relax_update!(rrelax         :: RRelax,
                        mod            :: MPCC,
                        r              :: Float64,
@@ -77,8 +75,8 @@ function relax_update!(rrelax         :: RRelax,
                        xk             :: Vector,
                        rpen           :: RPen)
 
- c = viol_contrainte(mod, xk)
- cx,px = cons(mod,r,s,t,tb,xk;cnl=c[2*mod.ncc+1:length(c)])
+ c = viol(mod, xk)
+ cx,px = cons(mod,r,s,t,tb,xk;cnl=c[2*mod.meta.ncc+1:length(c)])
  feas = vcat(cx,px)
 
  norm_feas = norm(feas, Inf)
@@ -126,7 +124,7 @@ function relax_update!(rrelax         :: RRelax,
                        lambda         :: Vector  = Float64[],
                        lambda_cc      :: Vector  = Float64[])
 
- rrelax.fx = fx == Inf ? obj(mod,xk[1:mod.n]) : fx
+ rrelax.fx = fx == Inf ? obj(mod,xk[1:mod.meta.nvar]) : fx
  rrelax.gx = gx == Float64[] ? rrelax.gx : gx
 
  rrelax.feas = feas == Float64[] ? rrelax.feas : feas
@@ -162,29 +160,29 @@ function cons(mod  :: MPCC,
               x    :: Vector;
               cnl  :: Vector = Float64[])
 
- n = mod.n
- ncc = mod.ncc
+ n = mod.meta.nvar
+ ncc = mod.meta.ncc
 
  if ncc == 0
 
-  c = viol_contrainte(mod,x) #les contraintes pénalisés
+  c = viol(mod,x) #les contraintes pénalisés
 
   xl = x
 
  else
 
-  G = consG(mod,x[1:mod.n])
-  H = consH(mod,x[1:mod.n])
+  G = consG(mod,x[1:n])
+  H = consH(mod,x[1:n])
 
   xl = length(x) == n ? vcat(x, G, H) : x
 
-  c = vcat(G-xl[n+1:n+mod.ncc],H-xl[n+mod.ncc+1:n+2*mod.ncc],cnl)
+  c = vcat(G-xl[n+1:n+ncc],H-xl[n+ncc+1:n+2*ncc],cnl)
 
  end
 
- slack = [max.(-xl[n+1:n+mod.ncc]+tb,0);
-          max.(-xl[n+mod.ncc+1:n+2*mod.ncc]+tb,0)] #tb<= 0
- p = max.(phi(xl,mod.ncc,r,s,t),0)
+ slack = [max.(-xl[n+1:n+ncc]+tb,0);
+          max.(-xl[n+ncc+1:n+2*ncc]+tb,0)] #tb<= 0
+ p = max.(phi(xl,ncc,r,s,t),0)
 
  return c,[slack;p]
 end

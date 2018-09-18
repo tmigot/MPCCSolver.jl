@@ -48,8 +48,8 @@ end
 ##################################################################################
 function _init_penmpccsolve(rlx,xjk)
 
- n   = rlx.nlp.mod.n
- ncc = rlx.nlp.mod.ncc
+ n   = rlx.nlp.mod.meta.nvar
+ ncc = rlx.nlp.mod.meta.ncc
 
  ρ      = rlx.rho_init
 

@@ -20,31 +20,31 @@ function sign_stationarity_check(mod      :: MPCC,
                                  l        :: Vector,
                                  precmpcc :: Float64)
 
-  Il = find(z->norm(z-mod.mp.meta.lvar,Inf)<=precmpcc, x)
-  Iu = find(z->norm(z-mod.mp.meta.uvar,Inf)<=precmpcc, x)
+  Il = find(z->norm(z-mod.meta.lvar,Inf)<=precmpcc, x)
+  Iu = find(z->norm(z-mod.meta.uvar,Inf)<=precmpcc, x)
 
   IG = [];IH = [];Ig = [];Ih = [];
 
- if mod.mp.meta.ncon+mod.ncc > 0
+ if mod.meta.ncon+mod.meta.ncc > 0
 
   c = cons(mod.mp, x)
-  Ig = find(z->norm(z-mod.mp.meta.lcon,Inf) <= precmpcc, c)
-  Ih = find(z->norm(z-mod.mp.meta.ucon,Inf) <= precmpcc, c)
+  Ig = find(z->norm(z-mod.meta.lcon,Inf) <= precmpcc, c)
+  Ih = find(z->norm(z-mod.meta.ucon,Inf) <= precmpcc, c)
 
   if mod.ncc > 0
 
-   IG = find(z->norm(z-mod.G.meta.lcon, Inf) <= precmpcc,consG(mod, x))
-   IH = find(z->norm(z-mod.H.meta.lcon, Inf) <= precmpcc,consH(mod, x))
+   IG = find(z->norm(z-mod.meta.lccG, Inf) <= precmpcc,consG(mod, x))
+   IH = find(z->norm(z-mod.meta.lccH, Inf) <= precmpcc,consH(mod, x))
 
   end
  end
 
  #setdiff(∪(Il,Iu),∩(Il,Iu))
- l_pos = max.(l[1:2*n+2*mod.mp.meta.ncon], 0)
+ l_pos = max.(l[1:2*n+2*mod.meta.ncon], 0)
 
  I_biactif = ∩(IG,IH)
- lG = [2*n+2*mod.mp.meta.ncon+I_biactif]
- lH = [2*n+2*mod.mp.meta.ncon+mod.ncc+I_biactif]
+ lG = [2*n+2*mod.meta.ncon+I_biactif]
+ lH = [2*n+2*mod.meta.ncon+mod.meta.ncc+I_biactif]
  l_cc = min.(lG.*lH,max.(-lG,0)+max.(-lH,0))
 
  return norm([l_pos;l_cc],Inf)<=precmpcc
@@ -82,10 +82,10 @@ function stationary_check(mod      :: MPCC,
                           x        :: Vector,
                           precmpcc :: Float64)
 
- n = mod.n
+ n = mod.meta.nvar
  b = -grad(mod,x)
 
- if mod.mp.meta.ncon+mod.ncc ==0
+ if mod.meta.ncon+mod.meta.ncc ==0
 
   optimal = norm(b,Inf) <= precmpcc
 

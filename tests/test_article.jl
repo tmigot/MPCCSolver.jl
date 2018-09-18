@@ -1,6 +1,14 @@
 #Tests des packages
-include("MPCCProblems.jl")
+include("../ALAS/include.jl")
+include("../MPCCProblems/MPCCProblems.jl")
 include("../ALAS/MPCCPlot2D.jl")
+
+using MPCCProblems
+using OutputRelaxationmod
+#package pour plot
+using PyPlot
+#Est-ce que l'on veut les figures :
+plot=false
 
 #Est-ce que l'on veut les figures :
 plot=false
@@ -13,7 +21,7 @@ sig_r=0.1
 sig_s=0.1
 sig_t=0.05
 
-mpcc=ex1bd #ex1, ex2, ex3
+mpcc=MPCCProblems.ex1bd() #ex1, ex2, ex3
 
 @time xb,rmpcc,orb = MPCCSolvemod.solve(mpcc)
 

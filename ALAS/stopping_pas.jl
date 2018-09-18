@@ -3,6 +3,7 @@ export TStoppingPAS, start!, stop, ending_test
 
 import RPenmod.RPen
 import StoppingPenmod.StoppingPen
+import MPCCmod.viol
 
 type TStoppingPAS
     atol :: Float64                  # absolute tolerance
@@ -30,7 +31,7 @@ type TStoppingPAS
 
     #Feasibility
     feasibility :: Float64
-    feasibility_residual :: Function #norm(MPCCmod.viol_contrainte(alas.mod,xjk),Inf)
+    feasibility_residual :: Function #norm(MPCCmod.viol(alas.mod,xjk),Inf)
     feas :: Bool
     # Stopping properties
     tired::Bool
@@ -90,7 +91,7 @@ function pas_rhoupdate!( mod :: MPCCmod.MPCC,
                 x₀ :: Array{Float64,1})
 
     feasibility = s.feasibility
-    s.feasibility = s.feasibility_residual(MPCCmod.viol_contrainte(mod, x₀))
+    s.feasibility = s.feasibility_residual(MPCCmod.viol(mod, x₀))
     s.feas = (s.feasibility < s.atol) | (s.feasibility <( s.rtol * s.feasibility))
 
     UPDATE = s.feasibility>s.goal_viol*feasibility && !s.feas
@@ -112,7 +113,7 @@ function pas_stop!(mod :: MPCCmod.MPCC,
     #calls = [counts.neval_obj,  counts.neval_grad, counts.neval_hess, counts.neval_hprod]
     calls = [neval_obj(mod.mp), neval_grad(mod.mp), neval_hess(mod.mp), neval_hprod(mod.mp)]
 
-    s.feasibility=s.feasibility_residual(MPCCmod.viol_contrainte(mod,x))
+    s.feasibility=s.feasibility_residual(MPCCmod.viol(mod,x))
     s.feas = (s.feasibility < s.atol) | (s.feasibility <( s.rtol * s.feasibility))
 
     s.optimality = s.optimality_residual(rpen.dual_feas)

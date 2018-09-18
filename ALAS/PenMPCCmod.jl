@@ -71,8 +71,8 @@ end
 function get_bounds(pen :: PenMPCC)
 
  tb  = pen.rlx.tb
- lvar = [pen.rlx.mod.mp.meta.lvar;tb*ones(2*pen.ncc)]
- uvar = [pen.rlx.mod.mp.meta.uvar;Inf*ones(2*pen.ncc)]
+ lvar = [pen.rlx.mod.meta.lvar;tb*ones(2*pen.ncc)] #devrait etre fait avec les mod.meta.lccG
+ uvar = [pen.rlx.mod.meta.uvar;Inf*ones(2*pen.ncc)]
 
  return lvar, uvar
 end

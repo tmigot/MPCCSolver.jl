@@ -1,6 +1,7 @@
 module StoppingMPCCmod
 
 import MPCCmod.MPCC, MPCCmod.dual_feasibility, MPCCmod.grad
+import MPCCmod.viol_mp, MPCCmod.viol_comp
 
 import RMPCCmod.RMPCC
 
@@ -53,8 +54,6 @@ function stop_start!(smpcc :: StoppingMPCC,
  return OK
 end
 
-import MPCCmod.viol_cons, MPCCmod.viol_comp
-
 function stop!(smpcc  :: StoppingMPCC,
                mod    :: MPCC,
                xk     :: Vector,
@@ -66,7 +65,7 @@ function stop!(smpcc  :: StoppingMPCC,
 
   #real = rlx.rrelax.norm_feas
 
-  rmpcc.feas = viol_cons(mod,xk)
+  rmpcc.feas = viol_mp(mod,xk)
   rmpcc.feas_cc = viol_comp(mod,xk)
   rmpcc.norm_feas = norm(vcat(rmpcc.feas,rmpcc.feas_cc),Inf)
 
@@ -79,7 +78,7 @@ function stop!(smpcc  :: StoppingMPCC,
 
  if smpcc.solved && smpcc.realisable
 
-  dual_feas = stationary_check(mod, xk[1:mod.n], smpcc.precmpcc)
+  dual_feas = stationary_check(mod, xk[1:mod.meta.nvar], smpcc.precmpcc)
   smpcc.optimal = !isnan(f) && !(true in isnan.(xk)) && dual_feas
 
  end

@@ -13,7 +13,7 @@ function _create_penaltynlp(rlx  :: RlxMPCCSolve,
 
  gpenf(x,yg,yh)=vec([RlxMPCCmod.grad(rlx.nlp,x)' zeros(2*ncc)'])+_grad_penalty_gen(rlx,x,yg,yh,ρ,u)
  #error: no matching method
- #gpenf(x,yg,yh)=vec([grad(rlx.mod,x)' zeros(2*rlx.mod.ncc)'])+_grad_penalty_gen(rlx,x,yg,yh,ρ,usg,ush,uxl,uxu,ucl,ucu)
+ #gpenf(x,yg,yh)=vec([grad(rlx.mod,x)' zeros(2*rlx.mod.meta.ncc)'])+_grad_penalty_gen(rlx,x,yg,yh,ρ,usg,ush,uxl,uxu,ucl,ucu)
  gpenf(x)=gpenf(x[1:n],x[n+1:n+ncc],x[n+ncc+1:n+2*ncc])
 
  gfpenf(x,yg,yh)=_objgrad_penalty_gen(rlx,x,yg,yh,ρ,u)

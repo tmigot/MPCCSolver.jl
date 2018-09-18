@@ -9,8 +9,8 @@ function _slack_complementarity_projection(rlx  :: RlxMPCCSolve)
  x = copy(rlx.xj)
 
  #projection sur les contraintes de bornes: l <= x <= u
- l = mod.mp.meta.lvar
- u = mod.mp.meta.uvar
+ l = mod.meta.lvar
+ u = mod.meta.uvar
  x[1:n] = x[1:n] + max.(l-x[1:n],0) + max.(x[1:n]-u,0)
 
  if ncc == 0 return x end

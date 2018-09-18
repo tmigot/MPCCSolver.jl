@@ -46,7 +46,7 @@ function solve(mpccsol :: MPCCSolve)
  rmpcc   = final(smpcc, rmpcc)
 
  final!(or, mpccsol.mod, rmpcc)
- Print(or, mpccsol.mod.n, mpccsol.paramset.verbose)
+ Print(or, mpccsol.mod.meta.nvar, mpccsol.paramset.verbose)
 
  return xk, rmpcc, or
 end

@@ -1,4 +1,4 @@
-println("On teste le package Relaxation")
+print_with_color(:yellow, "Test Relaxation module:\n")
 
 using Relaxation
 
@@ -107,7 +107,7 @@ end
 
 #Conclusion:
 if Relaxation_success==true
- println("Relaxationmod.jl passes the test !")
+ print_with_color(:yellow, "Relaxationmod.jl passes the test !\n")
 else
- println("Relaxationmod.jl contains some error")
+ print_with_color(:red, "Relaxationmod.jl contains some error\n")
 end

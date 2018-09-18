@@ -2,6 +2,7 @@
 #include("installer.jl")
 
 #include file
+include("../ALAS/MPCCMetamod.jl")
 include("../ALAS/MPCCmod.jl")
 
 include("../ALAS/OutputLSmod.jl")
