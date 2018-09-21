@@ -47,8 +47,7 @@ function ParamSet(nbc            :: Int64;
                   tau_wolfe      :: Float64  = 0.6,
                   wolfe_update   :: Float64  = 5.0,
                   verbose        :: Int64    = 0 
-                  )
- #@show nbc 
+                  ) 
  #verbose: #0 quiet, 1 relax, 2 relax+activation, 3 relax+activation+linesearch
 
  return ParamSet(tb,ite_max_alas,ite_max_viol,

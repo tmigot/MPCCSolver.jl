@@ -9,10 +9,7 @@ _err_detail(err::Vector,n::Int64,ncc::Int64,ncon::Int64)
 """
 module Penalty
 
-import NLPModels.AbstractNLPModel
-import NLPModels.hess
-import NLPModels.jtprod
-import NLPModels.jac
+import NLPModels: AbstractNLPModel, hess, jtprod, jac
 
 ###################################
 #

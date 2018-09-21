@@ -244,8 +244,11 @@ function hessH(mod :: MPCC, x :: Vector ; obj_weight = 1.0, y = zeros)
 end
 
 function hess(mod :: MPCC, x :: Vector ; obj_weight = 1.0, y = zeros)
- if y != zeros NotImplemented() end
- return NLPModels.hess(mod.mp, x)
+ if y != zeros
+  return NLPModels.hess(mod.mp, x, obj_weight = obj_weight, y = y)
+ else
+  return NLPModels.hess(mod.mp, x)
+ end
 end
 
 #########################################################

@@ -1,15 +1,11 @@
 module RlxMPCCmod
 
-import MPCCmod.MPCC, MPCCmod.obj, MPCCmod.grad, MPCCmod.grad!, MPCCmod.hess
-import MPCCmod.viol_mp, MPCCmod.consG, MPCCmod.consH, MPCCmod.jacG, MPCCmod.jacH
-import MPCCmod.cons_nl, MPCCmod.jac_nl, MPCCmod.viol_mp
-import MPCCmod.jtprodG, MPCCmod.jtprodH, MPCCmod.jtprodnl
-import MPCCmod.hessnl, MPCCmod.hessG, MPCCmod.hessH
+import MPCCmod: MPCC, obj, grad, grad!, hess, viol_mp, consG, consH, jacG, jacH, cons_nl, jac_nl, viol_mp, jtprodG, jtprodH, jtprodnl, hessnl, hessG, hessH
 
-import Relaxation.psi, Relaxation.phi, Relaxation.dphi
+import Relaxation: psi, phi, dphi, ddphi
 
 importall NLPModels
-import NLPModels.AbstractNLPModel, NLPModels.NLPModelMeta, NLPModels.Counters
+import NLPModels: AbstractNLPModel, NLPModelMeta, Counters, increment!
 
 """
 Definit le type RlxMPCC :
@@ -36,7 +32,7 @@ cnl_slack(x) := c(x),yg,yh,Phi(yg,yh,t)
 type RlxMPCC <: AbstractNLPModel
 
  meta     :: NLPModelMeta
- counters :: Counters #ATTENTION : increment! ne marche pas?
+ counters :: Counters
 
  x0       :: Vector
 
@@ -46,7 +42,7 @@ type RlxMPCC <: AbstractNLPModel
  t        :: Float64
  tb       :: Float64
 
- n        :: Int64
+ n        :: Int64 #better use meta.nvar
  ncc      :: Int64
 
 
@@ -63,6 +59,7 @@ type RlxMPCC <: AbstractNLPModel
 
   n = mod.meta.nvar
   ncon = mod.meta.ncon + 3*ncc
+
   new_lcon = vcat(mod.meta.lcon,
                   mod.meta.lccG+tb*ones(ncc),
                   mod.meta.lccH+tb*ones(ncc),
@@ -76,13 +73,18 @@ type RlxMPCC <: AbstractNLPModel
                                  lcon = new_lcon, ucon = new_ucon)
 
   if tb > 0.0 throw(error("Domain error: tb must be non-positive")) end
-  if minimum([r,s,t])<0.0 throw(error("Domain error: (r,s,t) must be non-negative")) end
+  if minimum([r,s,t])<0.0 
+   throw(error("Domain error: (r,s,t) must be non-negative"))
+  end
 
   return new(meta,Counters(),x,mod,r,s,t,tb,n,ncc)
  end
 end
 
 NotImplemented(args...; kwargs...) = throw(NotImplementedError(""))
+
+#return the number of "classical" non-linear constraints
+function get_ncon(rlxmpcc :: RlxMPCC) return rlxmpcc.meta.ncon - 3*rlxmpcc.ncc end
 
 ############################################################################
 #
@@ -103,10 +105,91 @@ function grad!(rlxmpcc :: RlxMPCC, x :: Vector, gx :: Vector)
  return grad!(rlxmpcc.mod, x, gx)
 end
 
+function objgrad(rlxmpcc :: RlxMPCC, x :: Vector)
+ return obj(rlxmpcc, x), grad(rlxmpcc, x)
+end
+
+function objgrad!(rlxmpcc :: RlxMPCC, x :: Vector, gx :: Vector)
+ return obj(rlxmpcc, x), grad!(rlxmpcc, x, gx)
+end
+
 function hess(rlxmpcc :: RlxMPCC, x :: Vector; obj_weight = 1.0, y = zeros)
- if y != zeros NotImplemented() end
- #renvoi la triangulaire inférieure tril(H,-1)'
- return hess(rlxmpcc.mod, x)
+
+ if y != zeros
+  return hess(rlxmpcc, x, obj_weight, y)
+ else
+  return hess(rlxmpcc.mod, x)
+ end
+end
+
+function hess(rlxmpcc :: RlxMPCC, x :: Vector, obj_weight :: Float64, y :: Vector)
+
+ ncc = rlxmpcc.ncc
+ nl = get_ncon(rlxmpcc)
+
+ y_nl, y_G, y_H, y_Phi = y[1:nl], y[nl+1:nl+ncc], y[nl+ncc+1:nl+2*ncc], y[nl+2*ncc+1:nl+3*ncc]
+
+ hess_mp = hess(rlxmpcc.mod, x, obj_weight = obj_weight, y = y_nl)
+ if ncc > 0
+
+  G, H = consG(rlxmpcc.mod, x), consH(rlxmpcc.mod, x)
+  dgg, dgh, dhh = ddphi(G, H, rlxmpcc.r, rlxmpcc.s, rlxmpcc.t)
+  dph = dphi(G, H, rlxmpcc.r, rlxmpcc.s, rlxmpcc.t)
+  y_G += dph[1:ncc] 
+  hess_G = hessG(rlxmpcc.mod, x, obj_weight = obj_weight, y = y_G)
+  y_H += dph[ncc+1:2*ncc]
+  hess_H = hessH(rlxmpcc.mod, x, obj_weight = obj_weight, y = y_H)
+  jG, jH = jacG(rlxmpcc.mod, x), jacH(rlxmpcc.mod, x)
+  hess_P = jG' * (diagm(dgg) * jG) + jH' * (diagm(dgh) * jH) + jG' * (diagm(dgh) * jH) + jH' * (diagm(dgh) * jG)
+
+ else
+  hess_G, hess_H, hess_P = Float64[], Float64[], Float64[]
+ end
+
+ return tril(hess_mp + hess_G + hess_H + hess_P)
+end
+
+function hess_nlslack(rlxmpcc :: RlxMPCC, x :: Vector, v :: Vector, objw :: Float64)
+
+ n, ncc, ncon = rlxmpcc.meta.nvar, rlxmpcc.ncc, rlxmpcc.mod.meta.ncon
+ xn = x[1:n]
+
+ test = (hessnl(rlxmpcc.mod,xn,y=v[2*ncc+1:2*ncc+2*n+2*ncon], obj_weight = objw)
+         + hessG(rlxmpcc.mod,xn,y=v[1:ncc], obj_weight = 0.0)
+         + hessH(rlxmpcc.mod,xn,y=v[1+ncc:2*ncc], obj_weight = 0.0))
+
+ return test
+end
+
+function hess_relax(rlxmpcc :: RlxMPCC, yg :: Vector, yh :: Vector, y :: Vector)
+ ncc = rlxmpcc.ncc
+
+ if length(y) == 3*ncc
+  y_Phi = y[2*ncc+1:3*ncc]
+ elseif length(y) == ncc
+  y_Phi = y
+ else
+  throw(error("Dimension error: y"))
+ end
+
+ if ncc > 0
+
+  dgg, dgh, dhh = ddphi(yg, yh, rlxmpcc.r, rlxmpcc.s, rlxmpcc.t)
+  hess_P = vcat(hcat(diagm(y_Phi.*dgg),diagm(y_Phi.*dgh)),
+                hcat(diagm(y_Phi.*dgh),diagm(y_Phi.*dhh)))
+
+ else
+  hess_P = Float64[]
+ end
+
+ return hess_P #matrix of size 2*ncc x 2*ncc
+end
+
+function hess_coord(rlxmpcc    :: RlxMPCC,
+                    x          :: Vector;
+                    obj_weight :: Float64 = 1.0,
+                    y          :: Vector = zeros(rlxmpcc.meta.ncon))
+ return findnz(hess(rlxmpcc, x, obj_weight = obj_weight, y = y))
 end
 
 #########################################################
@@ -117,7 +200,7 @@ end
 #########################################################
 function cons(rlxmpcc :: RlxMPCC, x :: Vector)
 
- n, ncc = rlxmpcc.n, rlxmpcc.ncc
+ n, ncc = rlxmpcc.meta.nvar, rlxmpcc.ncc
 
  if length(x) == n
 
@@ -158,7 +241,7 @@ end
 #########################################################
 function viol(rlxmpcc :: RlxMPCC, x :: Vector)
 
- n, ncc = rlxmpcc.n, rlxmpcc.ncc
+ n, ncc = rlxmpcc.meta.nvar, rlxmpcc.ncc
 
  if length(x) == n
 
@@ -196,7 +279,7 @@ end
 #########################################################
 function viol_cons_nl(rlxmpcc :: RlxMPCC, x :: Vector)
 
- n, ncc = rlxmpcc.n, rlxmpcc.ncc
+ n, ncc = rlxmpcc.meta.nvar, rlxmpcc.ncc
 
  if length(x) == n
 
@@ -213,7 +296,7 @@ function viol_cons_nl(rlxmpcc :: RlxMPCC, x :: Vector)
   c = vcat(G-yg,H-yh,c)
 
  else
-  throw("error wrong dimension")
+  throw(error("error wrong dimension"))
  end
 
  return c
@@ -224,14 +307,23 @@ function jac(rlxmpcc :: RlxMPCC, x :: Vector)
  return A
 end
 
+function jac_coord(rlxmpcc :: RlxMPCC, x :: Vector)
+ return findnz(jac(rlxmpcc, x))
+end
+
 function jac_nl(rlxmpcc :: RlxMPCC, x :: Vector)
 
-  n = rlxmpcc.n
+ n = rlxmpcc.meta.nvar
+ ncon = get_ncon(rlxmpcc)
 
+ Jl, Ju = eye(n), eye(n)
+
+ if ncon > 0
   Jc = jac_nl(rlxmpcc.mod, x)
-  Jl, Ju = eye(n), eye(n)
-
   A = vcat(-Jl,Ju,-Jc,Jc)
+ else
+  A = vcat(-Jl,Ju)
+ end
 
  return A
 end
@@ -253,7 +345,7 @@ end
 function jtprod_nlslack(rlxmpcc :: RlxMPCC, x :: Vector, v :: Vector)
 #v of size 2*ncc + 2*n + 2*ncon
 
- n, ncc, ncon = rlxmpcc.n, rlxmpcc.ncc, rlxmpcc.mod.meta.ncon
+ n, ncc, ncon = rlxmpcc.meta.nvar, rlxmpcc.ncc, rlxmpcc.mod.meta.ncon
  xn = x[1:n]
  vbl, vbu = v[2*ncc+1:2*ncc+n], v[2*ncc+n+1:2*ncc+2*n]
  vlc, vuc = v[2*ncc+2*n+1:2*ncc+2*n+ncon], v[2*ncc+2*n+ncon+1:length(v)]
@@ -276,18 +368,6 @@ function jac_rlx(rlxmpcc :: RlxMPCC, x :: Vector)
    A = vcat(-JG, -JH, diagm(JPHIG)*JG + diagm(JPHIH)*JH)
 
  return A
-end
-
-function hess_nlslack(rlxmpcc :: RlxMPCC, x :: Vector, v :: Vector, objw :: Float64)
-
- n, ncc, ncon = rlxmpcc.n, rlxmpcc.ncc, rlxmpcc.mod.meta.ncon
- xn = x[1:n]
-
- test= (hessnl(rlxmpcc.mod,xn,y=v[2*ncc+1:2*ncc+2*n+2*ncon], obj_weight = objw)
-         + hessG(rlxmpcc.mod,xn,y=v[1:ncc], obj_weight = 0.0)
-         + hessH(rlxmpcc.mod,xn,y=v[1+ncc:2*ncc], obj_weight = 0.0))
-
- return test
 end
 
 ###########################################################################

@@ -1,7 +1,7 @@
 module ActifModelmod
 
-using NLPModels
-import NLPModels.AbstractNLPModel, NLPModels.Counters, NLPModels.NLPModelMeta
+importall NLPModels
+import NLPModels: AbstractNLPModel, Counters, NLPModelMeta, increment!
 
 export ActifModel, obj, grad, grad!, cons, cons!, jac_coord, jac, jprod,
        jprod!, jtprod, jtprod!, hess, hprod, hprod!
@@ -80,17 +80,17 @@ function ActifModel(f::Function, x0::Vector; y0::Vector = [],
 end
 
 function obj(nlp :: ActifModel, x :: Vector)
-  #increment!(nlp, :neval_obj)
+  increment!(nlp, :neval_obj)
   return nlp.f(x)
 end
 
 function grad(nlp :: ActifModel, x :: Vector)
-  #increment!(nlp, :neval_grad)
+  increment!(nlp, :neval_grad)
   return nlp.g(x)
 end
 
 function grad!(nlp :: ActifModel, x :: Vector, g :: Vector)
-  #increment!(nlp, :neval_grad)
+  increment!(nlp, :neval_grad)
   return nlp.g!(x, g)
 end
 
@@ -98,8 +98,8 @@ function objgrad(nlp :: ActifModel, x :: Vector)
   if nlp.fg == NotImplemented
     return obj(nlp, x), grad(nlp, x)
   else
-    #increment!(nlp, :neval_obj)
-    #increment!(nlp, :neval_grad)
+    increment!(nlp, :neval_obj)
+    increment!(nlp, :neval_grad)
     return nlp.fg(x)
   end
 end
@@ -108,19 +108,19 @@ function objgrad!(nlp :: ActifModel, x :: Vector, g :: Vector)
   if nlp.fg! == NotImplemented
     return obj(nlp, x), grad!(nlp, x, g)
   else
-    #increment!(nlp, :neval_obj)
-    #increment!(nlp, :neval_grad)
+    increment!(nlp, :neval_obj)
+    increment!(nlp, :neval_grad)
     return nlp.fg!(x, g)
   end
 end
 
 function cons(nlp :: ActifModel, x :: Vector)
-  #increment!(nlp, :neval_cons)
+  increment!(nlp, :neval_cons)
   return nlp.c(x)
 end
 
 function cons!(nlp :: ActifModel, x :: Vector, c :: Vector)
-  #increment!(nlp, :neval_cons)
+  increment!(nlp, :neval_cons)
   return nlp.c!(x, c)
 end
 
@@ -128,8 +128,8 @@ function objcons(nlp :: ActifModel, x :: Vector)
   if nlp.fc == NotImplemented
     return obj(nlp, x), nlp.meta.ncon > 0 ? cons(nlp, x) : []
   else
-    #increment!(nlp, :neval_obj)
-    #increment!(nlp, :neval_cons)
+    increment!(nlp, :neval_obj)
+    increment!(nlp, :neval_cons)
     return nlp.fc(x)
   end
 end
@@ -138,34 +138,34 @@ function objcons!(nlp :: ActifModel, x :: Vector, c :: Vector)
   if nlp.fc! == NotImplemented
     return obj(nlp, x), nlp.meta.ncon > 0 ? cons!(nlp, x, c) : []
   else
-    #increment!(nlp, :neval_obj)
-    #increment!(nlp, :neval_cons)
+    increment!(nlp, :neval_obj)
+    increment!(nlp, :neval_cons)
     return nlp.fc!(x, c)
   end
 end
 
 function jac_coord(nlp :: ActifModel, x :: Vector)
-  #increment!(nlp, :neval_jac)
+  increment!(nlp, :neval_jac)
   return nlp.Jcoord(x)
 end
 
 function jac(nlp :: ActifModel, x :: Vector)
-  #increment!(nlp, :neval_jac)
+  increment!(nlp, :neval_jac)
   return nlp.J(x)
 end
 
 function jprod(nlp :: ActifModel, x :: Vector, v :: Vector)
-  #increment!(nlp, :neval_jprod)
+  increment!(nlp, :neval_jprod)
   return nlp.Jp(x, v)
 end
 
 function jprod!(nlp :: ActifModel, x :: Vector, v :: Vector, Jv :: Vector)
-  #increment!(nlp, :neval_jprod)
+  increment!(nlp, :neval_jprod)
   return nlp.Jp!(x, v, Jv)
 end
 
 function jtprod(nlp :: ActifModel, x :: Vector, v :: Vector)
-  #increment!(nlp, :neval_jtprod)
+  increment!(nlp, :neval_jtprod)
   return nlp.Jtp(x, v)
 end
 
@@ -176,7 +176,7 @@ end
 
 function hess(nlp :: ActifModel, x :: Vector; obj_weight = 1.0,
       y :: Vector = zeros(nlp.meta.ncon))
-  #increment!(nlp, :neval_hess)
+  increment!(nlp, :neval_hess)
   if nlp.meta.ncon > 0
     return nlp.H(x, obj_weight=obj_weight, y=y)
   else
@@ -186,7 +186,7 @@ end
 
 function hess_coord(nlp :: ActifModel, x :: Vector; obj_weight = 1.0,
       y :: Vector = zeros(nlp.meta.ncon))
-  #increment!(nlp, :neval_hess)
+  increment!(nlp, :neval_hess)
   if nlp.meta.ncon > 0
     return nlp.Hcoord(x, obj_weight=obj_weight, y=y)
   else
@@ -196,7 +196,7 @@ end
 
 function hprod(nlp :: ActifModel, x :: Vector, v :: Vector;
     obj_weight = 1.0, y :: Vector = zeros(nlp.meta.ncon))
-  #increment!(nlp, :neval_hprod)
+  increment!(nlp, :neval_hprod)
   if nlp.meta.ncon > 0
     return nlp.Hp(x, v, obj_weight=obj_weight, y=y)
   else
@@ -206,7 +206,7 @@ end
 
 function hprod!(nlp :: ActifModel, x :: Vector, v :: Vector, Hv :: Vector;
     obj_weight = 1.0, y :: Vector = zeros(nlp.meta.ncon))
-  #increment!(nlp, :neval_hprod)
+  increment!(nlp, :neval_hprod)
   if nlp.meta.ncon > 0
     return nlp.Hp!(x, v, Hv, obj_weight=obj_weight, y=y)
   else

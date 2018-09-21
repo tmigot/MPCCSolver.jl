@@ -8,18 +8,19 @@ import RUncstrndmod.RUncstrnd, RUncstrndmod.runc_update!
 import Stopping1Dmod.Stopping1D
 
 using NLPModels
+import NLPModels: AbstractNLPModel
 
 #package to solve unconstrained minimization pb
 type UncstrndSolve
 
-  nlp  :: ActifModel #Est-ce que ça pourrait plutôt être un AbstractNLPModel
+  nlp  :: AbstractNLPModel
   x    :: Vector
   runc :: RUncstrnd
   sunc :: Stopping1D
 
   func_1d :: Function
 
- function UncstrndSolve(nlp :: ActifModel,
+ function UncstrndSolve(nlp :: AbstractNLPModel,
                         x :: Vector, 
                         runc :: RUncstrnd, 
                         sunc :: Stopping1D,

@@ -1,38 +1,10 @@
-"""
-Package de fonctions pour définir la précision
-sur la réalisabilité dual pendant la pénalisation
-'sans contraintes'.
+module SolveRelaxSubProblem
 
-
-liste des fonctions :
-SolveSubproblemrlx(mod::MPCCmod.MPCC,
-                    r::Float64,s::Float64,t::Float64,
-                    rho::Vector,name_relax::AbstractString)
-SolveSubproblemIpopt(mod::MPCCmod.MPCC,
-                              r::Float64,s::Float64,t::Float64,
-                              rho::Vector,name_relax::AbstractString)
-
-MPCCtoRelaxNLP(mod::MPCC, r::Float64, s::Float64, t::Float64,
-              relax::AbstractString)
-
-"""
-
-# TO DO List
-#Major :
-# - MPCCtoRelaxNLP : bug à corriger
-
-module SolveRelaxSubProblem #est-ce que c'est vraiment un module ?
-
-import MPCCmod.MPCC
-import MPCCmod.consG, MPCCmod.consH
-
-import RlxMPCCSolvemod.RlxMPCCSolve, RlxMPCCSolvemod.rlx_solve!, RlxMPCCSolvemod.set_x
-
-import RMPCCmod.RMPCC
-import RRelaxmod.relax_start!, RRelaxmod.relax_update!
-import RRelaxmod.cons
-
-import RPenmod.RPen
+import MPCCmod: MPCC, consG, MPCCmod.consH
+import RlxMPCCSolvemod: RlxMPCCSolve, rlx_solve!, set_x
+import RMPCCmod: RMPCC
+import RRelaxmod: relax_start!, relax_update!, cons
+import RPenmod: RPen
 
 """
 Methode pour résoudre le sous-problème relaxé :
@@ -72,9 +44,6 @@ end
 using Ipopt
 using MathProgBase
 
-"""
-Methode pour résoudre le sous-problème relaxé :
-"""
 ############################################################################
 #
 # SolveSubproblemIpOpt
@@ -85,6 +54,8 @@ function solve_subproblem_IpOpt(rlx        :: RlxMPCCSolve,
                                 rmpcc      :: RMPCC,
                                 name_relax :: AbstractString,
                                 x0         :: Vector)
+
+throw(error("This function does not work"))
 
  n     = rlx.nlp.n
  ncc   = rlx.nlp.ncc
@@ -112,14 +83,6 @@ function solve_subproblem_IpOpt(rlx        :: RlxMPCCSolve,
 
  return xk, rlx, output
 end
-
-############################################################################
-#
-# !!! Ne marche pas comme ça !!!
-#
-############################################################################
-
-#include("mpcc_to_relax_nlp.jl")
 
 #end of module
 end

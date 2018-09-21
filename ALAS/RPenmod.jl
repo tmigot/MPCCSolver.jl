@@ -1,7 +1,7 @@
 module RPenmod
 
 import PenMPCCmod.PenMPCC
-import PenMPCCmod.jac, PenMPCCmod.cons
+import PenMPCCmod.jtprod, PenMPCCmod.cons
 import PenMPCCmod.obj, PenMPCCmod.grad
 
 type RPen #résultat du problème pénalisé
@@ -63,7 +63,7 @@ function pen_start!(pen            :: PenMPCC,
  #rpen.lambda = norm(lambda,Inf) != 0.0 ? lambda : rpen.lambda #vide ?
  rpen.lambda = lambda
 
- Jl = jac(pen, xk, rpen.lambda)
+ Jl = jtprod(pen, xk, rpen.lambda)
  rpen.dual_feas = rpen.dual_feas == Float64[] ? rpen.gx + Jl : rpen.dual_feas
 
  rpen.feas = rpen.feas == Float64[] ? cons(pen, xk) : rpen.feas
@@ -110,7 +110,7 @@ function pen_rho_update!(pen  :: PenMPCC,
                          rpen :: RPen,
                          xk   :: Vector)
 
-  rpen.dual_feas = rpen.gx + jac(pen, xk, rpen.lambda)
+  rpen.dual_feas = rpen.gx + jtprod(pen, xk, rpen.lambda)
   rpen.feas = cons(pen, xk)
 
  return rpen

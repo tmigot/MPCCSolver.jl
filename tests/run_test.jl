@@ -24,12 +24,9 @@ done=false
 
 	(test==0 || test==6) ? include("run_test_RlxMPCCmod.jl") : print("")
 
-	# Un exemple simple pour tester :
-	 f(x)=x[1]-x[2]
-	 G(x)=x[1]
-	 H(x)=x[2]
-	 c(x)=[1-x[2]]
-	 lcon=zeros(1)
+	(test==0 || test==6) ? include("run_test_PenMPCCmod.jl") : print("")
+
+################################################################################
 
 	done && (test==0 || test==3) ? include("run_test_ActifMPCCmod.jl") : print("")
 

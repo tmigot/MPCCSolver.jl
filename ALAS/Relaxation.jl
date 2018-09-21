@@ -121,6 +121,24 @@ function dphi(x   :: Vector,
 end
 
 """
+ddphi(x,r,s,t) : évalue la fonction de relaxation de la contrainte de complémentarité en (yg,yh) in (ncc,ncc)
+
+output : Array of size 2ncc x 2ncc
+"""
+function ddphi(yg :: FloatOrVector,
+               yh :: FloatOrVector,
+               r  :: Float64,
+               s  :: Float64,
+               t  :: Float64)
+
+ dgg = -2*dpsi(yg,r,s,t) - ddpsi(yg,r,s,t).*(yg - psi(yh,r,s,t))
+ dhh = -2*dpsi(yh,r,s,t) - ddpsi(yh,r,s,t).*(yh - psi(yg,r,s,t))
+ dgh = 1 + dpsi(yg,r,s,t).*dpsi(yh,r,s,t)
+
+ return dgg, dgh, dhh
+end
+
+"""
 alpha_max : see ThetaFct.alpha_theta_max
 
 output : Array of size 1 x 2

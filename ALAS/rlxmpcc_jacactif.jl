@@ -5,49 +5,51 @@ function jac_actif(rlxmpcc :: RlxMPCC, x :: Vector, prec :: Float64)
 
   n = rlxmpcc.n
   ncc = rlxmpcc.ncc
+  r, s, t, tb = rlxmpcc.r, rlxmpcc.s, rlxmpcc.t, rlxmpcc.tb
+  mod = rlxmpcc.mod
 
-  Il = find(z->z<=prec,abs.(x-rlxmpcc.mod.meta.lvar))
-  Iu = find(z->z<=prec,abs.(x-rlxmpcc.mod.meta.uvar))
+  Il = find(z->z<=prec,abs.(x - mod.meta.lvar))
+  Iu = find(z->z<=prec,abs.(x - mod.meta.uvar))
   jl = zeros(n);jl[Il]=1.0;Jl=diagm(jl);
   ju = zeros(n);ju[Iu]=1.0;Ju=diagm(ju);
 
   IG=[];IH=[];IPHI=[];Ig=[];Ih=[];
 
- if rlxmpcc.mod.meta.ncon+ncc ==0
+ if mod.meta.ncon+ncc ==0
 
   A=[]
 
  else
 
   if mod.meta.ncon > 0
-   c = cons_nl(rlxmpcc.mod, x)
-   J = jac_nl(rlxmpcc.mod, x)
+   c = cons_nl(mod, x)
+   J = jac_nl(mod, x)
   else
    c = Float64[]
    J = sparse(zeros(0,2))
   end
 
-  Ig=find(z->z<=prec,abs.(c-rlxmpcc.mod.meta.lcon))
-  Ih=find(z->z<=prec,abs.(c-rlxmpcc.mod.meta.ucon))
+  Ig=find(z->z<=prec,abs.(c- mod.meta.lcon))
+  Ih=find(z->z<=prec,abs.(c- mod.meta.ucon))
 
-  Jg, Jh = zeros(rlxmpcc.mod.meta.ncon,n), zeros(rlxmpcc.mod.meta.ncon,n)
+  Jg, Jh = zeros(mod.meta.ncon,n), zeros(mod.meta.ncon,n)
 
   Jg[Ig,1:n] = J[Ig,1:n]
   Jh[Ih,1:n] = J[Ih,1:n]
 
   if ncc>0
 
-   G = consG(rlxmpcc.mod,x)
-   H = consH(rlxmpcc.mod,x)
-   IG   = find(z->z<=prec,abs.(G - tb*ones(ncc) - rlxmpcc.mod.meta.lccG))
-   IH   = find(z->z<=prec,abs.(H - tb*ones(ncc) - rlxmpcc.mod.meta.lccH))
-   IPHI = find(z->z<=prec,abs.(phi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t)))
+   G = consG(mod,x)
+   H = consH(mod,x)
+   IG   = find(z->z<=prec,abs.(G - tb*ones(ncc) - mod.meta.lccG))
+   IH   = find(z->z<=prec,abs.(H - tb*ones(ncc) - mod.meta.lccH))
+   IPHI = find(z->z<=prec,abs.(phi(G, H, r, s, t)))
 
    JPHI = dphi(G,H,rlxmpcc.r,rlxmpcc.s,rlxmpcc.t)
    JPHIG, JPHIH = JPHI[1:ncc][IPHI], JPHI[ncc+1:2*ncc][IPHI]
 
-   JG   = jacG(rlxmpcc.mod,x)
-   JH   = jacH(rlxmpcc.mod,x)
+   JG   = jacG(mod,x)
+   JH   = jacH(mod,x)
 
    JBG, JBH = zeros(ncc, n), zeros(ncc, n)
    JBG[IG,1:n] = JG[IG,1:n]
