@@ -1,8 +1,11 @@
 """
-KKT fill-in!
+fillMstat: fill-in the MPCCAtX state structure for the M-stationary conditions.
+
+`fillMstat(:: AbstractMPCCModel, :: MPCCAtX; pnorm :: Float64 = Inf)`
+
 """
-function fillMstat(pb :: AbstractMPCCModel,  #:: AbstractNLPModel,
-	           state :: MPCCAtX;
+function fillMstat(pb    :: AbstractMPCCModel,  #:: AbstractNLPModel,
+                   state :: MPCCAtX;
                    pnorm :: Float64 = Inf)
 
     ncon, ncc = pb.meta.ncon, pb.meta.ncc

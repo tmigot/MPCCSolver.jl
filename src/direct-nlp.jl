@@ -1,6 +1,12 @@
 ##########################################################################
 
 #Using Stopping, the idea is to create a buffer function
+"""
+solveIpopt: Use Ipopt to solve the problem. If stp is an MPCCStoping the MPCC
+is set as a NLP using NLMPCC.
+
+`solveIpopt(:: Union{NLPStopping,MPCCStopping}; print_level :: Int = 0)`
+"""
 function solveIpopt(stp :: Union{NLPStopping,MPCCStopping}; print_level :: Int = 0)
 
  if typeof(stp.pb) <: AbstractMPCCModel

@@ -1,5 +1,11 @@
 """
-Relaxation method for the MPCC:
+mpcc_solve: Relaxation method for the MPCC.
+
+`mpcc_solve(:: MPCCStopping; verbose :: Bool = true, kwargs...)`
+
+Note: kwargs are passed to the ParamMPCC structure
+
+See also: *ParamMPCC*, *solveIpopt*
 """
 function mpcc_solve(stp :: MPCCStopping; verbose :: Bool = true, kwargs...)
 
@@ -65,7 +71,10 @@ function _reforward!(stp_rlx :: NLPStopping, stp_mpcc :: MPCCStopping)
 end
 
 """
-Solve the regularized problem
+rlx_solve: Solve the regularized problem
+
+`rlx_solve(stp :: NLPStopping, x0 :: AbstractVector)`
+
 """
 function rlx_solve(stp :: NLPStopping, x0 :: AbstractVector)
     reinit!(stp, rstate = true, x = x0)
