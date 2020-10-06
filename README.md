@@ -34,4 +34,4 @@ More to come...
 
 [Stopping](https://github.com/vepiteski/Stopping.jl)
 
-[MPCC](https://github.com/tmigot/MPCC.jl))
+[MPCC](https://github.com/tmigot/MPCC.jl)

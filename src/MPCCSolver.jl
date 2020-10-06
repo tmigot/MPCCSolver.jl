@@ -1,8 +1,6 @@
 module MPCCSolver
 
-using Main.MPCC
-using Ipopt, JuMP, LinearAlgebra
-using NLPModels, NLPModelsIpopt, NLPModelsJuMP, Stopping
+using Ipopt, JuMP, LinearAlgebra, MPCC, NLPModels, NLPModelsIpopt, NLPModelsJuMP, Stopping
 
 include("ParamMPCC.jl")
 

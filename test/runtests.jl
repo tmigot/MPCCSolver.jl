@@ -1,14 +1,9 @@
 using LinearAlgebra, LinearOperators, SparseArrays, Printf, Test
 
-include("/home/tmigot/github/MPCC/src/MPCC.jl")
-using Main.MPCC
+using MPCC
+using MPCCSolver
 
-include("../src/MPCCSolver.jl")
-using Main.MPCCSolver
-
-using JuMP
-using NLPModelsJuMP
-using Ipopt, NLPModels, NLPModelsIpopt, Stopping
+using Ipopt, JuMP, NLPModels, NLPModelsIpopt, NLPModelsJuMP, Stopping
 
 include("problems.jl")
 include("rosenbrock.jl")
