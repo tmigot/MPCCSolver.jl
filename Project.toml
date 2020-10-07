@@ -17,6 +17,7 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 NLPModelsJuMP = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
 MPCC = "0aaa5dc6-5b17-11ea-26af-6b0517bcf4f8"
+NLPModelsIpopt = "f4238b75-b362-5c4c-b852-0801c9a21d71"
 
 [compat]
 FastClosures = "0.2.1, 0.3.0"
