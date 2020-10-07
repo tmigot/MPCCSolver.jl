@@ -1,0 +1,5 @@
+[[MPCC]]
+#deps = ["DependencyA", "DependencyB"]
+repo-url = "https://github.com/tmigot/MPCC.jl"
+uuid = "0aaa5dc6-5b17-11ea-26af-6b0517bcf4f8"
+version = "0.1.0"
