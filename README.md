@@ -10,7 +10,7 @@
 Install required pacakages and test the MPCCSolver package with the Julia package manager:
 ```julia
 pkg> add https://github.com/tmigot/MPCC.jl
-pkg> add https://github.com/vepiteski/Stopping.jl
+pkg> add Stopping
 pkg> add https://github.com/tmigot/MPCCsolver.jl
 pkg> test MPCCSolver.jl
 ```
