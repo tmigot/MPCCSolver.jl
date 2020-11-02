@@ -33,7 +33,7 @@ stats = ipopt(rlx1, print_level = 0, x0 = x0)
 @show stats.solution, stats.status
 
 nlp_at_x = NLPAtX(x0)
-stop = NLPStopping(rlx1, KKT, nlp_at_x)
+stop = NLPStopping(rlx1, nlp_at_x, optimality_check = KKT)
 
 solveIpopt(stop)
 @show stop.current_state.x, status(stop)

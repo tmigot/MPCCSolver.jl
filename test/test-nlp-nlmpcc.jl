@@ -11,7 +11,7 @@ stats = ipopt(nlp, print_level = 0, x0 = x0)
 @show stats.solution, stats.status
 
 nlp_at_x = NLPAtX(x0)
-stop = NLPStopping(nlp, unconstrained_check, nlp_at_x)
+stop = NLPStopping(nlp, nlp_at_x, optimality_check = unconstrained_check)
 
 #1st scenario, we solve again the problem with the buffer solver
 printstyled("1st scenario:\n")
@@ -33,14 +33,14 @@ printstyled("3rd scenario:\n")
 mpcc = MPCCNLPs(nlp)
 test = NLMPCC(mpcc)
 nlp_at_x = NLPAtX(x0)
-stop_2 = NLPStopping(test, unconstrained_check, nlp_at_x)
+stop_2 = NLPStopping(test, nlp_at_x, optimality_check = unconstrained_check)
 
 solveIpopt(stop_2)
 @show stop_2.current_state.x, status(stop_2)
 
 printstyled("4th scenario:\n")
 nlp_at_x = MPCCAtX(mpcc.meta.x0, zeros(0))
-stop_nlp = MPCCStopping(mpcc, SStat, nlp_at_x)
+stop_nlp = MPCCStopping(mpcc, nlp_at_x, optimality_check = SStat)
 
 @test mpcc.meta.ncc  == 0
 @test mpcc.meta.ncon == 0

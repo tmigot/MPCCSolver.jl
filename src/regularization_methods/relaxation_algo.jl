@@ -113,7 +113,7 @@ function _rlx_init(stp :: MPCCStopping, parammpcc :: ParamMPCC)
                                            diagm(0 => dp[1:ncc]) * state.JGx
                                          + diagm(0 => dp[ncc+1:2*ncc]) * state.JHx))
 
- stp_rlx = NLPStopping(rlx, KKT, rlx_state, atol = prec, max_cntrs = stp.max_cntrs)
+ stp_rlx = NLPStopping(rlx, rlx_state, optimality_check = KKT, atol = prec, max_cntrs = stp.meta.max_cntrs)
 
  return stp_rlx
 end
